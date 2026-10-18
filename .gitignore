@@ -1,0 +1,18 @@
+/build/
+demo/*/build/
+/vendor/
+# The toolchain `ragekit setup` installs (TypePHP, Slint).
+.ragekit/
+/composer.lock
+# Third-party code kits and modules fetch themselves (their `fetch:` in kit.yml / module.yml).
+/kits/*/library/
+/modules/*/native/third_party/
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.lib
+*.exp
+/.phpunit.result.cache
+# IDE settings.
+/.idea/

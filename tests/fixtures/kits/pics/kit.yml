@@ -1,0 +1,10 @@
+name: pics
+entry: pics.slint
+elements:
+  ImageButton:
+    component: PicButton
+    props:
+      image: image
+      text: string
+    events:
+      onClick: clicked

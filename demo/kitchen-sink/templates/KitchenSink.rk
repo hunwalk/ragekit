@@ -1,0 +1,46 @@
+<VStack>
+    <Label text="Kitchen sink" size="title" />
+    <Label text="{status}" />
+    <Tabs selected="{tab}">
+        <Tab title="Inputs">
+            <VStack>
+                <HStack>
+                    <Button text="Default" onClick="press('default')" />
+                    <Button text="Secondary" variant="secondary" onClick="press('secondary')" />
+                    <Button text="Outline" variant="outline" onClick="press('outline')" />
+                    <Button text="Ghost" variant="ghost" onClick="press('ghost')" />
+                    <Button text="Destructive" variant="destructive" onClick="press('destructive')" />
+                </HStack>
+                <Entry value="{name}" />
+                <Checkbox text="Subscribe to updates" checked="{subscribed}" />
+                <Label text="{volumeText}" />
+                <Slider value="{volume}" min="0" max="100" />
+                <Select value="{fruit}" options="{FRUITS}" />
+                <Label text="{summary}" />
+            </VStack>
+        </Tab>
+        <Tab title="Display">
+            <VStack>
+                <Label text="Display" size="display" />
+                <Label text="Title" size="title" />
+                <Label text="Body text…" />
+                <Image source="assets/logo.svg" />
+                <Label text="Progress follows the volume slider" />
+                <Progress value="{progress}" />
+            </VStack>
+        </Tab>
+        <Tab title="Layout">
+            <VStack>
+                <Card title="Profile">
+                    <Label text="Name: {name}" />
+                    <Separator />
+                    <Label text="Favourite fruit: {fruit}" />
+                </Card>
+                <HStack>
+                    <Card title="Left"><Label text="Cards sit side by side" /></Card>
+                    <Card title="Right"><Label text="…and hold stacks" /></Card>
+                </HStack>
+            </VStack>
+        </Tab>
+    </Tabs>
+</VStack>

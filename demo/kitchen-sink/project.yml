@@ -1,0 +1,11 @@
+# Every core element in one window:
+#   cd demo/kitchen-sink && ../../bin/ragekit run          (--kit=material to compare kits)
+name: kitchen-sink
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  renderer: software
+  kit: shadcn

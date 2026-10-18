@@ -1,0 +1,9 @@
+export component PicButton inherits Rectangle {
+    in property <image> image;
+    in property <string> text;
+    callback clicked;
+    preferred-width: 64px;
+    preferred-height: 64px;
+    Image { source: root.image; }
+    TouchArea { clicked => { root.clicked(); } }
+}

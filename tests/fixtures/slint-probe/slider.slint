@@ -1,0 +1,18 @@
+// Hosts a kit slider (@KIT@ is replaced with the kit entry by the test) at a known size for slider_probe.cc.
+import { RkSlider } from "@KIT@";
+
+export component Probe inherits Window {
+    width: 200px;
+    height: 40px;
+    in-out property <float> value <=> slider.value;
+    out property <int> changes;
+    slider := RkSlider {
+        x: 0;
+        y: 0;
+        width: 200px;
+        height: 40px;
+        minimum: 50;
+        maximum: 100;
+        value_changed(v) => { root.changes += 1; }
+    }
+}

@@ -1,0 +1,47 @@
+# The toolchain `ragekit setup` installs into <project>/.ragekit/ (git-ignored), pinned to exact
+# versions and checksums. Builds refuse an install that doesn't match these pins (setup again);
+# `ragekit doctor` reports what's missing. TYPEPHP_HOME / SLINT_HOME in the environment win.
+#
+# Per component: an optional git checkout (git + commit), an optional composer.lock copied in
+# before `composer install`, patch files applied with `git apply` (they must fit exactly), and
+# downloads (url + sha256, extracted into the component's folder or its `to:` subfolder,
+# `strip:` leading path components). `platforms:` keys are <os> or <os>-<arch>; lists are appended.
+
+typephp:
+  # TypePHP compiles the app's PHP. A source checkout (bin/tpc.php on PHP 8.4+), because our
+  # patches change its sources. 53a67017 = v0.9.4 + 8 commits, the version RageKit is tested with.
+  git: https://github.com/swoole/typephp.git
+  commit: 53a67017b8241ff2cf268994376cc5ff571d551a
+  composer-lock: typephp/composer.lock
+  patches:
+    # php-nano doesn't count Core as started: every Nano app using a Core function (strlen, …)
+    # failed with "Unable to start PHP Nano extensions". To be reported upstream.
+    - typephp/patches/php-nano-core-dependency.patch
+  platforms:
+    windows-x86_64:
+      # The Nano link fix for MSVC (NanoSourceComposer) goes here once it's exported as a patch.
+      downloads:
+        # PHP's import libraries and DLLs for normal builds (PHP_HOME): TypePHP's v0.9.4 release.
+        - url: https://github.com/swoole/typephp/releases/download/v0.9.4/tpc_v0.9.4_windows_x64_php8.5.11-zts.zip
+          sha256: aaf6f41746e489bc97744cf5ae27ae72d6740024cc5f74252e43580e25f6bf24
+          to: release
+          strip: 1
+
+slint:
+  # Slint's prebuilt C++ package and its compiler (Royalty-free / GPLv3 / commercial, see LICENSE).
+  version: 1.18.1
+  platforms:
+    linux-x86_64:
+      downloads:
+        - url: https://github.com/slint-ui/slint/releases/download/v1.18.1/Slint-cpp-1.18.1-Linux-x86_64.tar.gz
+          sha256: f0b24ea601b80afe241677d1179bf5215dceae529f2b275b678a0af9a144b255
+          strip: 1
+        - url: https://github.com/slint-ui/slint/releases/download/v1.18.1/slint-compiler-Linux-x86_64.tar.gz
+          sha256: 543091e6102a02db3403aa77c774a11d9f383b31cb03e25cddad63269a1fb779
+          to: bin
+    windows-x86_64:
+      downloads:
+        # An installer (NSIS) holding bin/ (with slint-compiler.exe), include/ and lib/: unpacked
+        # with 7-Zip, not run.
+        - url: https://github.com/slint-ui/slint/releases/download/v1.18.1/Slint-cpp-1.18.1-win64-MSVC-AMD64.exe
+          sha256: eea71789a54982bc1c164d9e1d2c7f00fead1415e9ac396ccb48676f2f66a7a9

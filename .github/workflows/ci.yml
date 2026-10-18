@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux (tests + demos)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring
+          tools: composer
+          coverage: none
+
+      - name: System packages
+        # libphp8.4-embed and php8.4-dev (for normal builds) come from the PHP PPA, which
+        # setup-php doesn't leave configured.
+        run: |
+          sudo add-apt-repository -y ppa:ondrej/php
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential git tar xvfb x11-utils \
+            libfontconfig1 libfreetype6 libxkbcommon0 libxkbcommon-x11-0 libinput10 libgbm1 libudev1 \
+            libx11-xcb1 libxcursor1 libxi6 libxrandr2 \
+            php8.4-dev libphp8.4-embed cmake libgmp-dev libmpfr-dev
+
+      # The pinned toolchain (TypePHP + Slint) and the third-party code kits and modules fetch.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.local/share/ragekit/toolchains
+            kits/*/library
+            modules/*/native/third_party
+          key: toolchain-${{ runner.os }}-${{ hashFiles('toolchain/**', 'kits/*/kit.yml', 'modules/*/module.yml') }}
+
+      - name: Composer install
+        run: composer install --no-interaction --no-progress
+
+      - name: ragekit setup
+        run: php bin/ragekit setup
+
+      - name: ragekit doctor
+        run: php bin/ragekit doctor
+
+      - name: PHPUnit
+        run: vendor/bin/phpunit
+
+      - name: Start Xvfb
+        run: |
+          Xvfb :99 -screen 0 1280x1024x24 -nolisten tcp &
+          for _ in $(seq 1 50); do DISPLAY=:99 xdpyinfo >/dev/null 2>&1 && break; sleep 0.1; done
+
+      - name: Demos, Nano builds (start and close under Xvfb)
+        run: DISPLAY=:99 tests/e2e/demos.sh --nano
+
+      # Normal builds link Ubuntu's libphp8.4-embed (see docs/toolchain.md).
+      - name: Demos, normal builds (start and close under Xvfb)
+        run: DISPLAY=:99 tests/e2e/demos.sh

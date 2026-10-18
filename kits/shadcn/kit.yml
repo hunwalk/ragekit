@@ -1,0 +1,58 @@
+# RageKit's shadcn-style kit: dark zinc palette, 8px radius, 1px borders. Self-contained Slint.
+# Same element contract as kits/material (see src/Cli/Templates/ElementSpec.php and PropSpec.php).
+name: shadcn
+entry: shadcn.slint
+window: ShadWindow
+elements:
+  Label:
+    component: ShadLabel
+    props:
+      text: string
+      size: { type: string, enum: [body, title, display] }
+  Button:
+    component: ShadButton
+    props:
+      text: string
+      variant: { type: string, enum: [default, secondary, outline, ghost, destructive] }
+    events:
+      onClick: clicked
+  Entry:
+    component: ShadEntry
+    props:
+      value: { type: string, property: text, twoWay: edited }
+  Checkbox:
+    component: ShadCheckbox
+    props:
+      text: string
+      checked: { type: bool, twoWay: toggled }
+  Slider:
+    component: ShadSlider
+    props:
+      value: { type: float, twoWay: value_changed }
+      min: { type: float, property: minimum }
+      max: { type: float, property: maximum }
+  Select:
+    component: ShadSelect
+    props:
+      value: { type: string, twoWay: changed }
+      options: list
+  Image:
+    component: ShadImage
+    props:
+      source: image
+  Progress:
+    component: ShadProgress
+    props:
+      value: { type: float, property: progress }
+  Card:
+    component: ShadCard
+    props:
+      title: string
+    children: true
+  Separator:
+    component: ShadSeparator
+  TabBar:
+    component: ShadTabBar
+    props:
+      titles: list
+      selected: { type: int, twoWay: changed }

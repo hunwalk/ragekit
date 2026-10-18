@@ -1,0 +1,7 @@
+<VStack>
+    <Label text="{pending}" />
+    <Label text="{display}" size="display" />
+    <HStack each="row in KEYPAD">
+        <Button each="key in row" text="{key}" onClick="press(key)" grow="true" />
+    </HStack>
+</VStack>

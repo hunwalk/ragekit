@@ -1,0 +1,10 @@
+# An app with its own kit (kits/icons: an ImageButton drawn in Slint, SVG icons embedded at build time).
+#   cd demo/kit-demo && ../../bin/ragekit run      (composer install in the RageKit root once)
+name: kit-demo
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  renderer: software

@@ -1,0 +1,89 @@
+# Native settings merged into every app that uses `ragekit: { backend: slint }`.
+# Paths are relative to the RageKit root; ${SLINT_HOME} = Slint's prebuilt C++ package, the one
+# `ragekit setup` installs (.ragekit/slint) unless the environment variable is set.
+#
+# tpc compiles the app + the C++17 host; Slint itself is only in libragekit_slint (C++20), which
+# ragekit builds from the bridge sources and the code generated from the app's .rk templates.
+cxx-std: c++17
+
+# Core (listed one by one so other backends' modules stay out) + this module's runtime.
+sources:
+  - src/App.php
+  - src/Backend.php
+  - src/Component.php
+  - src/Screen.php
+  - src/Events.php
+  - src/Modules.php
+  - src/ModuleUnavailable.php
+  - src/Slint/SlintBackend.php
+  - src/Slint/SlintWindow.php
+  - src/Slint/backend.php
+  - native/slint/host
+
+include-paths:
+  - native/slint/bridge
+  - native/include
+
+# Handled by ragekit itself, not passed to tpc (keys documented in src/Cli/Project/BackendModule.php).
+ragekit:
+  variables:
+    SLINT_HOME: ${RAGEKIT_TOOLCHAIN}/slint
+  # App's `ragekit: renderer:` — software (lowest RAM, no drop shadows), femtovg or skia (GPU).
+  options:
+    renderer:
+      values: [software, femtovg, skia]
+      define: RAGEKIT_SLINT_RENDERER_{VALUE}
+  views:
+    generator: RageKit\Cli\Slint\SlintViewGenerator
+    slint-compiler: ${SLINT_HOME}/bin/slint-compiler
+  libraries:
+    - name: ragekit_slint
+      std: c++20
+      sources:
+        - native/slint/bridge
+        - '@generated/views_glue.cc'
+      include-paths:
+        - native/slint/bridge
+        - '@generated'
+        - ${SLINT_HOME}/include/slint
+      link-paths:
+        - ${SLINT_HOME}/lib
+      link-libs:
+        - slint_cpp
+  # `ragekit dev`: the dev shell (built once per native change) and the plain-PHP runtime that
+  # replaces the native host and the generated binder in dev mode (never compiled by tpc).
+  dev:
+    shell:
+      std: c++20
+      defines:
+        - SLINT_FEATURE_EXPERIMENTAL
+      sources:
+        - native/slint/devshell
+      include-paths:
+        - native/slint/devshell
+        - ${SLINT_HOME}/include/slint
+      link-paths:
+        - ${SLINT_HOME}/lib
+      link-libs:
+        - slint_cpp
+    runtime: src/Slint/Dev
+
+# Per-OS additions, overlaid onto the above.
+platforms:
+  windows:
+    cxx-flags:
+      - /Zc:__cplusplus
+    ragekit:
+      views:
+        slint-compiler: ${SLINT_HOME}/bin/slint-compiler.exe
+      copy:
+        - from: ${SLINT_HOME}/lib/slint_cpp.dll
+          to: slint_cpp.dll
+  linux:
+    # Find libragekit_slint.so / libslint_cpp.so next to the executable (tpc uses a shell).
+    ld-flags:
+      - "-Wl,-rpath,'$ORIGIN'"
+    ragekit:
+      copy:
+        - from: ${SLINT_HOME}/lib/libslint_cpp.so
+          to: libslint_cpp.so

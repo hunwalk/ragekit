@@ -1,0 +1,13 @@
+--- a/vendor/swoole/php-nano/src/extension.cpp
++++ b/vendor/swoole/php-nano/src/extension.cpp
+@@ -64,6 +64,10 @@
+             return DependencyState::Invalid;
+         }
+         if (available == nullptr) {
++            // Core is started by php_nano_startup_core(), not listed among the extensions.
++            if (std::strcmp(dependency->name, "Core") == 0) {
++                continue;
++            }
+             if (dependency->type == MODULE_DEP_REQUIRED) {
+                 return DependencyState::Invalid;
+             }

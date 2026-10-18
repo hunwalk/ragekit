@@ -1,0 +1,13 @@
+# The audio module: Play / Pause / Stop a generated tone, with progress and volume.
+#   cd demo/player && ../../bin/ragekit run      (RAGEKIT_AUDIO_NULL=1 when there are no speakers)
+name: player
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  renderer: software
+  kit: shadcn
+  modules: [audio]
+  assets: [assets/]

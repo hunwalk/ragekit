@@ -1,0 +1,11 @@
+# A kit adding an attribute outside the core contract (Button size).
+name: extra
+entry: extra.slint
+elements:
+  Button:
+    component: ExtraButton
+    props:
+      text: string
+      size: { type: string, enum: [sm, lg] }
+    events:
+      onClick: clicked

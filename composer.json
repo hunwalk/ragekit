@@ -1,0 +1,32 @@
+{
+    "name": "ragekit/ragekit",
+    "description": "Desktop apps in PHP, compiled to native code with TypePHP and drawn with Slint (no browser engine).",
+    "type": "library",
+    "license": "GPL-3.0-only",
+    "require": {
+        "php": ">=8.2",
+        "symfony/console": "^7.0",
+        "symfony/yaml": "^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "RageKit\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "RageKit\\Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/ragekit"
+    ],
+    "extra": {
+        "branch-alias": {
+            "dev-master": "0.1.x-dev"
+        }
+    }
+}

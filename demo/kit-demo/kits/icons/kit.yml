@@ -1,0 +1,11 @@
+# The app's own kit: found automatically because it lives in <project>/kits/*/kit.yml.
+name: icons
+entry: icons.slint
+elements:
+  ImageButton:
+    component: ImageButton
+    props:
+      image: image
+      text: string
+    events:
+      onClick: clicked

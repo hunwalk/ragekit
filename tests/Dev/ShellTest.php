@@ -1,0 +1,205 @@
+<?php
+
+declare(strict_types=1);
+
+namespace RageKit\Tests\Dev;
+
+use PHPUnit\Framework\TestCase;
+use RageKit\Cli\Build\BuildContext;
+use RageKit\Cli\Dev\DevViews;
+use RageKit\Cli\Dev\ShellBuilder;
+use RageKit\Cli\Project\BackendModule;
+use RageKit\Cli\Project\Project;
+use RageKit\Cli\Templates\ClassInfo;
+use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Templates\ViewProject;
+use RageKit\Cli\Toolchain\Platform;
+use Symfony\Component\Console\Output\NullOutput;
+use RageKit\Tests\Support\InstalledToolchain;
+
+/** The dev shell, run headless (Slint's testing backend) against a fake PHP app. */
+final class ShellTest extends TestCase
+{
+    private const ROOT = __DIR__ . '/../..';
+    private const FAKE_APP = __DIR__ . '/../fixtures/devshell/fake_app.php';
+
+    /** @var array{0: string, 1: array<string, string>}|null */
+    private static ?array $built = null;
+    private string $dir;
+
+    protected function setUp(): void
+    {
+        $this->dir = sys_get_temp_dir() . '/rk-shell-' . uniqid();
+        mkdir($this->dir);
+    }
+
+    public function testOpenSetReloadRestartAdoptAndQuit(): void
+    {
+        [$shell, $entries] = $this->buildShellAndEntries();
+        $log = "$this->dir/app.log";
+        $proc = $this->start($shell, $entries, $log, 'normal');
+        $this->waitFor($log, "opened 1\n");
+        fwrite($this->stdin, "reload\n");
+        $this->waitFor($log, "reload\n");
+        fwrite($this->stdin, "restart-php\n");
+        $this->waitFor($log, "opened 1\n", 2);
+        fwrite($this->stdin, "stop\n");
+        fclose($this->stdin);
+        self::assertSame(0, proc_close($proc));
+        $shellLog = (string) file_get_contents("$this->dir/shell.log");
+        self::assertStringContainsString('adopted window 1 (S)', $shellLog);
+        self::assertStringContainsString('reloaded', $shellLog);
+        self::assertStringNotContainsString('error', strtolower($shellLog));
+    }
+
+    public function testUnknownScreenAnswersZero(): void
+    {
+        [$shell, $entries] = $this->buildShellAndEntries();
+        $log = "$this->dir/app.log";
+        $proc = $this->start($shell, $entries, $log, 'nope');
+        $this->waitFor($log, "opened 0\n");
+        fwrite($this->stdin, "stop\n");
+        fclose($this->stdin);
+        self::assertSame(0, proc_close($proc));
+    }
+
+    public function testPhpFailingBeforeTheFirstWindowWaitsForARestart(): void
+    {
+        [$shell, $entries] = $this->buildShellAndEntries();
+        $log = "$this->dir/app.log";
+        $proc = $this->start($shell, $entries, $log, 'exit3');
+        $this->waitFor("$this->dir/shell.log", "php stopped 3\n");
+        self::assertTrue(proc_get_status($proc)['running'], 'the shell keeps running');
+        fwrite($this->stdin, "restart-php\n");
+        $this->waitFor("$this->dir/shell.log", "php stopped 3\n", 2);
+        fwrite($this->stdin, "stop\n");
+        fclose($this->stdin);
+        self::assertSame(0, proc_close($proc));
+    }
+
+    public function testPhpExitWithNoWindowsEndsShellWithItsCodeOnceAWindowWasOpen(): void
+    {
+        [$shell, $entries] = $this->buildShellAndEntries();
+        $proc = $this->start($shell, $entries, "$this->dir/app.log", 'open-exit3');
+        self::assertSame(3, $this->exitCode($proc), 'stdin stays open, as under ragekit dev');
+    }
+
+    public function testEventWhilePhpIsDownIsDropped(): void
+    {
+        [$shell, $entries] = $this->buildShellAndEntries();
+        $log = "$this->dir/app.log";
+        $proc = $this->start($shell, $entries, $log, 'normal');
+        $this->waitFor($log, "opened 1\n");
+        $this->waitFor("$this->dir/shell.log", "php ready\n");
+        fwrite($this->stdin, "restart-php\nclick 1 7 lost\n");
+        $this->waitFor("$this->dir/shell.log", "php ready\n", 2);
+        fwrite($this->stdin, "click 1 7 kept\n");
+        $this->waitFor($log, "event 1 7 kept\n");
+        fwrite($this->stdin, "stop\n");
+        fclose($this->stdin);
+        self::assertSame(0, proc_close($proc));
+        self::assertStringNotContainsString('lost', (string) file_get_contents($log));
+    }
+
+    public function testModuleCalls(): void
+    {
+        [$shell, $entries] = $this->buildShellAndEntries();
+        $lib = $this->buildDemoModule();
+        $log = "$this->dir/app.log";
+        $proc = $this->start($shell, $entries, $log, 'module', ['--module', "demo=$lib"]);
+        self::assertSame(0, $this->exitCode($proc));
+        self::assertSame([
+            "result|a\tba\tb",
+            'error|unknown function demo_nope',
+            'result|1',
+            'result|0',
+            'result|',
+        ], file($log, FILE_IGNORE_NEW_LINES));
+    }
+
+    /** The demo test module's library (tests/fixtures/modules/demo), built once. */
+    private function buildDemoModule(): string
+    {
+        static $lib = null;
+        if ($lib !== null) {
+            return $lib;
+        }
+        $dir = sys_get_temp_dir() . '/rk-shellmod-' . uniqid();
+        mkdir($dir);
+        $root = (string) realpath(self::ROOT);
+        $m = \RageKit\Cli\Modules\Module::load("$root/tests/fixtures/modules/demo/module.yml", $root);
+        file_put_contents("$dir/rk_module_demo.h", \RageKit\Cli\Modules\ModuleEmitter::header($m));
+        file_put_contents("$dir/rk_module_demo_call.cc", \RageKit\Cli\Modules\ModuleEmitter::callEntry($m));
+        exec("g++ -std=c++17 -shared -fPIC -fvisibility=hidden $root/tests/fixtures/modules/demo/native/demo.cc $dir/rk_module_demo_call.cc -I$dir -I$root/native/include -o $dir/librk_module_demo.so 2>&1", $out, $code);
+        self::assertSame(0, $code, implode("\n", $out));
+        return $lib = "$dir/librk_module_demo.so";
+    }
+
+    /** @var resource */
+    private $stdin;
+
+    /** @param array<string, string> $entries */
+    private function start(string $shell, array $entries, string $log, string $mode, array $extra = [])
+    {
+        $command = [$shell, '--headless', '--log', "$this->dir/shell.log", ...$extra];
+        foreach ($entries as $name => $entry) {
+            array_push($command, '--screen', "$name=$entry");
+        }
+        array_push($command, '--', PHP_BINARY, self::FAKE_APP, $log, $mode);
+        $proc = proc_open($command, [0 => ['pipe', 'r'], 1 => STDOUT, 2 => STDERR], $pipes);
+        self::assertIsResource($proc);
+        $this->stdin = $pipes[0];
+        return $proc;
+    }
+
+    /** @return array{0: string, 1: array<string, string>} the shell binary and the S screen's entry */
+    private function buildShellAndEntries(): array
+    {
+        $slint = InstalledToolchain::slintHome();
+        if (Platform::os() !== 'linux' || trim((string) shell_exec('command -v g++')) === '' || !is_file("$slint/include/slint/slint-interpreter.h")) {
+            self::markTestSkipped('needs Linux, g++ and the Slint C++ package');
+        }
+        if (self::$built !== null) {
+            return self::$built;
+        }
+        $project = sys_get_temp_dir() . '/rk-shellproj-' . uniqid();
+        mkdir($project);
+        file_put_contents("$project/project.yml", "name: shelltest\nragekit:\n  backend: slint\n");
+        file_put_contents("$project/S.rk", '<VStack><Label text="{name}" /></VStack>');
+        $root = (string) realpath(self::ROOT);
+        $context = new BuildContext(Project::load($project), BackendModule::find($root, 'slint', InstalledToolchain::dir()), InstalledToolchain::toolchain(), new NullOutput());
+        $shell = ShellBuilder::ensure($context, "$project/build/dev")['path'];
+        $class = new ClassInfo('Demo\\S', 'S', "$project/S.php", true, "$project/S.rk", ['name' => 'string']);
+        $kits = KitRegistry::load(["$root/kits/material/kit.yml"], $root);
+        $out = DevViews::write(new ViewProject(['Demo\\S' => $class], $kits, 'material', "$project/build/dev", $project), "$project/build/dev");
+        return self::$built = [$shell, $out->entries];
+    }
+
+    /** Waits for the process to end without closing its stdin (proc_close would, which reads as "stop"). */
+    private function exitCode($proc, float $timeout = 15.0): int
+    {
+        $end = microtime(true) + $timeout;
+        while (microtime(true) < $end) {
+            $status = proc_get_status($proc);
+            if (!$status['running']) {
+                return $status['exitcode'];
+            }
+            usleep(50_000);
+        }
+        self::fail('the shell did not exit');
+    }
+
+    private function waitFor(string $file, string $line, int $count = 1, float $timeout = 15.0): void
+    {
+        $end = microtime(true) + $timeout;
+        while (microtime(true) < $end) {
+            clearstatcache();
+            if (substr_count((string) @file_get_contents($file), $line) >= $count) {
+                self::assertTrue(true);
+                return;
+            }
+            usleep(50_000);
+        }
+        self::fail("waited for " . json_encode($line) . " x$count in $file:\n" . @file_get_contents($file) . "\nshell log:\n" . @file_get_contents("$this->dir/shell.log"));
+    }
+}

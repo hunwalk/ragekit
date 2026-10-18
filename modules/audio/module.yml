@@ -1,0 +1,22 @@
+# RageKit's audio module: sound playback with control, via miniaudio (public domain / MIT-0).
+name: audio
+php: [src]
+fetch:
+  - url: https://raw.githubusercontent.com/mackron/miniaudio/0.11.22/miniaudio.h
+    sha256: 9019743287e443c55e5737a7297f38e5e358561701d6db2d905afb114390c410
+    to: native/third_party/miniaudio/miniaudio.h
+library:
+  sources: [native]
+  include-paths: [native, native/third_party/miniaudio]
+  platforms: { linux: { link-libs: [dl, pthread, m] } }
+functions:
+  audio_load:     { params: { path: string }, returns: int }
+  audio_play:     { params: { sound: int } }
+  audio_pause:    { params: { sound: int } }
+  audio_stop:     { params: { sound: int } }
+  audio_seek:     { params: { sound: int, seconds: float } }
+  audio_volume:   { params: { sound: int, volume: float } }
+  audio_position: { params: { sound: int }, returns: float }
+  audio_duration: { params: { sound: int }, returns: float }
+  audio_playing:  { params: { sound: int }, returns: bool }
+  audio_unload:   { params: { sound: int } }

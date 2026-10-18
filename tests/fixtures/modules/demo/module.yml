@@ -1,0 +1,10 @@
+# A test module covering every parameter and return type.
+name: demo
+php: [src]
+library:
+  sources: [native]
+  platforms: { linux: { link-libs: [m] } }
+functions:
+  demo_echo: { params: { text: string, times: int }, returns: string }
+  demo_add:  { params: { a: float, b: float, round: bool }, returns: float }
+  demo_ping: {}

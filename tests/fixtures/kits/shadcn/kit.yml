@@ -1,0 +1,15 @@
+name: shadcn
+entry: shadcn.slint
+elements:
+  Button:
+    component: ShadButton
+    props:
+      text: string
+      variant: { type: string, enum: [default, outline] }
+    events:
+      onClick: clicked
+  Card:
+    component: ShadCard
+    props:
+      title: string
+    children: true

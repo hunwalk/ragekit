@@ -1,0 +1,195 @@
+// RageKit's Material kit: thin wrappers around Slint's Material 3 library, one per core element.
+import {
+    MaterialWindow, MaterialText, MaterialTypography, MaterialPalette, FilledButton, TonalButton, OutlineButton,
+    TextButton, TextField, Switch, Slider, LinearProgressIndicator, OutlinedCard, HorizontalDivider,
+} from "@material";
+
+export component RkWindow inherits MaterialWindow { }
+
+export component RkLabel inherits MaterialText {
+    in property <string> size: "body";
+    style: root.size == "display" ? MaterialTypography.display_medium
+        : root.size == "title" ? MaterialTypography.title_large
+        : MaterialTypography.body_large;
+}
+
+export component RkButton inherits HorizontalLayout {
+    in property <string> text;
+    in property <string> variant: "default";
+    callback clicked;
+    if root.variant == "default" : FilledButton { text: root.text; clicked => { root.clicked(); } }
+    if root.variant == "secondary" : TonalButton { text: root.text; clicked => { root.clicked(); } }
+    if root.variant == "outline" : OutlineButton { text: root.text; clicked => { root.clicked(); } }
+    if root.variant == "ghost" : TextButton { text: root.text; clicked => { root.clicked(); } }
+    // Material has no error-coloured button, so destructive is drawn here.
+    if root.variant == "destructive" : Rectangle {
+        min-width: label.preferred-width + 48px;
+        height: 40px;
+        border-radius: 20px;
+        background: touch.pressed ? MaterialPalette.on_error_container : MaterialPalette.error;
+        label := MaterialText {
+            text: root.text;
+            style: MaterialTypography.label_large;
+            color: MaterialPalette.on_error;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            width: parent.width;
+            height: parent.height;
+        }
+        touch := TouchArea { clicked => { root.clicked(); } }
+    }
+}
+
+export component RkEntry inherits TextField { }
+
+export component RkCheckbox inherits HorizontalLayout {
+    in property <string> text;
+    in-out property <bool> checked;
+    callback toggled(bool);
+    spacing: 12px;
+    alignment: start;
+    Switch {
+        checked <=> root.checked;
+        checked_state_changed(on) => { root.toggled(on); }
+    }
+    MaterialText {
+        text: root.text;
+        vertical-alignment: center;
+    }
+}
+
+// Material's Slider maps the pointer as if minimum were 0 and reports values PHP pushes in as
+// changes, so it runs on 0..(maximum - minimum) here and only user changes reach value_changed.
+export component RkSlider inherits HorizontalLayout {
+    in property <float> minimum: 0;
+    in property <float> maximum: 1;
+    in-out property <float> value;
+    callback value_changed(float);
+    changed value => { slider.value = root.value - root.minimum; }
+    slider := Slider {
+        enabled: true;
+        minimum: 0;
+        maximum: root.maximum - root.minimum;
+        value: root.value - root.minimum;
+        value_changed(offset) => {
+            if (abs(offset + root.minimum - root.value) > abs(root.maximum - root.minimum) / 100000) {
+                root.value = offset + root.minimum;
+                root.value_changed(root.value);
+            }
+        }
+    }
+}
+
+// Material's DropDownMenu takes MenuItem structs; templates pass plain strings, so this is built here.
+export component RkSelect inherits Rectangle {
+    in property <[string]> options;
+    in-out property <string> value;
+    callback changed(string);
+    min-width: 180px;
+    height: 48px;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: MaterialPalette.outline;
+    MaterialText {
+        x: 16px;
+        width: parent.width - 48px;
+        height: parent.height;
+        text: root.value == "" ? "Select…" : root.value;
+        color: root.value == "" ? MaterialPalette.on_surface_variant : MaterialPalette.on_surface;
+        style: MaterialTypography.body_large;
+        vertical-alignment: center;
+    }
+    MaterialText {
+        x: parent.width - 32px;
+        height: parent.height;
+        text: "▾";
+        color: MaterialPalette.on_surface_variant;
+        vertical-alignment: center;
+    }
+    TouchArea { clicked => { popup.show(); } }
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: root.width;
+        height: root.options.length * 40px + 8px;
+        Rectangle {
+            background: MaterialPalette.surface_container;
+            border-radius: 4px;
+            VerticalLayout {
+                padding-top: 4px;
+                padding-bottom: 4px;
+                for option in root.options : Rectangle {
+                    height: 40px;
+                    background: item.has-hover ? MaterialPalette.surface_container_highest : transparent;
+                    MaterialText {
+                        x: 16px;
+                        height: parent.height;
+                        text: option;
+                        style: MaterialTypography.body_large;
+                        vertical-alignment: center;
+                    }
+                    item := TouchArea {
+                        clicked => {
+                            root.value = option;
+                            root.changed(option);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component RkImage inherits Image {
+    image-fit: contain;
+}
+
+export component RkProgress inherits LinearProgressIndicator { }
+
+export component RkCard inherits VerticalLayout {
+    in property <string> title;
+    OutlinedCard {
+        VerticalLayout {
+            padding: 16px;
+            spacing: 12px;
+            if root.title != "" : MaterialText {
+                text: root.title;
+                style: MaterialTypography.title_medium;
+            }
+            @children
+        }
+    }
+}
+
+export component RkSeparator inherits HorizontalDivider { }
+
+// Material's TabBar takes NavigationItem structs; templates pass plain titles, so this is built here.
+export component RkTabBar inherits HorizontalLayout {
+    in property <[string]> titles;
+    in-out property <int> selected;
+    callback changed(int);
+    for title[i] in root.titles : Rectangle {
+        height: 48px;
+        horizontal-stretch: 1;
+        MaterialText {
+            width: parent.width;
+            height: parent.height;
+            text: title;
+            style: MaterialTypography.title_small;
+            color: i == root.selected ? MaterialPalette.primary : MaterialPalette.on_surface_variant;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        Rectangle {
+            y: parent.height - 3px;
+            height: 3px;
+            background: i == root.selected ? MaterialPalette.primary : transparent;
+        }
+        TouchArea {
+            clicked => {
+                root.selected = i;
+                root.changed(i);
+            }
+        }
+    }
+}

@@ -1,0 +1,326 @@
+// RageKit's shadcn-style kit (dark): zinc palette, 8px radius, 1px borders, drawn entirely in Slint.
+export global Shad {
+    out property <color> background: #09090b;
+    out property <color> card: #0c0c0f;
+    out property <color> border: #27272a;
+    out property <color> hover: #27272a;
+    out property <color> foreground: #fafafa;
+    out property <color> muted: #a1a1aa;
+    out property <color> primary: #fafafa;
+    out property <color> primary-hover: #e4e4e7;
+    out property <color> primary-foreground: #18181b;
+    out property <color> secondary: #27272a;
+    out property <color> secondary-hover: #3f3f46;
+    out property <color> destructive: #ef4444;
+    out property <color> destructive-hover: #dc2626;
+    out property <length> radius: 8px;
+    out property <length> font-size: 14px;
+}
+
+export component ShadWindow inherits Window {
+    background: Shad.background;
+    default-font-size: Shad.font-size;
+}
+
+export component ShadLabel inherits Text {
+    in property <string> size: "body";
+    color: Shad.foreground;
+    font-size: root.size == "display" ? 36px : root.size == "title" ? 20px : Shad.font-size;
+    font-weight: root.size == "body" ? 400 : 600;
+    vertical-alignment: center;
+}
+
+export component ShadButton inherits Rectangle {
+    in property <string> text;
+    in property <string> variant: "default";
+    callback clicked;
+    min-width: label.preferred-width + 32px;
+    height: 36px;
+    border-radius: Shad.radius;
+    border-width: root.variant == "outline" ? 1px : 0px;
+    border-color: Shad.border;
+    background: root.variant == "default" ? (touch.has-hover ? Shad.primary-hover : Shad.primary)
+        : root.variant == "secondary" ? (touch.has-hover ? Shad.secondary-hover : Shad.secondary)
+        : root.variant == "destructive" ? (touch.has-hover ? Shad.destructive-hover : Shad.destructive)
+        : (touch.has-hover ? Shad.hover : transparent);
+    animate background { duration: 100ms; }
+    label := Text {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: root.variant == "default" ? Shad.primary-foreground : Shad.foreground;
+        font-weight: 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea { clicked => { root.clicked(); } }
+}
+
+export component ShadEntry inherits Rectangle {
+    in-out property <string> text;
+    callback edited(string);
+    // Scroll offset that keeps the caret visible once the text is wider than the box.
+    property <length> scroll-x;
+    min-width: 120px;
+    height: 36px;
+    border-radius: Shad.radius;
+    border-width: 1px;
+    border-color: input.has-focus ? #71717a : Shad.border;
+    TouchArea { clicked => { input.focus(); } }
+    Rectangle {
+        x: 12px;
+        width: parent.width - 24px;
+        clip: true;
+        input := TextInput {
+            x: min(0px, max(parent.width - self.width - self.text-cursor-width, root.scroll-x));
+            width: max(parent.width - self.text-cursor-width, self.preferred-width);
+            height: parent.height;
+            text <=> root.text;
+            color: Shad.foreground;
+            font-size: Shad.font-size;
+            vertical-alignment: center;
+            single-line: true;
+            edited => { root.edited(self.text); }
+            cursor-position-changed(position) => {
+                if (position.x + root.scroll-x < 0) {
+                    root.scroll-x = -position.x;
+                } else if (position.x + root.scroll-x > parent.width - self.text-cursor-width) {
+                    root.scroll-x = parent.width - position.x - self.text-cursor-width;
+                }
+            }
+        }
+    }
+}
+
+export component ShadCheckbox inherits HorizontalLayout {
+    in property <string> text;
+    in-out property <bool> checked;
+    callback toggled(bool);
+    spacing: 8px;
+    alignment: start;
+    VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border-width: 1px;
+            border-color: root.checked ? Shad.primary : #52525b;
+            background: root.checked ? Shad.primary : transparent;
+            Text {
+                width: parent.width;
+                height: parent.height;
+                text: root.checked ? "✓" : "";
+                color: Shad.primary-foreground;
+                font-size: 13px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            TouchArea {
+                clicked => {
+                    root.checked = !root.checked;
+                    root.toggled(root.checked);
+                }
+            }
+        }
+    }
+    Text {
+        text: root.text;
+        color: Shad.foreground;
+        vertical-alignment: center;
+        TouchArea {
+            clicked => {
+                root.checked = !root.checked;
+                root.toggled(root.checked);
+            }
+        }
+    }
+}
+
+export component ShadSlider inherits Rectangle {
+    in property <float> minimum: 0;
+    in property <float> maximum: 1;
+    in-out property <float> value;
+    callback value_changed(float);
+    property <float> ratio: clamp((root.value - root.minimum) / max(0.0001, root.maximum - root.minimum), 0, 1);
+    min-width: 120px;
+    height: 20px;
+    Rectangle {
+        y: (parent.height - 6px) / 2;
+        height: 6px;
+        border-radius: 3px;
+        background: Shad.secondary;
+    }
+    Rectangle {
+        x: 0;
+        y: (parent.height - 6px) / 2;
+        width: parent.width * root.ratio;
+        height: 6px;
+        border-radius: 3px;
+        background: Shad.primary;
+    }
+    Rectangle {
+        x: root.ratio * (parent.width - self.width);
+        y: (parent.height - self.height) / 2;
+        width: 16px;
+        height: 16px;
+        border-radius: 8px;
+        border-width: 2px;
+        border-color: Shad.primary;
+        background: Shad.background;
+    }
+    touch := TouchArea {
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down) {
+                root.set-from(self.mouse-x);
+            }
+        }
+        moved => {
+            if (self.pressed) {
+                root.set-from(self.mouse-x);
+            }
+        }
+    }
+    function set-from(x: length) {
+        root.value = clamp(root.minimum + (x / root.width) * (root.maximum - root.minimum), root.minimum, root.maximum);
+        root.value_changed(root.value);
+    }
+}
+
+export component ShadSelect inherits Rectangle {
+    in property <[string]> options;
+    in-out property <string> value;
+    callback changed(string);
+    min-width: 180px;
+    height: 36px;
+    border-radius: Shad.radius;
+    border-width: 1px;
+    border-color: Shad.border;
+    background: touch.has-hover ? #18181b : transparent;
+    Text {
+        x: 12px;
+        width: parent.width - 36px;
+        height: parent.height;
+        text: root.value == "" ? "Select…" : root.value;
+        color: root.value == "" ? Shad.muted : Shad.foreground;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    Text {
+        x: parent.width - 24px;
+        height: parent.height;
+        text: "▾";
+        color: Shad.muted;
+        vertical-alignment: center;
+    }
+    touch := TouchArea { clicked => { popup.show(); } }
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: root.width;
+        height: root.options.length * 32px + 10px;
+        Rectangle {
+            background: Shad.card;
+            border-radius: Shad.radius;
+            border-width: 1px;
+            border-color: Shad.border;
+            VerticalLayout {
+                padding: 4px;
+                for option in root.options : Rectangle {
+                    height: 32px;
+                    border-radius: 4px;
+                    background: item.has-hover ? Shad.hover : transparent;
+                    Text {
+                        x: 8px;
+                        height: parent.height;
+                        text: option;
+                        color: Shad.foreground;
+                        vertical-alignment: center;
+                    }
+                    item := TouchArea {
+                        clicked => {
+                            root.value = option;
+                            root.changed(option);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component ShadImage inherits Image {
+    image-fit: contain;
+}
+
+export component ShadProgress inherits Rectangle {
+    in property <float> progress;
+    min-width: 120px;
+    height: 8px;
+    border-radius: 4px;
+    background: Shad.secondary;
+    clip: true;
+    Rectangle {
+        x: 0;
+        width: parent.width * clamp(root.progress, 0, 1);
+        border-radius: 4px;
+        background: Shad.primary;
+    }
+}
+
+export component ShadCard inherits Rectangle {
+    in property <string> title;
+    background: Shad.card;
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: Shad.border;
+    VerticalLayout {
+        padding: 16px;
+        spacing: 12px;
+        if root.title != "" : Text {
+            text: root.title;
+            color: Shad.foreground;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        @children
+    }
+}
+
+export component ShadSeparator inherits Rectangle {
+    height: 1px;
+    background: Shad.border;
+}
+
+export component ShadTabBar inherits Rectangle {
+    in property <[string]> titles;
+    in-out property <int> selected;
+    callback changed(int);
+    height: 36px;
+    border-radius: Shad.radius;
+    background: #18181b;
+    HorizontalLayout {
+        padding: 3px;
+        spacing: 3px;
+        for title[i] in root.titles : Rectangle {
+            horizontal-stretch: 1;
+            border-radius: 6px;
+            background: i == root.selected ? Shad.background : (tab.has-hover ? Shad.hover : transparent);
+            Text {
+                width: parent.width;
+                height: parent.height;
+                text: title;
+                color: i == root.selected ? Shad.foreground : Shad.muted;
+                font-weight: 500;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            tab := TouchArea {
+                clicked => {
+                    root.selected = i;
+                    root.changed(i);
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,8 @@
+<VStack xmlns:ui="icons">
+    <Label text="{status}" size="title" />
+    <HStack>
+        <ui:ImageButton image="assets/play.svg" text="Play" onClick="play" grow="true" />
+        <ui:ImageButton image="assets/pause.svg" text="Pause" onClick="pause" grow="true" />
+        <ui:ImageButton image="assets/stop.svg" text="Stop" onClick="stop" grow="true" />
+    </HStack>
+</VStack>

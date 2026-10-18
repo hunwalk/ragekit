@@ -1,0 +1,48 @@
+name: Bug report
+description: Something doesn't build, doesn't run or does the wrong thing
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest template, PHP class or project.yml that shows it, and the command you ran.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: The build output (`ragekit build -v` shows the tools' output) or the app's error.
+      render: text
+  - type: textarea
+    id: doctor
+    attributes:
+      label: ragekit doctor
+      description: The output of `vendor/bin/ragekit doctor` (or `bin/ragekit doctor` in a checkout).
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: RageKit version
+      description: "`ragekit --version`"
+    validations:
+      required: true
+  - type: dropdown
+    id: build
+    attributes:
+      label: Build kind
+      multiple: true
+      options:
+        - normal
+        - Nano
+        - ragekit dev

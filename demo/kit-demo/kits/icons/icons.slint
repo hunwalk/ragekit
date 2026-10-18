@@ -1,0 +1,34 @@
+// ImageButton: a rounded card with an icon and an optional caption, drawn entirely in Slint.
+export component ImageButton inherits Rectangle {
+    in property <image> image;
+    in property <string> text;
+    callback clicked;
+
+    min-width: 72px;
+    min-height: 84px;
+    border-radius: 16px;
+    background: touch.pressed ? #4a5175 : touch.has-hover ? #3a405e : #2b2f45;
+    animate background { duration: 120ms; }
+
+    VerticalLayout {
+        padding: 12px;
+        spacing: 6px;
+        alignment: center;
+        Image {
+            source: root.image;
+            height: 36px;
+            image-fit: contain;
+            colorize: #e8ebf7;
+        }
+        if root.text != "" : Text {
+            text: root.text;
+            color: #c9cde0;
+            font-size: 13px;
+            horizontal-alignment: center;
+        }
+    }
+
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}

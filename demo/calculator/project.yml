@@ -1,0 +1,10 @@
+# A calculator: the logic in plain PHP (src/Engine.php), the keypad from a constant in the template.
+#   cd demo/calculator && ../../bin/ragekit run      (composer install in the RageKit root once)
+name: calculator
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  renderer: software

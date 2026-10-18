@@ -1,0 +1,67 @@
+# RageKit's default kit: Slint's Material 3 library (MIT), wrapped once per core element.
+# Contract: see src/Cli/Templates/ElementSpec.php and PropSpec.php.
+name: material
+entry: rk-material.slint
+# Slint's Material library (MIT), at the Slint version RageKit uses; fetched into library/.
+fetch:
+  - git: https://github.com/slint-ui/slint.git
+    ref: v1.18.1
+    commit: 372cf0ee5577c3dfec309a45e7b778ba4e81b734
+    path: ui-libraries/material/src
+    to: library
+libraries:
+  material: ${KIT}/library/material.slint
+window: RkWindow
+elements:
+  Label:
+    component: RkLabel
+    props:
+      text: string
+      size: { type: string, enum: [body, title, display] }
+  Button:
+    component: RkButton
+    props:
+      text: string
+      variant: { type: string, enum: [default, secondary, outline, ghost, destructive] }
+    events:
+      onClick: clicked
+  Entry:
+    component: RkEntry
+    props:
+      value: { type: string, property: text, twoWay: edited }
+  Checkbox:
+    component: RkCheckbox
+    props:
+      text: string
+      checked: { type: bool, twoWay: toggled }
+  Slider:
+    component: RkSlider
+    props:
+      value: { type: float, twoWay: value_changed }
+      min: { type: float, property: minimum }
+      max: { type: float, property: maximum }
+  Select:
+    component: RkSelect
+    props:
+      value: { type: string, twoWay: changed }
+      options: list
+  Image:
+    component: RkImage
+    props:
+      source: image
+  Progress:
+    component: RkProgress
+    props:
+      value: { type: float, property: progress }
+  Card:
+    component: RkCard
+    props:
+      title: string
+    children: true
+  Separator:
+    component: RkSeparator
+  TabBar:
+    component: RkTabBar
+    props:
+      titles: list
+      selected: { type: int, twoWay: changed }
