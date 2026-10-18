@@ -82,6 +82,18 @@ final class Toolchain
         $this->process = $this->process->withEnv('PHP_HOME', $home);
     }
 
+    /** Points tpc at a PHPX installation (PHPX_HOME) from now on. */
+    public function usePhpxHome(string $home): void
+    {
+        $this->process = $this->process->withEnv('PHPX_HOME', $home);
+    }
+
+    /** A variable of the environment tools run with, or null. */
+    public function env(string $name): ?string
+    {
+        return $this->process->env($name);
+    }
+
     public function toolchainDir(): string
     {
         return $this->toolchainDir;

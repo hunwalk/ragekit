@@ -82,4 +82,23 @@ final class TypePhp
         $phpx = rtrim((string) getenv('PHPX_HOME'), '/');
         return $phpx !== '' ? $phpx : "$this->home/vendor/swoole/phpx";
     }
+
+    /**
+     * Windows: PHPX as TypePHP's release ships it (the same headers as the checkout's, plus the
+     * phpx.lib normal builds link), so the checkout needn't build PHPX with nmake. tpc run from
+     * source also wants phpx.dll in PHPX_HOME/build; the release keeps it next to php8ts.dll, so it
+     * is copied there once. Null when $phpHome holds no release.
+     */
+    public static function releasePhpx(string $phpHome): ?string
+    {
+        $phpx = "$phpHome/phpx";
+        if (!is_file("$phpx/lib/phpx.lib") || !is_file("$phpHome/phpx.dll")) {
+            return null;
+        }
+        if (!is_file("$phpx/build/phpx.dll")) {
+            @mkdir("$phpx/build", 0777, true);
+            copy("$phpHome/phpx.dll", "$phpx/build/phpx.dll");
+        }
+        return $phpx;
+    }
 }

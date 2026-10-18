@@ -19,6 +19,11 @@ final class Process
         return new self([...$this->env, $name => $value]);
     }
 
+    public function env(string $name): ?string
+    {
+        return $this->env[$name] ?? null;
+    }
+
     /** Streams the tool's output; returns its exit code. */
     public function run(array $command, string $cwd): int
     {

@@ -73,4 +73,21 @@ final class TypePhpTest extends TestCase
         putenv("TYPEPHP_HOME=$this->dir/own");
         self::assertSame([PHP_BINARY, "$this->dir/own/bin/tpc.php"], TypePhp::locate("$this->dir/.ragekit", $this->pins())->command);
     }
+
+    public function testReleasePhpxGetsItsDllWhereTpcFromSourceLooks(): void
+    {
+        mkdir("$this->dir/release/phpx/lib", 0777, true);
+        touch("$this->dir/release/phpx/lib/phpx.lib");
+        file_put_contents("$this->dir/release/phpx.dll", 'dll');
+
+        self::assertSame("$this->dir/release/phpx", TypePhp::releasePhpx("$this->dir/release"));
+        self::assertSame('dll', file_get_contents("$this->dir/release/phpx/build/phpx.dll"));
+    }
+
+    public function testNoReleasePhpxIsNull(): void
+    {
+        mkdir("$this->dir/release");
+
+        self::assertNull(TypePhp::releasePhpx("$this->dir/release"));
+    }
 }

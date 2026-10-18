@@ -15,6 +15,8 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 - Windows: `ragekit setup` failed with "could not start composer". Tools installed as `.bat` or
   `.cmd` files (like Composer) are now found on PATH.
+- Windows: normal (non-Nano) builds failed with "phpx library not found". They now link PHPX from
+  the TypePHP release `ragekit setup` installs.
 
 ## [0.1.0] - 2026-10-18
 
