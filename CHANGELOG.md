@@ -9,6 +9,13 @@ to update. Patch versions (0.1.0 → 0.1.1) only fix things.
 implements, and `project.yml` options. Kits and modules distributed as Composer packages should
 require the RageKit minor version they were written for, e.g. `"ragekit/ragekit": "^0.1"`.
 
+## [Unreleased]
+
+### Fixed
+
+- Windows: `ragekit setup` failed with "could not start composer". Tools installed as `.bat` or
+  `.cmd` files (like Composer) are now found on PATH.
+
 ## [0.1.0] - 2026-10-18
 
 The first release. Experimental: Linux is where it's built and tested, Windows works but

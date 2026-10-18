@@ -83,12 +83,32 @@ final class Process
         if (!Platform::isWindows() || strpbrk($command[0], '/\\') !== false) {
             return $command;
         }
-        foreach (explode(';', $this->env['Path'] ?? $this->env['PATH'] ?? '') as $dir) {
-            if ($dir !== '' && is_file($dir . '\\' . $command[0])) {
-                $command[0] = $dir . '\\' . $command[0];
-                break;
+        $path = $this->env['Path'] ?? $this->env['PATH'] ?? (string) getenv('PATH');
+        $pathExt = $this->env['PATHEXT'] ?? (getenv('PATHEXT') ?: '.COM;.EXE;.BAT;.CMD');
+        $command[0] = self::findOnWindowsPath($command[0], $path, $pathExt) ?? $command[0];
+        return $command;
+    }
+
+    /**
+     * Like cmd.exe: a name without an extension gets each PATHEXT extension in turn, so `composer`
+     * finds composer.bat (CreateProcess itself only tries .exe), not the extensionless script for
+     * Git Bash that Composer's installer puts next to it.
+     *
+     * @internal public for tests
+     */
+    public static function findOnWindowsPath(string $program, string $path, string $pathExt, string $separator = '\\'): ?string
+    {
+        $extensions = array_filter(explode(';', strtolower($pathExt)));
+        $names = in_array(strtolower((string) strrchr($program, '.')), $extensions, true)
+            ? [$program]
+            : array_map(fn (string $extension): string => $program . $extension, $extensions);
+        foreach (explode(';', $path) as $dir) {
+            foreach ($dir === '' ? [] : $names as $name) {
+                if (is_file($dir . $separator . $name)) {
+                    return $dir . $separator . $name;
+                }
             }
         }
-        return $command;
+        return null;
     }
 }
