@@ -19,6 +19,7 @@ What ends up in, or next to, an executable RageKit builds:
 | [php-nano](https://github.com/swoole/php-nano) | the stripped-down PHP runtime compiled into Nano builds | BSD-3-Clause |
 | [Slint Material](https://material.slint.dev) | the `material` kit's components | MIT |
 | [miniaudio](https://miniaud.io) 0.11.22 | the `audio` module | public domain or MIT No Attribution |
+| [libcurl](https://curl.se/libcurl/) (the system's, linked dynamically; not shipped) | the `http` module on Linux | curl license (MIT-style) |
 
 **RageKit and your app.** RageKit's runtime is compiled into every app it builds, so an app you
 distribute is a combined work with GPLv3 code: it must be distributed under the GPLv3 too

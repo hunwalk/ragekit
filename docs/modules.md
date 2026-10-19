@@ -58,7 +58,7 @@ lacks one of the functions your app was built against (for example a library bui
 `module.yml`).
 
 A module's own PHP API normally checks this for you: `Sound::load()` throws `ModuleUnavailable`
-when the audio library is missing. If you call a module's generated functions directly, check
+when the audio library is missing, and an HTTP request reports it as the request's error. If you call a module's generated functions directly, check
 `Modules::available()` first. In a release build a missing function returns its type's default
 (`0`, `0.0`, `false`, `''`) instead of failing.
 
@@ -109,6 +109,72 @@ output. Use it for tests and on machines without speakers; progress and "finishe
 "Finished" status. It shows "Audio unavailable" when the library isn't there.
 
 Not in this version: recording, choosing an output device, streaming, and effects.
+
+## The http module
+
+HTTP and HTTPS requests that never block the window: each request runs on a worker thread, and
+its callback runs on the UI thread when the answer is in, like a click handler. It works the same
+in Nano builds, whose PHP can't use the network itself.
+
+```php
+use RageKit\Http\Http;
+use RageKit\Http\Response;
+
+Http::get('https://api.github.com/repos/hunwalk/ragekit')
+    ->header('Accept', 'application/vnd.github+json')
+    ->timeout(10)
+    ->send(function (Response $r): void {
+        if (!$r->ok()) {
+            $this->status = $r->error !== '' ? $r->error : "GitHub answered $r->status";
+            return;
+        }
+        $repo = json_decode($r->body, true);
+        $this->stars = $repo['stargazers_count'] ?? 0;
+    });
+
+$download = Http::get('https://example.com/big.zip')
+    ->saveTo('downloads/big.zip')          // relative to the app's folder
+    ->onProgress(function (int $received, int $total): void {
+        $this->progress = $total > 0 ? $received / $total : 0.0;
+    })
+    ->send(function (Response $r): void {
+        $this->status = $r->ok() ? 'Saved' : 'Failed';
+    });
+$download->cancel();                       // e.g. from a Cancel button
+```
+
+| Method | What it does |
+|---|---|
+| `Http::get($url)`, `Http::post($url, $body)`, `Http::request($method, $url)` | Make a request (not sent yet). |
+| `->header($name, $value)` | Adds a request header. A name or value with a line break throws `InvalidArgumentException`. |
+| `->body($body)` | The request body (any bytes). |
+| `->timeout($seconds)` | Gives up after this long **without progress**: while connecting, or when no data arrives. Not a limit on the whole transfer, so big downloads work. Default 30. |
+| `->saveTo($path)` | Writes the body to a file instead of `Response::$body`. Missing folders are created. The file appears only for a 2xx answer; it is written as `<path>.part` first. |
+| `->onProgress(Closure $fn)` | `$fn(int $received, int $total)` about ten times a second while data arrives; `$total` is `-1` when unknown. |
+| `->send(Closure $then)` | Starts it. `$then(Response $r)` runs exactly once. Returns the request. |
+| `->cancel()` | Stops it; its callbacks won't run. Harmless after it finished. |
+
+`Response` has `status` (`0` when there was no answer), `headers` (lowercase names, repeated
+headers joined with `, `), `body` (any bytes), `error` (`''` when the server answered, otherwise
+why not: no network, unknown host, TLS, timeout, a file that can't be written, or the module
+missing), `ok()` (no error and a 2xx status) and `header($name)` (case-insensitive, `''` when
+missing). A 404 or 500 is a normal response with `ok()` false, not an error.
+
+Redirects are followed (up to 10); `headers` are those of the final answer. Compressed answers
+are decompressed. Requests send `User-Agent: RageKit` unless you set your own.
+
+What does the work:
+
+- **Linux:** libcurl, which desktop distributions ship (`libcurl4`). Building needs its headers:
+  `sudo apt install libcurl4-openssl-dev` (Debian/Ubuntu).
+- **Windows:** WinHTTP, part of Windows; nothing to install or ship. Written, but tested less.
+- **macOS:** not yet.
+
+`demo/fetch` looks up a GitHub repository and downloads its README, with a progress bar and
+Cancel.
+
+Not in this version: WebSockets, streaming a body as it arrives, cookies, proxy settings and TLS
+options.
 
 ## Events: from native threads to PHP
 

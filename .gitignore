@@ -16,3 +16,5 @@ demo/*/build/
 /.phpunit.result.cache
 # IDE settings.
 /.idea/
+# What demo/fetch downloads (into the project folder under ragekit dev).
+/demo/fetch/downloads/

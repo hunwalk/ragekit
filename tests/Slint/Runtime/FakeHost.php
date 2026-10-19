@@ -12,6 +12,9 @@ namespace RageKit\Tests\Slint\Runtime {
         public static ?\Closure $eventDispatcher = null;
         /** @var array<string, string> available modules => '' ; missing => error text */
         public static array $modules = ['audio' => ''];
+        /** @var list<array<string, mixed>> http_request / http_cancel calls */
+        public static array $http = [];
+        public static int $nextRequest = 1;
 
         public static function reset(): void
         {
@@ -20,6 +23,8 @@ namespace RageKit\Tests\Slint\Runtime {
             self::$eventDispatcher = null;
             self::$nextWindow = 1;
             self::$modules = ['audio' => ''];
+            self::$http = [];
+            self::$nextRequest = 1;
         }
     }
 }
@@ -42,5 +47,11 @@ namespace {
     function slint_set_event_dispatcher(mixed $fn): void { FakeHost::$eventDispatcher = $fn; }
     function slint_app_dir(): string { return '/app'; }
     function ragekit_module_available(string $name): bool { return (FakeHost::$modules[$name] ?? 'not installed') === ''; }
+    function http_request(string $method, string $url, string $headers, string $body, string $file, float $timeout): int
+    {
+        FakeHost::$http[] = compact('method', 'url', 'headers', 'body', 'file', 'timeout');
+        return FakeHost::$nextRequest++;
+    }
+    function http_cancel(int $request): void { FakeHost::$http[] = ['cancel' => $request]; }
     function ragekit_module_error(string $name): string { return FakeHost::$modules[$name] ?? 'not installed'; }
 }

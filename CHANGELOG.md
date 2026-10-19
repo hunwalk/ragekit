@@ -9,6 +9,15 @@ to update. Patch versions (0.1.0 → 0.1.1) only fix things.
 implements, and `project.yml` options. Kits and modules distributed as Composer packages should
 require the RageKit minor version they were written for, e.g. `"ragekit/ragekit": "^0.1"`.
 
+## [Unreleased]
+
+### Added
+
+- The `http` module: HTTP and HTTPS requests on a worker thread, so the window never waits
+  (`RageKit\Http\Http::get($url)->send(fn (Response $r) => …)`), with headers, bodies, timeouts,
+  downloads to a file with progress, and cancelling. Works in Nano builds. Linux uses libcurl
+  (building needs `libcurl4-openssl-dev`), Windows WinHTTP. Example: `demo/fetch`.
+
 ## [0.1.2] - 2026-10-19
 
 ### Added

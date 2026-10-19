@@ -40,7 +40,8 @@ jobs:
             build-essential git tar xvfb x11-utils \
             libfontconfig1 libfreetype6 libxkbcommon0 libxkbcommon-x11-0 libinput10 libgbm1 libudev1 \
             libx11-xcb1 libxcursor1 libxi6 libxrandr2 \
-            php8.4-dev libphp8.4-embed cmake libgmp-dev libmpfr-dev
+            php8.4-dev libphp8.4-embed cmake libgmp-dev libmpfr-dev \
+            libcurl4-openssl-dev
 
       # The pinned toolchain (TypePHP + Slint) and the third-party code kits and modules fetch.
       - uses: actions/cache@v6

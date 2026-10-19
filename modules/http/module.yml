@@ -1,0 +1,15 @@
+# RageKit's HTTP module: requests on a worker thread, results as events, so the window never
+# waits. Linux: libcurl (building needs its headers: libcurl4-openssl-dev). Windows: WinHTTP.
+name: http
+php: [src]
+library:
+  sources: [native]
+  include-paths: [native]
+  platforms:
+    linux: { link-libs: [curl, pthread] }
+    windows: { link-libs: [winhttp] }
+functions:
+  # headers: "Name: value" lines joined with "\n"; file: download target ('' = body in the event);
+  # timeout: seconds without progress. Returns a request id; the outcome arrives as an event.
+  http_request: { params: { method: string, url: string, headers: string, body: string, file: string, timeout: float }, returns: int }
+  http_cancel:  { params: { request: int } }

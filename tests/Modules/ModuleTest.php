@@ -62,10 +62,10 @@ final class ModuleTest extends TestCase
         mkdir("$project/modules/demo", 0777, true);
         copy(self::FIXTURE, "$project/modules/demo/module.yml");
         $registry = ModuleRegistry::discover((string) realpath(__DIR__ . '/../..'), $project);
-        self::assertSame(['audio', 'demo'], $registry->names());
+        self::assertSame(['audio', 'demo', 'http'], $registry->names());
         self::assertSame('demo', $registry->get('demo')->name);
         $this->expectException(RageKitException::class);
-        $this->expectExceptionMessage("unknown module 'nope' (installed: audio, demo)");
+        $this->expectExceptionMessage("unknown module 'nope' (installed: audio, demo, http)");
         $registry->get('nope');
     }
 

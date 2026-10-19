@@ -1,0 +1,12 @@
+# The http module: look up a GitHub repository and download its README, without freezing the window.
+#   cd demo/fetch && ../../bin/ragekit run      (needs the internet)
+name: fetch
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  renderer: software
+  kit: shadcn
+  modules: [http]

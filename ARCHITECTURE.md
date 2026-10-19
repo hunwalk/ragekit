@@ -25,7 +25,7 @@ nothing from the right-hand column can end up in an app by accident.
 src/        PHP only
 native/     RageKit's own C and C++ only
 kits/       UI kits: what core elements look like (Slint)
-modules/    native modules: device and OS features (audio, …)
+modules/    native modules: device and OS features (audio, http, …)
 demo/       example apps
 tests/      PHPUnit tests (+ small C++ test programs in tests/fixtures)
 toolchain/  the TypePHP and Slint versions RageKit builds with (toolchain.yml) + TypePHP patches

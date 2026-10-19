@@ -77,7 +77,7 @@ After every event the window shows the screen's new state; there is no manual re
 - **Hot reload.** `ragekit dev` reloads templates in place and restarts only your PHP when it
   changes, keeping the screen's state (Linux only for now).
 - **Native modules.** Device and OS features as runtime-loaded libraries with a PHP API, starting
-  with audio. An app still runs when a module's library is missing.
+  with audio and HTTP. An app still runs when a module's library is missing.
 - **Nano builds.** One small executable with a stripped-down PHP runtime compiled in.
 
 ## What's inside the executable
@@ -88,7 +88,7 @@ RageKit's claim is "compiled, GPU-rendered, no Chromium" — and it tries not to
   shipped as DLLs on Windows).
 - A **Nano build** (`ragekit: { nano: true }`) compiles a stripped-down PHP runtime (php-nano) into
   the executable: no PHP libraries next to it, no bytecode interpreter, no `eval`/`include`, no
-  networking yet. It is still PHP's engine, just smaller.
+  PHP networking (use the `http` module instead). It is still PHP's engine, just smaller.
 - Slint's library (`libslint_cpp`, about 40 MB on Linux, 27 MB on Windows) and RageKit's small
   bridge library ship next to the executable.
 
@@ -104,7 +104,7 @@ mostly driver overhead.
   documentation for what's unsupported.
 - Your PHP runs on the **UI thread**: long work freezes the window. Only native modules can do
   work on other threads so far.
-- No networking in Nano builds yet.
+- No PHP networking functions in Nano builds; the `http` module works there.
 - Accessibility and input methods depend on Slint, not the OS's widgets.
 
 ## Get started
@@ -124,7 +124,7 @@ app, follow [Getting started](docs/getting-started.md).
 - [The toolchain](docs/toolchain.md) — TypePHP, Slint, `ragekit setup` / `doctor`, normal vs Nano
 - [Templates](docs/templates.md) — `.rk` syntax, elements, components
 - [Kits](docs/kits.md) — choosing and writing UI kits
-- [Native modules](docs/modules.md) — using and writing modules (audio)
+- [Native modules](docs/modules.md) — using and writing modules (audio, http)
 - [Dev mode](docs/dev-mode.md) — `ragekit dev` and hot reload
 - [Architecture](ARCHITECTURE.md) — how the repository is laid out
 - [Changelog](CHANGELOG.md) — what changed in each version, and what counts as breaking
@@ -138,6 +138,7 @@ app, follow [Getting started](docs/getting-started.md).
 | `demo/kitchen-sink` | every core element, in three tabs (`--kit=material` to compare kits) |
 | `demo/kit-demo` | an app's own kit (`kits/icons`) with SVG icons embedded at build time |
 | `demo/player` | the audio module: play, pause, progress, volume |
+| `demo/fetch` | the http module: a GitHub API lookup and a download with progress (needs the internet) |
 
 Run one with `../../bin/ragekit run` from its folder, or `../../bin/ragekit dev` for hot reload.
 
