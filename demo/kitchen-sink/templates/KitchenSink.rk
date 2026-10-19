@@ -1,5 +1,4 @@
 <VStack>
-    <Label text="Kitchen sink" size="title" />
     <Label text="{status}" />
     <Tabs selected="{tab}">
         <Tab title="Inputs">
@@ -19,6 +18,17 @@
                 <Label text="{summary}" />
             </VStack>
         </Tab>
+        <Tab title="More inputs">
+            <VStack>
+                <Switch text="Notifications" checked="{notifications}" />
+                <HStack>
+                    <Toggle text="Bold" pressed="{bold}" />
+                </HStack>
+                <RadioGroup value="{size}" options="{SIZES}" />
+                <Textarea value="{notes}" placeholder="Notes…" rows="3" />
+                <Label text="{preferences}" />
+            </VStack>
+        </Tab>
         <Tab title="Display">
             <VStack>
                 <Label text="Display" size="display" />
@@ -27,6 +37,28 @@
                 <Image source="assets/logo.svg" />
                 <Label text="Progress follows the volume slider" />
                 <Progress value="{progress}" />
+            </VStack>
+        </Tab>
+        <Tab title="Feedback">
+            <VStack>
+                <HStack>
+                    <Badge text="Default" />
+                    <Badge text="Secondary" variant="secondary" />
+                    <Badge text="Outline" variant="outline" />
+                    <Badge text="Destructive" variant="destructive" />
+                </HStack>
+                <HStack>
+                    <Avatar text="RK" size="sm" />
+                    <Avatar text="AB" />
+                    <Avatar source="assets/logo.svg" size="lg" />
+                    <Spinner size="sm" />
+                    <Spinner />
+                    <Spinner size="lg" />
+                </HStack>
+                <Alert title="Heads up!" text="You can add components to your app with kits." />
+                <Alert title="Error" text="Your session has expired. Please log in again." variant="destructive" />
+                <Skeleton width="260" height="16" />
+                <Skeleton width="180" height="16" />
             </VStack>
         </Tab>
         <Tab title="Layout">

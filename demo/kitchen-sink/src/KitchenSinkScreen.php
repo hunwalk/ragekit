@@ -8,6 +8,7 @@ use RageKit\Screen;
 final class KitchenSinkScreen extends Screen
 {
     public const FRUITS = ['Apple', 'Banana', 'Cherry', 'Dragon fruit'];
+    public const SIZES = ['Small', 'Medium', 'Large'];
 
     public int $tab = 0;
     public string $status = 'Ready';
@@ -15,10 +16,25 @@ final class KitchenSinkScreen extends Screen
     public bool $subscribed = false;
     public float $volume = 40.0;
     public string $fruit = '';
+    public bool $notifications = true;
+    public string $notes = '';
+    public string $size = 'Medium';
+    public bool $bold = false;
 
     public static function template(): string
     {
         return 'templates/KitchenSink.rk';
+    }
+
+    public static function layout(): string
+    {
+        return KitchenSinkLayout::class;
+    }
+
+    public function preferences(): string
+    {
+        return $this->size . ' · ' . ($this->bold ? 'bold' : 'regular') . ' · notifications ' . ($this->notifications ? 'on' : 'off')
+            . ' · ' . strlen($this->notes) . ' characters of notes';
     }
 
     public function volumeText(): string

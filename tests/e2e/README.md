@@ -4,6 +4,9 @@
 
     DISPLAY=:99 tests/e2e/demos.sh            # extra arguments go to ragekit build, e.g. --nano
 
+`tests/e2e/kitchen-sink.sh` opens every tab of `demo/kitchen-sink` and checks the window keeps its
+size (an element that caps a column's width shrinks the window); `--kit=material` for the other kit.
+
 `tests/e2e/titlebar.sh` drives `demo/titlebar` (a layout): drags the bar, resizes from a corner
 (on X11 the app moves and resizes its window itself), clicks a button inside the bar, closes with
 the window's own close button:

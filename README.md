@@ -10,7 +10,7 @@ PHP to machine code with [TypePHP](https://github.com/swoole/typephp), turns the
 composer create-project ragekit/starter myapp   # a new app, ready to build (see Get started)
 ```
 
-![The kitchen-sink demo with the shadcn kit](docs/images/kitchen-sink.png)
+![The kitchen-sink demo with the shadcn kit: its own title bar, badges, avatars, spinners, alerts and skeletons](docs/images/kitchen-sink.png)
 
 > **Status: experimental (0.x).** Linux is where it's built and tested. Windows works but is
 > tested less. macOS isn't supported yet: it hasn't been built or tested there. APIs will change.
@@ -158,7 +158,7 @@ On Windows, run `setup.ps1` instead of `setup.sh`.
 |---|---|
 | `demo/calculator` | logic in plain PHP, a keypad from a constant with `each` |
 | `demo/counter-slint` | state, two-way input, a child component, a second window |
-| `demo/kitchen-sink` | every core element, in three tabs (`--kit=material` to compare kits) |
+| `demo/kitchen-sink` | every core element, in five tabs, with its own title bar (`--kit=material` to compare kits) |
 | `demo/kit-demo` | an app's own kit (`kits/icons`) with SVG icons embedded at build time |
 | `demo/player` | the audio module: play, pause, progress, volume |
 | `demo/titlebar` | a layout: frameless window, own title bar with a search box and window buttons |

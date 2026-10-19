@@ -17,6 +17,9 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
   (`RageKit\Http\Http::get($url)->send(fn (Response $r) => …)`), with headers, bodies, timeouts,
   downloads to a file with progress, and cancelling. Works in Nano builds. Linux uses libcurl
   (building needs `libcurl4-openssl-dev`), Windows WinHTTP. Example: `demo/fetch`.
+- Core elements `Switch`, `Textarea`, `RadioGroup`, `Toggle`, `Badge`, `Avatar`, `Alert`,
+  `Skeleton` and `Spinner`, in the shadcn and Material kits. `demo/kitchen-sink` shows them in two
+  new tabs and has its own title bar.
 - Layouts: `RageKit\Layout` frames screens that name it in `layout()`, with its own template
   (`<Content />` marks the screen), state and handlers, and a context interface the screens
   implement (`{context.title}`). Such windows are frameless: `<WindowDrag>` moves the window

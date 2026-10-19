@@ -76,5 +76,10 @@ jobs:
       - name: Demos, normal builds (start and close under Xvfb)
         run: DISPLAY=:99 tests/e2e/demos.sh
 
+      - name: Kitchen sink (every tab keeps the window's size, both kits)
+        run: |
+          DISPLAY=:99 tests/e2e/kitchen-sink.sh
+          DISPLAY=:99 tests/e2e/kitchen-sink.sh --kit=material
+
       - name: Title bar (drag, resize, a button in the bar, close)
         run: DISPLAY=:99 tests/e2e/titlebar.sh
