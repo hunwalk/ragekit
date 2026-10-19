@@ -31,7 +31,7 @@ final class SlintBackend implements Backend
     public function open(App $app, Screen $screen, string $title, int $width, int $height): int
     {
         $screen->mount($app);
-        $window = new SlintWindow($screen, $title, $width, $height);
+        $window = new SlintWindow($app, $screen, $title, $width, $height);
         $this->windows[$window->id] = $window;
         return $window->id;
     }
@@ -81,7 +81,10 @@ final class SlintBackend implements Backend
         }
     }
 
-    /** Every UI event: action 0 closes the window, others run a handler; then all windows re-sync. */
+    /**
+     * Every UI event: action 0 closes the window, -1 reports its maximised state (arg "1"/"0"),
+     * others run a handler; then all windows re-sync.
+     */
     private function dispatch(int $window, int $action, string $arg): void
     {
         if ($action === 0) {
@@ -92,7 +95,11 @@ final class SlintBackend implements Backend
         if ($target === null) {
             return;
         }
-        $target->handle($action, $arg);
+        if ($action === -1) {
+            $target->maximizedChanged($arg === '1');
+        } else {
+            $target->handle($action, $arg);
+        }
         foreach ($this->windows as $open) {
             $open->sync();
         }

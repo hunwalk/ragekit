@@ -29,6 +29,49 @@ final class SlintRuntimeTest extends TestCase
         (FakeHost::$dispatcher)($window, $action, $arg);
     }
 
+    public function testLayoutIsCreatedPerWindow(): void
+    {
+        $first = new FramedScreen();
+        $second = new FramedScreen();
+        $this->app->open($first, title: 'One');
+        $this->app->open($second, title: 'Two');
+
+        $one = $first->layoutObject();
+        $two = $second->layoutObject();
+        self::assertInstanceOf(FrameLayout::class, $one);
+        self::assertInstanceOf(FrameLayout::class, $two);
+        self::assertNotSame($one, $two);
+        self::assertSame(1, $one->windowId());
+        self::assertSame(2, $two->windowId());
+        self::assertSame('Framed', $one->contextTitle());
+        self::assertContains('string 1 1 Framed', FakeHost::$calls);
+    }
+
+    public function testLayoutValuesArePushed(): void
+    {
+        $this->app->open(new FramedScreen(), title: 'One');
+        $this->event(1, 3);
+        self::assertSame(['string 1 2 searched'], FakeHost::$calls);
+    }
+
+    public function testMaximizedChangeFromOs(): void
+    {
+        $screen = new FramedScreen();
+        $this->app->open($screen, title: 'One');
+        $this->event(1, -1, '1');
+        self::assertTrue($screen->layoutObject()?->maximized);
+        self::assertSame(['bool 1 3 true'], FakeHost::$calls);
+        $this->event(1, -1, '0');
+        self::assertFalse($screen->layoutObject()?->maximized);
+    }
+
+    public function testLayoutCloseButtonClosesWindow(): void
+    {
+        $this->app->open(new FramedScreen(), title: 'One');
+        $this->event(1, 1);
+        self::assertSame(['close 1', 'quit'], FakeHost::$calls);
+    }
+
     public function testOpenPushesInitialValues(): void
     {
         $this->app->open(new CounterScreen(), title: 'Counter', width: 360, height: 400);

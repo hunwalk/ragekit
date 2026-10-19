@@ -2,10 +2,14 @@
 
 namespace RageKit\Slint;
 
+use RageKit\App;
 use RageKit\Generated\Screens;
 use RageKit\Screen;
 
-/** One open window: its Screen and the values last pushed to the compiled Slint component. */
+/**
+ * One open window: its Screen (and the Layout framing it, if the screen names one) and the values
+ * last pushed to the compiled Slint component.
+ */
 final class SlintWindow
 {
     public int $id = 0;
@@ -13,14 +17,31 @@ final class SlintWindow
     /** @var array<int, mixed> property id => value last sent */
     private array $sent = [];
 
-    public function __construct(private Screen $screen, string $title, int $width, int $height)
+    public function __construct(App $app, private Screen $screen, string $title, int $width, int $height)
     {
         $name = Screens::name($screen);
+        $layout = Screens::layout($screen); // one per window: its state is this window's
+        if ($layout !== null) {
+            $layout->mount($app);
+            $screen->useLayout($layout);
+        }
         $this->id = \slint_open($name, $title, $width, $height);
         if ($this->id === 0) {
             throw new \RuntimeException("The Slint backend has no compiled screen $name (rebuild with ragekit)");
         }
+        if ($layout !== null) {
+            $layout->attach($screen, $this->id);
+        }
         $this->sync();
+    }
+
+    /** The OS maximised or restored the window (also by snapping): the layout's $maximized follows. */
+    public function maximizedChanged(bool $maximized): void
+    {
+        $layout = $this->screen->layoutObject();
+        if ($layout !== null) {
+            $layout->maximized = $maximized;
+        }
     }
 
     /** Runs the handler behind $action. A two-way input's value is already on screen: don't echo it. */

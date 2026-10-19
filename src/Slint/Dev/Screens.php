@@ -20,6 +20,11 @@ final class Screens
         return Session::bindings()->name($screen);
     }
 
+    public static function layout(Screen $screen): ?\RageKit\Layout
+    {
+        return null;
+    }
+
     /** @return array<int, mixed> property id => current value */
     public static function values(Screen $screen): array
     {
