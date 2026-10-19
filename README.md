@@ -6,6 +6,10 @@ You write screens as PHP classes and their layout as small `.rk` templates. Rage
 PHP to machine code with [TypePHP](https://github.com/swoole/typephp), turns the templates into a
 [Slint](https://slint.dev) UI, and produces an ordinary executable.
 
+```sh
+composer create-project ragekit/starter myapp   # a new app, ready to build (see Get started)
+```
+
 ![The kitchen-sink demo with the shadcn kit](docs/images/kitchen-sink.png)
 
 > **Status: experimental (0.x).** Linux is where it's built and tested. Windows works but is
@@ -109,14 +113,31 @@ mostly driver overhead.
 
 ## Get started
 
+Start a new app from the starter project:
+
+```sh
+composer create-project ragekit/starter myapp
+cd myapp
+composer start                      # build, then run the app
+```
+
+`create-project` also runs `ragekit setup`, which installs TypePHP and Slint (shared per user, so
+only the first app downloads them) and checks your system. You need PHP 8.4+, Composer, git and a
+C++ compiler. On Windows that's Visual Studio 2022 Build Tools; when they're missing,
+`create-project` offers to install them. You also need 7-Zip. The full list and a tour of the app
+are in [Getting started](docs/getting-started.md).
+
+### Trying the demos
+
+To run the demo apps instead, clone this repository:
+
 ```sh
 git clone https://github.com/hunwalk/ragekit.git && cd ragekit
 ./setup.sh                          # Composer, then TypePHP + Slint (shared per user), then a check
 cd demo/kitchen-sink && ../../bin/ragekit run
 ```
 
-On Windows, run `setup.ps1` (needs Visual Studio 2022 Build Tools and 7-Zip). To build your own
-app, follow [Getting started](docs/getting-started.md).
+On Windows, run `setup.ps1` instead of `setup.sh`.
 
 ## Documentation
 
