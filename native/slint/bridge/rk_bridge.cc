@@ -6,6 +6,7 @@
 #endif
 #include "ragekit_slint.h"
 #include "rk_instance.h"
+#include "window.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -61,6 +62,7 @@ void platformIsReady()
     }
 }
 int64_t nextWindow = 1;
+std::map<int64_t, bool> maximized; // last maximised state reported to PHP, per frameless window
 
 rk::Instance *find(int64_t window)
 {
@@ -77,6 +79,39 @@ void rk::emit_action(int64_t window, int action, std::string_view arg)
     }
 }
 
+void rk::window_command(int64_t window, slint::Window &w, std::string_view command)
+{
+    static constexpr std::string_view edges[] = {"top-left", "top", "top-right", "right", "bottom-right", "bottom", "bottom-left", "left"};
+    if (command == "move-start") {
+        rk::win::start_move(w);
+    } else if (command == "move") {
+        rk::win::move(w);
+    } else if (command == "minimize") {
+        w.set_minimized(true);
+    } else if (command == "toggle-maximize") {
+        w.set_maximized(!w.is_maximized()); // the resize that follows reports the new state
+    } else if (command == "close") {
+        rk::emit_close(window);
+    } else if (command == "resized") {
+        // Also after the OS maximised or restored the window (snap, Win+Up, the WM's double-click).
+        bool now = w.is_maximized();
+        auto [it, added] = maximized.try_emplace(window, false);
+        if (it->second != now) {
+            it->second = now;
+            if (auto *instance = find(window)) {
+                instance->set_maximized(now);
+            }
+            rk::emit_action(window, -1, now ? "1" : "0");
+        }
+    } else if (command.substr(0, 7) == "resize-") {
+        for (int i = 0; i < 8; ++i) {
+            if (command.substr(7) == edges[i]) {
+                rk::win::start_resize(w, static_cast<rk::win::Edge>(i));
+            }
+        }
+    }
+}
+
 void rk::emit_close(int64_t window)
 {
     if (dispatcher != nullptr) {
@@ -88,6 +123,9 @@ extern "C" {
 
 RK_API void rk_set_dispatcher(rk_event_fn fn)
 {
+    if (rk::any_frameless()) {
+        rk::win::prefer_x11(); // before Slint starts (the first window)
+    }
     dispatcher = fn;
 }
 
@@ -131,6 +169,9 @@ RK_API int64_t rk_open(const char *screen, size_t screen_len, const char *title,
     instance->window().set_size(slint::LogicalSize(slint::Size<float>{static_cast<float>(width), static_cast<float>(height)}));
     instance->set_title(std::string_view(title, title_len));
     instance->show();
+    if (instance->frameless()) {
+        rk::win::make_floating(instance->window());
+    }
     windows.emplace(id, std::move(instance));
     platformIsReady(); // the UI thread has created a window: Slint's platform lives here now
     return id;
@@ -183,6 +224,7 @@ RK_API void rk_close(int64_t window)
         return;
     }
     it->second->hide();
+    maximized.erase(window);
     parked.push_back(std::move(it->second));
     windows.erase(it);
     slint::invoke_from_event_loop([] { parked.clear(); });

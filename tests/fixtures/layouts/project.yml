@@ -1,1 +1,10 @@
+# A screen framed by a layout (frameless window): built by tests/Slint/WindowNativeTest.php.
 name: layouts
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software

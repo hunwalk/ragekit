@@ -42,9 +42,11 @@ ragekit:
       std: c++20
       sources:
         - native/slint/bridge
+        - native/slint/window
         - '@generated/views_glue.cc'
       include-paths:
         - native/slint/bridge
+        - native/slint/window
         - '@generated'
         - ${SLINT_HOME}/include/slint
       link-paths:
