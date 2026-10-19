@@ -84,6 +84,10 @@ void move(slint::Window &)
 {
 }
 
+void resize(slint::Window &)
+{
+}
+
 void start_resize(slint::Window &window, Edge edge)
 {
     static constexpr WPARAM hits[] = {HTTOPLEFT, HTTOP, HTTOPRIGHT, HTRIGHT, HTBOTTOMRIGHT, HTBOTTOM, HTBOTTOMLEFT, HTLEFT};

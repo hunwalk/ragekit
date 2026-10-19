@@ -1,17 +1,19 @@
-// rk::win on Linux/X11: _NET_WM_MOVERESIZE asks the window manager to move or resize the window
-// (with its snapping). libX11 is loaded at runtime, so apps don't depend on it; without it, or
-// without a window manager that supports the message (e.g. Xvfb), the window is moved by hand.
+// rk::win on Linux/X11: the app moves and resizes the window itself, following the pointer.
+// Handing the drag to the window manager (_NET_WM_MOVERESIZE) can't work from here: the press
+// grabbed the pointer on winit's X connection, which only winit can release, so the window manager
+// can't take it (checked under Openbox: its grab gets AlreadyGrabbed). So there's no WM snapping.
+// libX11 is loaded at runtime (for the pointer's screen position), so apps don't depend on it.
 #if !defined(_WIN32) && !defined(__APPLE__)
 
 #include "window.h"
 #include "double_click.h"
 
+#include <algorithm>
 #include <chrono>
-
-#include <dlfcn.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <dlfcn.h>
 #include <type_traits>
 
 namespace {
@@ -20,49 +22,18 @@ namespace {
 // needed to build, and libX11 is optional at runtime).
 using Display = struct _XDisplay;
 using XWindow = unsigned long;
-using Atom = unsigned long;
 using Bool = int;
-using Status = int;
-
-struct XClientMessageEvent {
-    int type;
-    unsigned long serial;
-    Bool send_event;
-    Display *display;
-    XWindow window;
-    Atom message_type;
-    int format;
-    long l[5];
-};
-
-union XEvent {
-    int type;
-    XClientMessageEvent xclient;
-    long pad[24];
-};
-
-constexpr int ClientMessage = 33;
-constexpr long SubstructureNotifyMask = 1L << 19;
-constexpr long SubstructureRedirectMask = 1L << 20;
-constexpr Atom XA_ATOM = 4;
-constexpr int MoveResizeMove = 8;
 
 struct Xlib {
     Display *(*XOpenDisplay)(const char *);
     XWindow (*XDefaultRootWindow)(Display *);
     Bool (*XQueryPointer)(Display *, XWindow, XWindow *, XWindow *, int *, int *, int *, int *, unsigned int *);
-    Atom (*XInternAtom)(Display *, const char *, Bool);
-    int (*XGetWindowProperty)(Display *, XWindow, Atom, long, long, Bool, Atom, Atom *, int *, unsigned long *, unsigned long *, unsigned char **);
-    int (*XFree)(void *);
-    Status (*XSendEvent)(Display *, XWindow, Bool, long, XEvent *);
-    int (*XUngrabPointer)(Display *, unsigned long);
-    int (*XFlush)(Display *);
     Display *display = nullptr;
 };
 
 // Opened once, on first use; nullptr when libX11 or the X display isn't there, or when the app
 // runs on native Wayland (prefer_x11() unsets WAYLAND_DISPLAY whenever it switches to X11): our
-// windows aren't X11 windows then, and the pointer XWayland reports may be over another app's.
+// windows aren't X11 windows then.
 Xlib *xlib()
 {
     const char *wayland = std::getenv("WAYLAND_DISPLAY");
@@ -84,86 +55,14 @@ Xlib *xlib()
         return fn != nullptr;
     };
     if (!load(lib.XOpenDisplay, "XOpenDisplay") || !load(lib.XDefaultRootWindow, "XDefaultRootWindow")
-        || !load(lib.XQueryPointer, "XQueryPointer") || !load(lib.XInternAtom, "XInternAtom")
-        || !load(lib.XGetWindowProperty, "XGetWindowProperty") || !load(lib.XFree, "XFree")
-        || !load(lib.XSendEvent, "XSendEvent") || !load(lib.XUngrabPointer, "XUngrabPointer")
-        || !load(lib.XFlush, "XFlush")) {
+        || !load(lib.XQueryPointer, "XQueryPointer")) {
         return nullptr;
     }
     lib.display = lib.XOpenDisplay(nullptr);
     return lib.display != nullptr ? &lib : nullptr;
 }
 
-bool hasProperty(Xlib &x, XWindow window, Atom property)
-{
-    Atom type = 0;
-    int format = 0;
-    unsigned long count = 0, after = 0;
-    unsigned char *data = nullptr;
-    int status = x.XGetWindowProperty(x.display, window, property, 0, 0, 0, 0 /* AnyPropertyType */, &type, &format, &count, &after, &data);
-    if (data != nullptr) {
-        x.XFree(data);
-    }
-    return status == 0 && type != 0;
-}
-
-/** Whether the window manager handles _NET_WM_MOVERESIZE (it lists it in _NET_SUPPORTED). */
-bool wmMovesWindows(Xlib &x)
-{
-    Atom supported = x.XInternAtom(x.display, "_NET_SUPPORTED", 0);
-    Atom moveResize = x.XInternAtom(x.display, "_NET_WM_MOVERESIZE", 0);
-    Atom type = 0;
-    int format = 0;
-    unsigned long count = 0, after = 0;
-    unsigned char *data = nullptr;
-    bool found = false;
-    if (x.XGetWindowProperty(x.display, x.XDefaultRootWindow(x.display), supported, 0, 4096, 0, XA_ATOM, &type, &format, &count, &after, &data) == 0 && data != nullptr) {
-        auto *atoms = reinterpret_cast<unsigned long *>(data);
-        for (unsigned long i = 0; i < count && !found; ++i) {
-            found = atoms[i] == moveResize;
-        }
-    }
-    if (data != nullptr) {
-        x.XFree(data);
-    }
-    return found;
-}
-
-/**
- * The client window under the pointer (ours: the button was just pressed on it) and the pointer's
- * root position. Walks down from the root to the window with WM_STATE; without a window manager
- * (no WM_STATE anywhere), the top-level window.
- */
-XWindow windowUnderPointer(Xlib &x, int &rootX, int &rootY)
-{
-    XWindow root = x.XDefaultRootWindow(x.display);
-    Atom wmState = x.XInternAtom(x.display, "WM_STATE", 0);
-    XWindow current = root, topLevel = 0;
-    for (int depth = 0; depth < 16; ++depth) {
-        XWindow rootReturn = 0, child = 0;
-        int winX = 0, winY = 0;
-        unsigned int mask = 0;
-        if (!x.XQueryPointer(x.display, current, &rootReturn, &child, &rootX, &rootY, &winX, &winY, &mask) || child == 0) {
-            break;
-        }
-        if (topLevel == 0) {
-            topLevel = child;
-        }
-        if (hasProperty(x, child, wmState)) {
-            return child;
-        }
-        current = child;
-    }
-    return topLevel;
-}
-
-// The hand-made move: where the pointer and the window were when the button went down.
-struct Drag {
-    bool active = false;
-    int pointerX = 0, pointerY = 0;
-    int windowX = 0, windowY = 0;
-} drag;
-
+/** The pointer's position on the screen. */
 bool pointer(int &rootX, int &rootY)
 {
     Xlib *x = xlib();
@@ -176,34 +75,25 @@ bool pointer(int &rootX, int &rootY)
     return x->XQueryPointer(x->display, root, &rootReturn, &child, &rootX, &rootY, &winX, &winY, &mask);
 }
 
-/** Asks the window manager to run its move (direction 8) or resize (0-7) loop; false if it can't. */
-bool moveResize(int direction)
+// The drag in progress: what it changes (-1 = moves; else the Edge resized), and where the pointer
+// and the window were when the button went down (physical pixels).
+struct Drag {
+    bool active = false;
+    int edge = -1;
+    int pointerX = 0, pointerY = 0;
+    int x = 0, y = 0, width = 0, height = 0;
+} drag;
+
+void begin(slint::Window &window, int edge)
 {
-    Xlib *x = xlib();
-    if (x == nullptr || !wmMovesWindows(*x)) {
-        return false;
+    drag.active = false;
+    int x = 0, y = 0;
+    if (!pointer(x, y)) {
+        return;
     }
-    int rootX = 0, rootY = 0;
-    XWindow window = windowUnderPointer(*x, rootX, rootY);
-    if (window == 0) {
-        return false;
-    }
-    // Releases a grab this connection might hold; the press's grab is winit's (see start_move).
-    x->XUngrabPointer(x->display, 0 /* CurrentTime */);
-    XEvent event;
-    std::memset(&event, 0, sizeof event);
-    event.xclient.type = ClientMessage;
-    event.xclient.window = window;
-    event.xclient.message_type = x->XInternAtom(x->display, "_NET_WM_MOVERESIZE", 0);
-    event.xclient.format = 32;
-    event.xclient.l[0] = rootX;
-    event.xclient.l[1] = rootY;
-    event.xclient.l[2] = direction;
-    event.xclient.l[3] = 1; // Button1
-    event.xclient.l[4] = 1; // a normal application
-    x->XSendEvent(x->display, x->XDefaultRootWindow(x->display), 0, SubstructureRedirectMask | SubstructureNotifyMask, &event);
-    x->XFlush(x->display);
-    return true;
+    auto position = window.position();
+    auto size = window.size();
+    drag = Drag{true, edge, x, y, position.x, position.y, static_cast<int>(size.width), static_cast<int>(size.height)};
 }
 
 } // namespace
@@ -246,30 +136,50 @@ bool double_click()
 
 void start_move(slint::Window &window)
 {
-    drag.active = false;
-    // The window manager may not get the pointer: the press grabbed it on winit's connection, which
-    // only winit can release. Stay ready to move by hand: while the WM moves the window, the app
-    // gets no pointer motion, so move() only runs when the WM didn't take the drag.
-    moveResize(MoveResizeMove);
-    int x = 0, y = 0;
-    if (pointer(x, y)) {
-        auto position = window.position();
-        drag = Drag{true, x, y, position.x, position.y};
-    }
+    begin(window, -1);
 }
 
 void move(slint::Window &window)
 {
     int x = 0, y = 0;
-    if (drag.active && pointer(x, y)) {
-        window.set_position(slint::PhysicalPosition({drag.windowX + x - drag.pointerX, drag.windowY + y - drag.pointerY}));
+    if (drag.active && drag.edge == -1 && pointer(x, y)) {
+        window.set_position(slint::PhysicalPosition({drag.x + x - drag.pointerX, drag.y + y - drag.pointerY}));
     }
 }
 
-void start_resize(slint::Window &, Edge edge)
+void start_resize(slint::Window &window, Edge edge)
 {
-    drag.active = false;
-    moveResize(static_cast<int>(edge)); // without a window manager there's no resizing
+    begin(window, static_cast<int>(edge));
+}
+
+void resize(slint::Window &window)
+{
+    int px = 0, py = 0;
+    if (!drag.active || drag.edge < 0 || !pointer(px, py)) {
+        return;
+    }
+    constexpr int minimum = 120; // physical pixels; the window's own minimum size still applies
+    auto e = static_cast<Edge>(drag.edge);
+    int dx = px - drag.pointerX, dy = py - drag.pointerY;
+    int x = drag.x, y = drag.y, width = drag.width, height = drag.height;
+    if (e == Edge::Left || e == Edge::TopLeft || e == Edge::BottomLeft) {
+        dx = std::min(dx, drag.width - minimum);
+        x += dx;
+        width -= dx;
+    } else if (e == Edge::Right || e == Edge::TopRight || e == Edge::BottomRight) {
+        width = std::max(minimum, width + dx);
+    }
+    if (e == Edge::Top || e == Edge::TopLeft || e == Edge::TopRight) {
+        dy = std::min(dy, drag.height - minimum);
+        y += dy;
+        height -= dy;
+    } else if (e == Edge::Bottom || e == Edge::BottomLeft || e == Edge::BottomRight) {
+        height = std::max(minimum, height + dy);
+    }
+    window.set_size(slint::PhysicalSize({static_cast<uint32_t>(width), static_cast<uint32_t>(height)}));
+    if (x != drag.x || y != drag.y) {
+        window.set_position(slint::PhysicalPosition({x, y}));
+    }
 }
 
 } // namespace rk::win

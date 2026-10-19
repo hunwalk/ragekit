@@ -73,6 +73,7 @@ final class LayoutCompilerTest extends TestCase
         self::assertStringNotContainsString('double-clicked', $out->slint);
         self::assertStringContainsString('changed width => { root.rk-window("resized"); }', $out->slint);
         self::assertStringContainsString('root.rk-window("resize-bottom-right");', $out->slint);
+        self::assertStringContainsString('root.rk-window("resize-move");', $out->slint);
         self::assertStringContainsString('ShadWindowControls {', $out->slint);
         self::assertStringContainsString('maximized: root.rk-maximized;', $out->slint);
         self::assertStringContainsString('close => { root.rk-window("close"); }', $out->slint);

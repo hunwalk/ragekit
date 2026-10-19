@@ -234,7 +234,8 @@ final class SlintCompiler
                 . "    visible: !root.rk-maximized;\n    mouse-cursor: MouseCursor.$cursor;\n"
                 . "    pointer-event(event) => {\n"
                 . "        if (event.kind == PointerEventKind.down && event.button == PointerEventButton.left) {\n"
-                . "            root.rk-window(\"resize-$name\");\n        }\n    }\n}\n";
+                . "            root.rk-window(\"resize-$name\");\n        }\n    }\n"
+                . "    moved => {\n        if (self.pressed) {\n            root.rk-window(\"resize-move\");\n        }\n    }\n}\n";
         }
         return $out;
     }

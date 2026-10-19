@@ -4,12 +4,11 @@
 
     DISPLAY=:99 tests/e2e/demos.sh            # extra arguments go to ragekit build, e.g. --nano
 
-`tests/e2e/titlebar.sh` drives `demo/titlebar` (a layout): drags the bar (Xvfb has no window
-manager, so this checks the hand-move fallback, not the WM's move), clicks a button inside the
-bar, closes with the window's own close button:
+`tests/e2e/titlebar.sh` drives `demo/titlebar` (a layout): drags the bar, resizes from a corner
+(on X11 the app moves and resizes its window itself), clicks a button inside the bar, closes with
+the window's own close button:
 
     DISPLAY=:99 tests/e2e/titlebar.sh         # also with --nano
-    FAKE_WM=1 DISPLAY=:99 tests/e2e/titlebar.sh   # the root advertises _NET_WM_MOVERESIZE, nobody takes it
 
 By hand:
 

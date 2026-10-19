@@ -90,6 +90,8 @@ void rk::window_command(int64_t window, slint::Window &w, std::string_view comma
         }
     } else if (command == "move") {
         rk::win::move(w);
+    } else if (command == "resize-move") {
+        rk::win::resize(w);
     } else if (command == "minimize") {
         w.set_minimized(true);
     } else if (command == "toggle-maximize") {

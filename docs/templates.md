@@ -431,8 +431,9 @@ final class AppLayout extends Layout
   window keeps the OS's shadow (and, on Windows 11, rounded corners) and can still be resized from
   its edges.
 - **`<WindowDrag>`** lays out its children like `<HStack>`. Pressing on its background and dragging
-  moves the window with the OS's own move, so snapping to screen edges works; double-clicking it
-  maximises or restores. Buttons and inputs inside it still work as usual.
+  moves the window; double-clicking it maximises or restores. Buttons and inputs inside it still
+  work as usual. On Windows the OS does the move, so snapping to screen edges works; on Linux the
+  app moves the window itself, without the window manager's snapping.
 - **`<WindowControls />`** shows the kit's minimise, maximise/restore and close buttons. Close
   works like the OS's close button.
 - **The context.** `context()` names an interface; every screen using the layout must implement
@@ -446,8 +447,9 @@ final class AppLayout extends Layout
 - `<Content />`, `<WindowDrag>` and `<WindowControls />` are only allowed in a layout's template.
   Screens without `layout()` keep the ordinary OS window.
 
-**Linux:** an app moves its own window through X11, so apps with a layout run on XWayland in a
-Wayland session (text can look blurry with fractional scaling). Set `RAGEKIT_WAYLAND=1` to stay on
+**Linux:** the app moves and resizes its own window through X11 (the window manager can't take
+the drag over, so there's no edge snapping), so apps with a layout run on XWayland in a Wayland
+session (text can look blurry with fractional scaling). Set `RAGEKIT_WAYLAND=1` to stay on
 Wayland, where the title bar can't move the window. The corners stay square on Linux.
 
 **Windows:** written but not tested yet; moving, snapping, resizing and the rounded corners still

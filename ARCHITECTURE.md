@@ -82,8 +82,9 @@ native/
                          calls. Compiled into the app by TypePHP (also in Nano builds).
     devshell/            ragekit-devshell (C++20): runs Slint's interpreter and the app's PHP
                          for `ragekit dev`.
-    window/              what Slint's C++ API lacks for frameless windows (layouts): the OS's
-                         move/resize loop and the floating look. window.h + one file per platform
+    window/              what Slint's C++ API lacks for frameless windows (layouts): moving and
+                         resizing (Windows: the OS's loop; X11: the app follows the pointer) and
+                         the floating look. window.h + one file per platform
                          (window_x11.cc, window_win32.cc), compiled into both bridge and dev shell.
 ```
 

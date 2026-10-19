@@ -1,5 +1,6 @@
 // Window work Slint's C++ API doesn't offer, for frameless windows (screens with a layout): moving
-// and resizing with the OS's own loop (so snapping works), and the floating look. One file per
+// and resizing (Windows: the OS's own loop, with snapping; X11: by the app, following the pointer),
+// and the floating look. One file per
 // platform, each wrapped whole in #if: window_x11.cc, window_win32.cc. Used by the bridge (release
 // builds) and the dev shell.
 #pragma once
@@ -8,7 +9,7 @@
 
 namespace rk::win {
 
-/** Resize directions, in _NET_WM_MOVERESIZE order. */
+/** Resize directions: corners and edges, clockwise from the top-left (the grips' order). */
 enum class Edge { TopLeft = 0, Top, TopRight, Right, BottomRight, Bottom, BottomLeft, Left };
 
 /**
@@ -27,13 +28,16 @@ void make_floating(slint::Window &window);
  */
 bool double_click();
 
-/** The primary button was just pressed on a drag area: let the OS move the window. */
+/** The primary button was just pressed on a drag area: start moving the window. */
 void start_move(slint::Window &window);
 
-/** The pointer moved with the button held: moves the window by hand where the OS can't (no window manager). */
+/** The pointer moved with the button held on a drag area (X11: the app moves the window). */
 void move(slint::Window &window);
 
-/** The primary button was just pressed on an edge grip: let the OS resize the window. */
+/** The primary button was just pressed on an edge grip: start resizing the window. */
 void start_resize(slint::Window &window, Edge edge);
+
+/** The pointer moved with the button held on an edge grip (X11: the app resizes the window). */
+void resize(slint::Window &window);
 
 } // namespace rk::win
