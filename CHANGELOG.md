@@ -9,6 +9,21 @@ to update. Patch versions (0.1.0 → 0.1.1) only fix things.
 implements, and `project.yml` options. Kits and modules distributed as Composer packages should
 require the RageKit minor version they were written for, e.g. `"ragekit/ragekit": "^0.1"`.
 
+## [Unreleased]
+
+### Added
+
+- Windows: `install-build-tools.ps1` installs Visual Studio 2022 Build Tools with the C++
+  workload (or adds the workload to an existing install, or finishes an interrupted one).
+  `setup.ps1` offers to run it, and the "Build Tools not found" error points to it.
+
+### Fixed
+
+- Windows: `setup.ps1` in a git clone of RageKit failed with "php-nano-core-dependency.patch
+  doesn't fit": Git for Windows had checked the patch out with CRLF line endings. Patches are now
+  applied with LF line endings, setup's TypePHP checkout ignores the user's line-ending conversion,
+  and `.gitattributes` keeps patch files LF.
+
 ## [0.1.1] - 2026-10-18
 
 ### Fixed

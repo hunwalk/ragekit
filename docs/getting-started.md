@@ -12,8 +12,19 @@ RageKit is experimental. Expect rough edges and breaking changes.
 | Status | tested | less tested | not supported yet |
 | PHP | 8.4 or 8.5 | 8.4 or 8.5 | |
 | Composer, git, tar | yes | yes | |
-| C++ compiler | g++ (`build-essential`) | Visual Studio 2022 Build Tools, "Desktop development with C++" | |
+| C++ compiler | g++ (`build-essential`) | Visual Studio 2022 Build Tools, "Desktop development with C++" (`install-build-tools.ps1` installs them) | |
 | Other | Slint's system libraries (below) | 7-Zip on `PATH` (unpacks Slint) | |
+
+On Windows, RageKit's `install-build-tools.ps1` installs the Build Tools with only what's needed
+(Windows asks for administrator rights; a few GB, 5-20 minutes). In an app it's at
+`vendor\ragekit\ragekit\install-build-tools.ps1`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File vendor\ragekit\ragekit\install-build-tools.ps1
+```
+
+It does nothing when they're already installed, and adds the C++ workload to an existing Build
+Tools install that lacks it.
 
 The `ragekit` command itself runs on PHP 8.2+, but TypePHP (the compiler) needs PHP 8.4 or 8.5, so
 in practice you need 8.4+.

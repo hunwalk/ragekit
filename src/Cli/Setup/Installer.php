@@ -65,6 +65,9 @@ final class Installer
         if ($component->git !== null) {
             $say("{$component->name}: checking out " . substr((string) $component->commit, 0, 8) . " from {$component->git}");
             $run(['git', 'init', '-q'], 'git init');
+            // Upstream's bytes, whatever the user's git converts (Git for Windows defaults to
+            // core.autocrlf=true): patches must fit, and builds see the files as pinned.
+            $run(['git', 'config', 'core.autocrlf', 'false'], 'git config');
             $run(['git', 'fetch', '-q', '--depth', '1', $component->git, (string) $component->commit], "fetching {$component->git}");
             $run(['git', 'checkout', '-q', 'FETCH_HEAD'], 'git checkout');
         }
@@ -79,8 +82,16 @@ final class Installer
         }
         foreach ($component->patches as $patch) {
             $say("{$component->name}: applying " . basename($patch));
-            $run(['git', 'apply', '--check', $patch], basename($patch) . " doesn't fit {$component->name} " . $component->version . '; applying it');
-            $run(['git', 'apply', $patch], 'applying ' . basename($patch));
+            // A git clone of RageKit on Windows may have the patch with CRLF line endings; the
+            // files it patches have LF.
+            $lf = (string) tempnam(sys_get_temp_dir(), 'rk-patch');
+            file_put_contents($lf, self::lf((string) file_get_contents($patch)));
+            try {
+                $run(['git', 'apply', '--check', $lf], basename($patch) . " doesn't fit {$component->name} " . $component->version . '; applying it');
+                $run(['git', 'apply', $lf], 'applying ' . basename($patch));
+            } finally {
+                @unlink($lf);
+            }
         }
         file_put_contents("$dir/" . self::MARKER, $component->fingerprint() . "\n");
         return true;
@@ -105,5 +116,11 @@ final class Installer
             $run($command, "unpacking $file");
         }
         Fetcher::remove("$dir/.download");
+    }
+
+    /** $text with LF line endings. */
+    public static function lf(string $text): string
+    {
+        return str_replace("\r\n", "\n", $text);
     }
 }

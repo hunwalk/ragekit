@@ -214,11 +214,13 @@ Run setup again; it replaces the old install.
 installed where the build looks. Run setup, or point `SLINT_HOME` at a Slint C++ package.
 
 **`no C++ compiler on PATH (install build-essential)`**: install g++ (Linux). On Windows, install
-Visual Studio 2022 Build Tools with "Desktop development with C++"; ragekit finds it itself, so
-you don't need a developer command prompt.
+Visual Studio 2022 Build Tools with "Desktop development with C++" (RageKit's
+`install-build-tools.ps1` does it); ragekit finds them itself, so you don't need a developer
+command prompt.
 
 **A patch "doesn't fit" during setup**: the pinned commit and the patch disagree, which means
-RageKit's pins are inconsistent. Please report it.
+RageKit's pins are inconsistent. Please report it. (Up to 0.1.1 this also happened in a git clone
+of RageKit on Windows, whose patch files git had converted to CRLF line endings.)
 
 **TypePHP rejects your code**: TypePHP compiles a subset of PHP. The error names the file and
 line; change the code there. `ragekit dev` runs full PHP and won't catch these errors, so build

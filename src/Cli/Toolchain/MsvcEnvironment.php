@@ -24,11 +24,11 @@ final class MsvcEnvironment
         $installer = getenv('ProgramFiles(x86)') . '\\Microsoft Visual Studio\\Installer';
         $vswhere = $installer . '\\vswhere.exe';
         if (!is_file($vswhere)) {
-            throw new RageKitException('Visual Studio Build Tools not found (needs the "Desktop development with C++" workload)');
+            throw new RageKitException('Visual Studio Build Tools not found (needs the "Desktop development with C++" workload); ' . self::installHint());
         }
         $vsPath = trim((string) shell_exec('"' . $vswhere . '" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath'));
         if ($vsPath === '') {
-            throw new RageKitException('Visual Studio found, but without the MSVC x64 C++ tools');
+            throw new RageKitException('Visual Studio found, but without the MSVC x64 C++ tools; ' . self::installHint());
         }
         $vcvars = $vsPath . '\\VC\\Auxiliary\\Build\\vcvars64.bat';
         // vcvars64 calls vswhere itself and expects it on PATH.
@@ -42,5 +42,12 @@ final class MsvcEnvironment
         $pathKey = isset($env['Path']) ? 'Path' : 'PATH';
         $env[$pathKey] = $installer . ';' . ($env[$pathKey] ?? '');
         return $env;
+    }
+
+    /** How to install the Build Tools: RageKit's install-build-tools.ps1, wherever RageKit is. */
+    public static function installHint(): string
+    {
+        $script = str_replace('/', '\\', dirname(__DIR__, 3)) . '\\install-build-tools.ps1';
+        return "to install them: powershell -ExecutionPolicy Bypass -File \"$script\"";
     }
 }

@@ -65,7 +65,8 @@ final class Component
     {
         $files = [];
         foreach ([...$this->patches, ...($this->composerLock === null ? [] : [$this->composerLock])] as $file) {
-            $files[basename($file)] = is_file($file) ? hash_file('sha256', $file) : 'missing';
+            // Line endings don't count: a git clone on Windows may have these files with CRLF.
+            $files[basename($file)] = is_file($file) ? hash('sha256', Installer::lf((string) file_get_contents($file))) : 'missing';
         }
         return hash('sha256', (string) json_encode([$this->git, $this->commit, $this->downloads, $files]));
     }

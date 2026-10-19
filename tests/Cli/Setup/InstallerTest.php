@@ -60,9 +60,39 @@ final class InstallerTest extends TestCase
         return $this->pins("thing:\n  version: 1.0\n  platforms:\n    linux-x86_64:\n      downloads:\n        - url: $this->dir/thing.tar.gz\n          sha256: $sha\n          strip: 1\n");
     }
 
-    private function install(Pins $pins, string $name): bool
+    /** @param array<string, string> $env added to the environment */
+    private function install(Pins $pins, string $name, array $env = []): bool
     {
-        return Installer::install($pins->component($name), "$this->dir/install/$name", new Process(getenv()), fn(string $line) => null);
+        return Installer::install($pins->component($name), "$this->dir/install/$name", new Process($env + getenv()), fn(string $line) => null);
+    }
+
+    private function useWindowsLineEndings(string $file): void
+    {
+        file_put_contents($file, str_replace("\n", "\r\n", (string) file_get_contents($file)));
+    }
+
+    public function testAPatchWithWindowsLineEndingsStillFits(): void
+    {
+        // Git for Windows checks RageKit's patch files out with CRLF (core.autocrlf), while the
+        // files they patch come from Composer's zips with LF.
+        $this->useWindowsLineEndings("$this->dir/pins/tool/patches/fix.patch");
+        self::assertTrue($this->install($this->toolPins(), 'tool'));
+        self::assertSame("<?php echo 'v1 patched';\n", file_get_contents("$this->dir/install/tool/tool.php"));
+    }
+
+    public function testTheCheckoutKeepsUpstreamLineEndingsWhateverTheUsersGitConverts(): void
+    {
+        $config = "$this->dir/gitconfig";
+        file_put_contents($config, "[core]\n\tautocrlf = true\n");
+        self::assertTrue($this->install($this->toolPins(), 'tool', ['GIT_CONFIG_GLOBAL' => $config]));
+        self::assertSame("<?php echo 'v1 patched';\n", file_get_contents("$this->dir/install/tool/tool.php"));
+    }
+
+    public function testLineEndingsDontChangeTheFingerprint(): void
+    {
+        $lf = $this->toolPins()->component('tool')->fingerprint();
+        $this->useWindowsLineEndings("$this->dir/pins/tool/patches/fix.patch");
+        self::assertSame($lf, $this->toolPins()->component('tool')->fingerprint());
     }
 
     public function testChecksOutTheCommitAndAppliesThePatches(): void

@@ -1,0 +1,3 @@
+# Patches keep LF line endings on every OS: the files they patch have LF (see src/Cli/Setup/Installer.php).
+*.patch text eol=lf
+*.sh text eol=lf
