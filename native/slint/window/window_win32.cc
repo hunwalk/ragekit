@@ -18,6 +18,10 @@ namespace {
 constexpr DWORD CornerPreference = 33; // DWMWA_WINDOW_CORNER_PREFERENCE
 constexpr int CornerRound = 2;         // DWMWCP_ROUND
 
+// Windows' move/resize loop swallows the button release, so Slint would keep the drag area (or
+// edge grip) pressed, and a pressed area gets every later click: each would start another drag.
+// So Slint first hears that the button went up. On the next event-loop turn: this runs inside
+// Slint's own handling of the press.
 void post(slint::Window &window, WPARAM hit)
 {
     HWND hwnd = window.win32_hwnd();
@@ -26,8 +30,19 @@ void post(slint::Window &window, WPARAM hit)
     }
     POINT point;
     GetCursorPos(&point);
-    ReleaseCapture();
-    PostMessageW(hwnd, WM_NCLBUTTONDOWN, hit, MAKELPARAM(point.x, point.y));
+    POINT client = point;
+    ScreenToClient(hwnd, &client);
+    float scale = window.scale_factor();
+    slint::LogicalPosition position({static_cast<float>(client.x) / scale, static_cast<float>(client.y) / scale});
+    slint::Window *target = &window;
+    slint::invoke_from_event_loop([target, hwnd, hit, point, position] {
+        if (!IsWindow(hwnd)) {
+            return; // closed meanwhile, and its slint::Window with it
+        }
+        target->dispatch_pointer_release_event(position, slint::PointerEventButton::Left);
+        ReleaseCapture();
+        PostMessageW(hwnd, WM_NCLBUTTONDOWN, hit, MAKELPARAM(point.x, point.y));
+    });
 }
 
 } // namespace
