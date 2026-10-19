@@ -1,7 +1,7 @@
 <?php
 // Fake app for ShellTest: speaks the dev protocol on fds 3/4 like src/Slint/Dev does and
 // logs every reply/message it receives to $argv[1]. Modes ($argv[2]): normal, nope, exit3,
-// open-exit3 (opens a window, closes it, exits 3), module.
+// open-exit3 (opens a window, closes it, exits 3), module, framed (a layout's window: maximize, minimize).
 require dirname(__DIR__, 3) . '/src/Slint/Dev/Protocol.php';
 
 use RageKit\Slint\Dev\Protocol;
@@ -22,12 +22,22 @@ if ($mode === 'module') {
     fwrite($out, Protocol::encode('quit'));
     exit(0);
 }
-fwrite($out, Protocol::encode('open', $mode === 'nope' ? 'Nope' : 'S', 'Fake', '300', '200'));
+fwrite($out, Protocol::encode('open', $mode === 'nope' ? 'Nope' : ($mode === 'framed' ? 'F' : 'S'), 'Fake', '300', '200'));
 $reply = Protocol::decode((string) fgets($in));
 file_put_contents($log, implode(' ', $reply) . "\n", FILE_APPEND);
 if ($mode === 'open-exit3') {
     fwrite($out, Protocol::encode('close', $reply[1]));
     exit(3);
+}
+if ($mode === 'framed') {
+    // A layout's window controls from PHP (Layout::toggleMaximize(), minimize()).
+    fwrite($out, Protocol::encode('maximize', $reply[1], '1'));
+    fwrite($out, Protocol::encode('minimize', $reply[1]));
+    fwrite($out, Protocol::encode('run'));
+    while (($line = fgets($in)) !== false) {
+        file_put_contents($log, implode(' ', Protocol::decode($line)) . "\n", FILE_APPEND);
+    }
+    exit(0);
 }
 fwrite($out, Protocol::encode('set-string', $reply[1], 'p1', "tab\there"));
 fwrite($out, Protocol::encode('run'));

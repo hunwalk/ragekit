@@ -52,6 +52,23 @@ final class ShellTest extends TestCase
         self::assertStringNotContainsString('error', strtolower($shellLog));
     }
 
+    public function testFramedWindowTakesWindowCommands(): void
+    {
+        [$shell, $entries] = $this->buildShellAndEntries();
+        $log = "$this->dir/app.log";
+        $proc = $this->start($shell, $entries, $log, 'framed');
+        $this->waitFor($log, "opened 1\n");
+        $this->waitFor("$this->dir/shell.log", "php ready\n");
+        fwrite($this->stdin, "stop\n");
+        fclose($this->stdin);
+        self::assertSame(0, proc_close($proc));
+        $shellLog = (string) file_get_contents("$this->dir/shell.log");
+        self::assertStringContainsString('opened window 1 (F)', $shellLog);
+        self::assertStringContainsString('maximize 1 1', $shellLog);
+        self::assertStringContainsString('minimize 1', $shellLog);
+        self::assertStringNotContainsString('error', strtolower($shellLog));
+    }
+
     public function testUnknownScreenAnswersZero(): void
     {
         [$shell, $entries] = $this->buildShellAndEntries();
@@ -166,12 +183,17 @@ final class ShellTest extends TestCase
         mkdir($project);
         file_put_contents("$project/project.yml", "name: shelltest\nragekit:\n  backend: slint\n");
         file_put_contents("$project/S.rk", '<VStack><Label text="{name}" /></VStack>');
+        file_put_contents("$project/F.rk", '<Label text="framed" />');
+        file_put_contents("$project/L.rk", '<VStack><WindowDrag><WindowControls /></WindowDrag><Content /></VStack>');
         $root = (string) realpath(self::ROOT);
         $context = new BuildContext(Project::load($project), BackendModule::find($root, 'slint', InstalledToolchain::dir()), InstalledToolchain::toolchain(), new NullOutput());
         $shell = ShellBuilder::ensure($context, "$project/build/dev")['path'];
         $class = new ClassInfo('Demo\\S', 'S', "$project/S.php", true, "$project/S.rk", ['name' => 'string']);
+        $framed = new ClassInfo('Demo\\F', 'F', "$project/F.php", true, "$project/F.rk", layout: 'Demo\\L');
+        $layout = new ClassInfo('Demo\\L', 'L', "$project/L.php", false, "$project/L.rk", isLayout: true);
         $kits = KitRegistry::load(["$root/kits/material/kit.yml"], $root);
-        $out = DevViews::write(new ViewProject(['Demo\\S' => $class], $kits, 'material', "$project/build/dev", $project), "$project/build/dev");
+        $classes = ['Demo\\S' => $class, 'Demo\\F' => $framed, 'Demo\\L' => $layout];
+        $out = DevViews::write(new ViewProject($classes, $kits, 'material', "$project/build/dev", $project), "$project/build/dev");
         return self::$built = [$shell, $out->entries];
     }
 

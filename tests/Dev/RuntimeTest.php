@@ -36,6 +36,31 @@ final class DevOtherScreen extends \RageKit\Screen
 {
 }
 
+final class DevFramedScreen extends \RageKit\Screen
+{
+    public string $refreshed = '';
+
+    public function title(): string
+    {
+        return 'T';
+    }
+
+    public function refresh(string $why): void
+    {
+        $this->refreshed = $why;
+    }
+}
+
+final class DevFrameLayout extends \RageKit\Layout
+{
+    public string $query = '';
+
+    public function search(): void
+    {
+        $this->query = 'searched';
+    }
+}
+
 /** The dev runtime's PHP pieces (src/Slint/Dev), without the shell. */
 final class RuntimeTest extends TestCase
 {
@@ -53,6 +78,53 @@ final class RuntimeTest extends TestCase
         self::assertSame(0, $b->dispatch($s, 2, 'x'));
         self::assertSame(0, $b->dispatch($s, 99, 'x'), 'unknown action');
         self::assertSame([1 => 12, 2 => 'count 12 x', 3 => ['1', '2']], $b->values($s));
+    }
+
+    private const FRAMED = '{"screens":[{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFramedScreen","name":"DevFramedScreen",'
+        . '"layout":"RageKit\\\\Tests\\\\Dev\\\\DevFrameLayout","frameless":true,'
+        . '"values":[{"id":1,"owner":"screen","source":"method","name":"title","type":"string"},{"id":2,"owner":"layout","source":"property","name":"query","type":"string"}],'
+        . '"actions":[{"id":1,"owner":"layout","kind":"set","target":"query","binding":2,"type":"string"},'
+        . '{"id":2,"owner":"layout","kind":"call","target":"search","args":[],"params":[]},'
+        . '{"id":3,"owner":"screen","kind":"call","target":"refresh","args":[["literal","bar"]],"params":["string"]}]}]}';
+
+    public function testLayoutValuesAndActionsFromScreensJson(): void
+    {
+        $b = Bindings::load(self::FRAMED);
+        $s = new DevFramedScreen();
+        $l = $b->layout($s);
+        self::assertInstanceOf(DevFrameLayout::class, $l);
+        self::assertNull(Bindings::load(self::JSON)->layout(new DevFixtureScreen()));
+        $s->useLayout($l);
+        self::assertSame([1 => 'T', 2 => ''], $b->values($s));
+        self::assertSame(2, $b->dispatch($s, 1, 'abc'));
+        self::assertSame('abc', $l->query);
+        $b->dispatch($s, 2, '');
+        self::assertSame('searched', $l->query);
+        $b->dispatch($s, 3, '');
+        self::assertSame('bar', $s->refreshed);
+    }
+
+    public function testLayoutStateSurvivesRestart(): void
+    {
+        $state = $this->tmp() . '/state.json';
+        Session::start($this->channel(), self::FRAMED, $state, restart: false);
+        $s = new DevFramedScreen();
+        $l = new DevFrameLayout();
+        $l->query = 'abc';
+        $s->useLayout($l);
+        Session::pending($s);
+        Session::opened(1, 'Main', 300, 200);
+        Session::markRunning();
+        Session::snapshot();
+        $data = json_decode((string) file_get_contents($state), true);
+        self::assertSame(['query' => 'abc', 'maximized' => false], $data['windows'][0]['layoutProps']);
+
+        Session::start($this->channel(), self::FRAMED, $state, restart: true);
+        $fresh = new DevFramedScreen();
+        Session::restore($fresh);
+        $freshLayout = new DevFrameLayout();
+        Session::restoreLayout($freshLayout);
+        self::assertSame('abc', $freshLayout->query);
     }
 
     public function testUnknownScreenThrows(): void

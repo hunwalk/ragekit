@@ -1,6 +1,7 @@
 #include "shell.h"
 
 #include "protocol.h"
+#include "window.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -123,11 +124,85 @@ Shell::Instance Shell::create(int64_t id, const std::string &screen, const std::
         emit(id, static_cast<int>(args[0].to_number().value_or(0)), std::string(args[1].to_string().value_or("")));
         return slint::interpreter::Value();
     });
+    if (frameless(screen)) {
+        instance->set_callback("rk-window", [this, id](auto args) {
+            windowCommand(id, std::string(args[0].to_string().value_or("")));
+            return slint::interpreter::Value();
+        });
+    }
     mutableWindow(*instance).on_close_requested([this, id] {
         emit(id, 0, "");
         return slint::CloseRequestResponse::KeepWindowShown;
     });
     return instance;
+}
+
+bool Shell::frameless(const std::string &screen) const
+{
+    auto it = defs_.find(screen);
+    if (it == defs_.end()) {
+        return false;
+    }
+    for (const auto &name : it->second.callbacks()) {
+        if (std::string_view(name) == "rk-window") {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Shell::anyFrameless() const
+{
+    for (const auto &[name, def] : defs_) {
+        if (frameless(name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Shell::show(Instance &instance, const std::string &screen)
+{
+    instance->show();
+    if (frameless(screen)) {
+        rk::win::make_floating(mutableWindow(*instance));
+    }
+}
+
+// A frameless window's rk-window(command): the same as the bridge's rk::window_command.
+void Shell::windowCommand(int64_t id, const std::string &command)
+{
+    static constexpr std::string_view edges[] = {"top-left", "top", "top-right", "right", "bottom-right", "bottom", "bottom-left", "left"};
+    auto it = windows_.find(id);
+    if (it == windows_.end()) {
+        return;
+    }
+    Win &win = it->second;
+    auto &w = mutableWindow(*win.instance);
+    if (command == "move-start") {
+        rk::win::start_move(w);
+    } else if (command == "move") {
+        rk::win::move(w);
+    } else if (command == "minimize") {
+        w.set_minimized(true);
+    } else if (command == "toggle-maximize") {
+        w.set_maximized(!w.is_maximized());
+    } else if (command == "close") {
+        emit(id, 0, "");
+    } else if (command == "resized") {
+        bool now = w.is_maximized();
+        if (now != win.maximized) {
+            win.maximized = now;
+            win.instance->set_property("rk-maximized", slint::interpreter::Value(now));
+            emit(id, -1, now ? "1" : "0");
+        }
+    } else if (command.rfind("resize-", 0) == 0) {
+        for (int i = 0; i < 8; ++i) {
+            if (command.substr(7) == edges[i]) {
+                rk::win::start_resize(w, static_cast<rk::win::Edge>(i));
+            }
+        }
+    }
 }
 
 void Shell::emit(int64_t window, int action, const std::string &arg)
@@ -165,7 +240,7 @@ void Shell::onPhpLine(unsigned generation, const std::string &line)
         int64_t id = next_++;
         Win win{screen, f[2], create(id, screen, f[2])};
         mutableWindow(*win.instance).set_size(slint::LogicalSize({std::stof(f[3]), std::stof(f[4])}));
-        win.instance->show();
+        show(win.instance, screen);
         windows_.emplace(id, std::move(win));
         hadWindow_ = true;
         log("opened window " + std::to_string(id) + " (" + screen + ")");
@@ -190,6 +265,20 @@ void Shell::onPhpLine(unsigned generation, const std::string &line)
         auto it = windows_.find(std::atoll(f[1].c_str()));
         if (it != windows_.end()) {
             set(it->second, cmd, f[2], f);
+        }
+        return;
+    }
+    if ((cmd == "minimize" || cmd == "maximize") && f.size() >= 2) {
+        // A layout's minimize() / toggleMaximize().
+        auto it = windows_.find(std::atoll(f[1].c_str()));
+        if (it != windows_.end()) {
+            auto &w = mutableWindow(*it->second.instance);
+            if (cmd == "minimize") {
+                w.set_minimized(true);
+            } else {
+                w.set_maximized(f.size() >= 3 && f[2] == "1");
+            }
+            log(cmd + " " + f[1] + (f.size() >= 3 ? " " + f[2] : ""));
         }
         return;
     }
@@ -294,7 +383,8 @@ void Shell::reload()
         auto &newWindow = mutableWindow(*fresh);
         newWindow.set_position(oldWindow.position());
         newWindow.set_size(oldWindow.size());
-        fresh->show();
+        fresh->set_property("rk-maximized", slint::interpreter::Value(win.maximized));
+        show(fresh, win.screen);
         win.instance->hide();
         win.instance = fresh;
     }

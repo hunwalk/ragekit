@@ -29,8 +29,10 @@ final class Session
     private static bool $running = false;
     /** @var array<int, array{screen: Screen, title: string, width: int, height: int}> by window id, in open order */
     private static array $windows = [];
-    /** @var list<array{window: int, class: string, title: string, width: int, height: int, props: array<string, mixed>, used?: bool}> */
+    /** @var list<array{window: int, class: string, title: string, width: int, height: int, props: array<string, mixed>, layoutProps?: array<string, mixed>, used?: bool}> */
     private static array $restore = [];
+    /** The saved window restore() last gave to a screen: its layout gets that window's layout properties. */
+    private static ?int $restored = null;
 
     /** Starts over (also used by tests). $screensJson is the file's contents; $restart restores the snapshot. */
     public static function start(Channel $channel, string $screensJson, string $stateFile, bool $restart, string $screensFile = ''): void
@@ -47,6 +49,7 @@ final class Session
         self::$running = false;
         self::$windows = [];
         self::$restore = [];
+        self::$restored = null;
         if ($restart && is_file($stateFile)) {
             self::$restore = json_decode((string) file_get_contents($stateFile), true)['windows'] ?? [];
         }
@@ -180,7 +183,7 @@ final class Session
         }
         $windows = [];
         foreach (self::$windows as $id => $window) {
-            $windows[] = [
+            $saved = [
                 'window' => $id,
                 'class' => get_class($window['screen']),
                 'title' => $window['title'],
@@ -188,6 +191,11 @@ final class Session
                 'height' => $window['height'],
                 'props' => self::props($window['screen']),
             ];
+            $layout = $window['screen']->layoutObject();
+            if ($layout !== null) {
+                $saved['layoutProps'] = self::props($layout);
+            }
+            $windows[] = $saved;
         }
         // Written next to it and renamed: a restart (SIGTERM) mid-write must not leave half a file.
         $temp = self::$stateFile . '.tmp';
@@ -198,18 +206,34 @@ final class Session
     /** After a restart: gives $screen the properties of the next saved window of its class. */
     public static function restore(Screen $screen): void
     {
+        self::$restored = null;
         foreach (self::$restore as $i => $saved) {
             if (($saved['used'] ?? false) || $saved['class'] !== get_class($screen)) {
                 continue;
             }
             self::$restore[$i]['used'] = true;
-            foreach ($saved['props'] as $name => $value) {
-                $reason = self::assign($screen, $name, $value);
-                if ($reason !== null) {
-                    fwrite(STDERR, "ragekit dev: not restoring \$$name of " . get_class($screen) . " ($reason)\n");
-                }
-            }
+            self::$restored = $i;
+            self::assignAll($screen, $saved['props']);
             return;
+        }
+    }
+
+    /** After a restart: gives the layout of the screen restore() just handled its saved properties. */
+    public static function restoreLayout(object $layout): void
+    {
+        if (self::$restored !== null) {
+            self::assignAll($layout, self::$restore[self::$restored]['layoutProps'] ?? []);
+        }
+    }
+
+    /** @param array<string, mixed> $props */
+    private static function assignAll(object $object, array $props): void
+    {
+        foreach ($props as $name => $value) {
+            $reason = self::assign($object, $name, $value);
+            if ($reason !== null) {
+                fwrite(STDERR, "ragekit dev: not restoring \$$name of " . get_class($object) . " ($reason)\n");
+            }
         }
     }
 
@@ -247,14 +271,14 @@ final class Session
     }
 
     /** @return array<string, mixed> */
-    private static function props(Screen $screen): array
+    private static function props(object $component): array
     {
         $props = [];
-        foreach ((new \ReflectionObject($screen))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-            if ($property->isStatic() || $property->isReadOnly() || !$property->isInitialized($screen)) {
+        foreach ((new \ReflectionObject($component))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
+            if ($property->isStatic() || $property->isReadOnly() || !$property->isInitialized($component)) {
                 continue;
             }
-            $value = $property->getValue($screen);
+            $value = $property->getValue($component);
             if (self::plain($value)) {
                 $props[$property->getName()] = $value;
             }
@@ -276,9 +300,9 @@ final class Session
     }
 
     /** @return string|null why the value can't be restored */
-    private static function assign(Screen $screen, string $name, mixed $value): ?string
+    private static function assign(object $component, string $name, mixed $value): ?string
     {
-        $class = new \ReflectionObject($screen);
+        $class = new \ReflectionObject($component);
         if (!$class->hasProperty($name)) {
             return 'no longer declared';
         }
@@ -304,7 +328,7 @@ final class Session
                 $value = (float) $value;
             }
         }
-        $property->setValue($screen, $value);
+        $property->setValue($component, $value);
         return null;
     }
 }

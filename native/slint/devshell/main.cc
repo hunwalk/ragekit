@@ -5,6 +5,7 @@
 // --module name=path: a native module's library (repeatable); control `reload-module name path`.
 // Started by `ragekit dev`, which sends reload / restart-php / stop on stdin.
 #include "shell.h"
+#include "window.h"
 
 #ifdef SLINT_FEATURE_EXPERIMENTAL
 #include <slint-testing.h>
@@ -89,6 +90,9 @@ int main(int argc, char **argv)
     rk::dev::Shell shell(options);
     if (!shell.load()) {
         return 1;
+    }
+    if (!options.headless && shell.anyFrameless()) {
+        rk::win::prefer_x11(); // before Slint's platform starts (initPlatform)
     }
     shell.initPlatform();
     shell.loadModules();

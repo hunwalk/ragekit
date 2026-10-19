@@ -36,6 +36,7 @@ public:
     void resetModules();
     bool startPhp();     // starts (or, after restartPhp(), restarts) the PHP child
     void control(const std::string &line); // a line from stdin: reload, restart-php, stop, click
+    bool anyFrameless() const;             // a screen has a layout (after load())
     int exitCode() const { return exitCode_; }
 
 private:
@@ -45,6 +46,7 @@ private:
         std::string title;
         Instance instance;
         bool orphan = false;
+        bool maximized = false; // last state reported to PHP (frameless windows)
     };
 
     void onPhpLine(unsigned generation, const std::string &line);
@@ -56,6 +58,9 @@ private:
     void emit(int64_t window, int action, const std::string &arg);
     void set(Win &win, const std::string &kind, const std::string &property, const std::vector<std::string> &fields);
     void closeWindow(int64_t id);
+    void windowCommand(int64_t id, const std::string &command);
+    bool frameless(const std::string &screen) const;
+    void show(Instance &instance, const std::string &screen);
     void log(const std::string &line) const;
     void status(const std::string &line) const;
 

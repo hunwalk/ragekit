@@ -22,6 +22,11 @@ final class Screens
 
     public static function layout(Screen $screen): ?\RageKit\Layout
     {
+        $layout = Session::bindings()->layout($screen);
+        if ($layout instanceof \RageKit\Layout) {
+            Session::restoreLayout($layout);
+            return $layout;
+        }
         return null;
     }
 

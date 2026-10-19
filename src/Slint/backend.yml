@@ -62,8 +62,10 @@ ragekit:
         - SLINT_FEATURE_EXPERIMENTAL
       sources:
         - native/slint/devshell
+        - native/slint/window
       include-paths:
         - native/slint/devshell
+        - native/slint/window
         - ${SLINT_HOME}/include/slint
       link-paths:
         - ${SLINT_HOME}/lib
