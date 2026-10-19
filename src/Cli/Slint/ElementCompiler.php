@@ -17,7 +17,11 @@ use RageKit\Cli\Templates\TemplateException;
  */
 final class ElementCompiler
 {
-    private const CORE = ['Label', 'Button', 'Entry', 'Checkbox', 'Slider', 'Select', 'Image', 'Progress', 'Card', 'Separator'];
+    /** Elements every kit provides with the same attributes (docs/kits.md, "The core element contract"). */
+    public const CORE = [
+        'Label', 'Button', 'Entry', 'Checkbox', 'Slider', 'Select', 'Image', 'Progress', 'Card', 'Separator',
+        'Switch', 'Textarea', 'RadioGroup', 'Toggle', 'Badge', 'Avatar', 'Alert', 'Skeleton', 'Spinner',
+    ];
     private const LAYOUTS = ['VStack' => 'VerticalLayout', 'HStack' => 'HorizontalLayout'];
 
     /** @var array<string, array<string, true>> kit entry file => Slint components used from it */

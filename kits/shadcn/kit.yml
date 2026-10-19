@@ -64,3 +64,50 @@ elements:
       onMinimize: minimize
       onToggleMaximize: toggle-maximize
       onClose: close
+  Switch:
+    component: ShadSwitch
+    props:
+      text: string
+      checked: { type: bool, twoWay: toggled }
+  Textarea:
+    component: ShadTextarea
+    props:
+      value: { type: string, property: text, twoWay: edited }
+      placeholder: string
+      rows: int
+  RadioGroup:
+    component: ShadRadioGroup
+    props:
+      value: { type: string, twoWay: changed }
+      options: list
+  Toggle:
+    component: ShadToggle
+    props:
+      text: string
+      pressed: { type: bool, twoWay: toggled }
+  Badge:
+    component: ShadBadge
+    props:
+      text: string
+      variant: { type: string, enum: [default, secondary, outline, destructive] }
+  Avatar:
+    component: ShadAvatar
+    props:
+      source: image
+      text: string
+      size: { type: string, enum: [sm, md, lg] }
+  Alert:
+    component: ShadAlert
+    props:
+      title: string
+      text: string
+      variant: { type: string, enum: [default, destructive] }
+  Skeleton:
+    component: ShadSkeleton
+    props:
+      width: { type: int, property: w }
+      height: { type: int, property: h }
+  Spinner:
+    component: ShadSpinner
+    props:
+      size: { type: string, enum: [sm, md, lg] }

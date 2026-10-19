@@ -7,6 +7,7 @@ namespace RageKit\Tests\Templates;
 use PHPUnit\Framework\TestCase;
 use RageKit\Cli\Project\Paths;
 use RageKit\Cli\RageKitException;
+use RageKit\Cli\Slint\ElementCompiler;
 use RageKit\Cli\Templates\KitRegistry;
 
 final class KitTest extends TestCase
@@ -21,7 +22,8 @@ final class KitTest extends TestCase
         self::assertSame('RkWindow', $material->window);
         self::assertStringEndsWith('/kits/material/rk-material.slint', $material->entry);
         self::assertStringEndsWith('/kits/material/library/material.slint', $material->libraries['material']);
-        self::assertSame(['Label', 'Button', 'Entry', 'Checkbox', 'Slider', 'Select', 'Image', 'Progress', 'Card', 'Separator', 'TabBar', 'WindowControls'], array_keys($material->elements));
+        self::assertSame(['Label', 'Button', 'Entry', 'Checkbox', 'Slider', 'Select', 'Image', 'Progress', 'Card', 'Separator', 'TabBar', 'WindowControls',
+            'Switch', 'Textarea', 'RadioGroup', 'Toggle', 'Badge', 'Avatar', 'Alert', 'Skeleton', 'Spinner'], array_keys($material->elements));
 
         $entry = $material->elements['Entry']->props['value'];
         self::assertSame('string', $entry->type);
@@ -39,6 +41,30 @@ final class KitTest extends TestCase
             self::assertNotNull($controls, "$name has no WindowControls");
             self::assertSame('bool', $controls->props['maximized']->type);
             self::assertSame(['onMinimize' => 'minimize', 'onToggleMaximize' => 'toggle-maximize', 'onClose' => 'close'], $controls->events);
+        }
+    }
+
+    public function testShippedKitsAgreeOnTheCoreContract(): void
+    {
+        $new = ['Switch', 'Textarea', 'RadioGroup', 'Toggle', 'Badge', 'Avatar', 'Alert', 'Skeleton', 'Spinner'];
+        foreach ($new as $name) {
+            self::assertContains($name, ElementCompiler::CORE, "$name is a core element");
+        }
+        $kits = KitRegistry::load([self::ROOT . '/kits/material/kit.yml', self::ROOT . '/kits/shadcn/kit.yml'], '/rk');
+        $describe = function (string $kit, string $element) use ($kits): array {
+            $spec = $kits->get($kit)->elements[$element] ?? null;
+            self::assertNotNull($spec, "kit $kit lacks core element $element");
+            $props = [];
+            foreach ($spec->props as $name => $prop) {
+                $props[$name] = [$prop->type, $prop->enum, $prop->twoWay !== null];
+            }
+            ksort($props);
+            $events = array_keys($spec->events);
+            sort($events);
+            return [$props, $events, $spec->children];
+        };
+        foreach ([...ElementCompiler::CORE, 'TabBar', 'WindowControls'] as $element) {
+            self::assertSame($describe('material', $element), $describe('shadcn', $element), "$element differs between kits");
         }
     }
 

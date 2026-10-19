@@ -73,3 +73,50 @@ elements:
       onMinimize: minimize
       onToggleMaximize: toggle-maximize
       onClose: close
+  Switch:
+    component: RkSwitch
+    props:
+      text: string
+      checked: { type: bool, twoWay: toggled }
+  Textarea:
+    component: RkTextarea
+    props:
+      value: { type: string, property: text, twoWay: edited }
+      placeholder: string
+      rows: int
+  RadioGroup:
+    component: RkRadioGroup
+    props:
+      value: { type: string, twoWay: changed }
+      options: list
+  Toggle:
+    component: RkToggle
+    props:
+      text: string
+      pressed: { type: bool, twoWay: toggled }
+  Badge:
+    component: RkBadge
+    props:
+      text: string
+      variant: { type: string, enum: [default, secondary, outline, destructive] }
+  Avatar:
+    component: RkAvatar
+    props:
+      source: image
+      text: string
+      size: { type: string, enum: [sm, md, lg] }
+  Alert:
+    component: RkAlert
+    props:
+      title: string
+      text: string
+      variant: { type: string, enum: [default, destructive] }
+  Skeleton:
+    component: RkSkeleton
+    props:
+      width: { type: int, property: w }
+      height: { type: int, property: h }
+  Spinner:
+    component: RkSpinner
+    props:
+      size: { type: string, enum: [sm, md, lg] }

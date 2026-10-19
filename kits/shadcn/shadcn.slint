@@ -359,3 +359,263 @@ export component ShadWindowControls inherits HorizontalLayout {
     ShadWindowButton { icon: root.maximized ? "restore" : "maximize"; clicked => { root.toggle-maximize(); } }
     ShadWindowButton { icon: "close"; clicked => { root.close(); } }
 }
+
+export component ShadSwitch inherits HorizontalLayout {
+    in property <string> text;
+    in-out property <bool> checked;
+    callback toggled(bool);
+    spacing: 8px;
+    alignment: start;
+    VerticalLayout {
+        alignment: center;
+        Rectangle {
+            width: 36px;
+            height: 20px;
+            border-radius: 10px;
+            background: root.checked ? Shad.primary : Shad.secondary-hover;
+            animate background { duration: 120ms; }
+            Rectangle {
+                x: root.checked ? parent.width - self.width - 2px : 2px;
+                y: 2px;
+                width: 16px;
+                height: 16px;
+                border-radius: 8px;
+                background: root.checked ? Shad.primary-foreground : Shad.foreground;
+                animate x { duration: 120ms; }
+            }
+            TouchArea {
+                clicked => {
+                    root.checked = !root.checked;
+                    root.toggled(root.checked);
+                }
+            }
+        }
+    }
+    Text {
+        text: root.text;
+        color: Shad.foreground;
+        vertical-alignment: center;
+    }
+}
+
+export component ShadTextarea inherits Rectangle {
+    in-out property <string> text;
+    in property <string> placeholder;
+    in property <int> rows: 3;
+    callback edited(string);
+    min-width: 200px;
+    height: max(2, root.rows) * 20px + 16px;
+    border-radius: Shad.radius;
+    border-width: 1px;
+    border-color: input.has-focus ? #71717a : Shad.border;
+    TouchArea { clicked => { input.focus(); } }
+    Rectangle {
+        x: 12px;
+        y: 8px;
+        width: parent.width - 24px;
+        height: parent.height - 16px;
+        clip: true;
+        if root.text == "" : Text {
+            width: parent.width;
+            height: parent.height;
+            text: root.placeholder;
+            color: Shad.muted;
+            font-size: Shad.font-size;
+        }
+        input := TextInput {
+            width: parent.width;
+            height: parent.height;
+            text <=> root.text;
+            color: Shad.foreground;
+            font-size: Shad.font-size;
+            single-line: false;
+            wrap: word-wrap;
+            edited => { root.edited(self.text); }
+        }
+    }
+}
+
+export component ShadRadioGroup inherits VerticalLayout {
+    in property <[string]> options;
+    in-out property <string> value;
+    callback changed(string);
+    spacing: 4px;
+    alignment: start;
+    for option in root.options : Rectangle {
+        height: 26px;
+        HorizontalLayout {
+            spacing: 8px;
+            alignment: start;
+            VerticalLayout {
+                alignment: center;
+                Rectangle {
+                    width: 16px;
+                    height: 16px;
+                    border-radius: 8px;
+                    border-width: 1px;
+                    border-color: root.value == option ? Shad.primary : #52525b;
+                    Rectangle {
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 4px;
+                        background: Shad.primary;
+                        visible: root.value == option;
+                    }
+                }
+            }
+            Text {
+                text: option;
+                color: Shad.foreground;
+                vertical-alignment: center;
+            }
+        }
+        TouchArea {
+            clicked => {
+                root.value = option;
+                root.changed(option);
+            }
+        }
+    }
+}
+
+export component ShadToggle inherits Rectangle {
+    in property <string> text;
+    in-out property <bool> pressed;
+    callback toggled(bool);
+    min-width: label.preferred-width + 24px;
+    height: 36px;
+    border-radius: Shad.radius;
+    border-width: 1px;
+    border-color: root.pressed ? Shad.secondary-hover : Shad.border;
+    background: root.pressed ? Shad.secondary : (touch.has-hover ? Shad.hover : transparent);
+    animate background { duration: 100ms; }
+    label := Text {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: Shad.foreground;
+        font-weight: 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        clicked => {
+            root.pressed = !root.pressed;
+            root.toggled(root.pressed);
+        }
+    }
+}
+
+export component ShadBadge inherits Rectangle {
+    in property <string> text;
+    in property <string> variant: "default";
+    min-width: label.preferred-width + 16px;
+    height: 22px;
+    border-radius: 11px;
+    border-width: root.variant == "outline" ? 1px : 0px;
+    border-color: Shad.border;
+    background: root.variant == "default" ? Shad.primary
+        : root.variant == "secondary" ? Shad.secondary
+        : root.variant == "destructive" ? Shad.destructive
+        : transparent;
+    label := Text {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: root.variant == "default" ? Shad.primary-foreground : Shad.foreground;
+        font-size: 12px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+export component ShadAvatar inherits HorizontalLayout {
+    in property <image> source;
+    in property <string> text;
+    in property <string> size: "md";
+    property <length> side: root.size == "sm" ? 32px : root.size == "lg" ? 56px : 40px;
+    alignment: start;
+    Rectangle {
+        width: root.side;
+        height: root.side;
+        border-radius: root.side / 2;
+        clip: true;
+        background: Shad.secondary;
+        if root.source.width == 0 : Text {
+            width: parent.width;
+            height: parent.height;
+            text: root.text;
+            color: Shad.foreground;
+            font-size: root.side * 0.4;
+            font-weight: 600;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        if root.source.width > 0 : Image {
+            width: parent.width;
+            height: parent.height;
+            source: root.source;
+            image-fit: cover;
+        }
+    }
+}
+
+export component ShadAlert inherits Rectangle {
+    in property <string> title;
+    in property <string> text;
+    in property <string> variant: "default";
+    border-radius: Shad.radius;
+    border-width: 1px;
+    border-color: root.variant == "destructive" ? Shad.destructive : Shad.border;
+    background: Shad.card;
+    VerticalLayout {
+        padding: 14px;
+        spacing: 4px;
+        if root.title != "" : Text {
+            text: root.title;
+            color: root.variant == "destructive" ? Shad.destructive : Shad.foreground;
+            font-weight: 600;
+        }
+        Text {
+            text: root.text;
+            color: root.variant == "destructive" ? #fca5a5 : Shad.muted;
+            wrap: word-wrap;
+        }
+    }
+}
+
+// A loading placeholder: a block that pulses while content loads.
+export component ShadSkeleton inherits HorizontalLayout {
+    in property <int> w: 200;
+    in property <int> h: 16;
+    alignment: start;
+    Rectangle {
+        width: root.w * 1px;
+        height: root.h * 1px;
+        border-radius: 6px;
+        background: Shad.secondary;
+        opacity: 0.6 + 0.35 * Math.sin(animation-tick() / 1.4s * 360deg);
+    }
+}
+
+// Eight dots fading in turn, clockwise.
+export component ShadSpinner inherits HorizontalLayout {
+    in property <string> size: "md";
+    property <length> side: root.size == "sm" ? 16px : root.size == "lg" ? 32px : 24px;
+    property <float> phase: Math.mod(animation-tick() / 1ms, 800) / 100;
+    alignment: start;
+    Rectangle {
+        width: root.side;
+        height: root.side;
+        for i in 8 : Rectangle {
+            width: root.side / 5;
+            height: self.width;
+            border-radius: self.width / 2;
+            x: (root.side - self.width) / 2 * (1 + Math.cos(i * 45deg));
+            y: (root.side - self.width) / 2 * (1 + Math.sin(i * 45deg));
+            background: Shad.foreground;
+            opacity: 0.15 + 0.85 * Math.mod(i - root.phase + 8, 8) / 8;
+        }
+    }
+}

@@ -2,6 +2,7 @@
 import {
     MaterialWindow, MaterialText, MaterialTypography, MaterialPalette, FilledButton, TonalButton, OutlineButton,
     TextButton, TextField, Switch, Slider, LinearProgressIndicator, OutlinedCard, HorizontalDivider,
+    RadioButton,
 } from "@material";
 
 export component RkWindow inherits MaterialWindow { }
@@ -227,4 +228,225 @@ export component RkWindowControls inherits HorizontalLayout {
     RkWindowButton { icon: "minimize"; clicked => { root.minimize(); } }
     RkWindowButton { icon: root.maximized ? "restore" : "maximize"; clicked => { root.toggle-maximize(); } }
     RkWindowButton { icon: "close"; clicked => { root.close(); } }
+}
+
+export component RkSwitch inherits HorizontalLayout {
+    in property <string> text;
+    in-out property <bool> checked;
+    callback toggled(bool);
+    spacing: 12px;
+    alignment: start;
+    Switch {
+        checked <=> root.checked;
+        checked_state_changed(on) => { root.toggled(on); }
+    }
+    MaterialText {
+        text: root.text;
+        vertical-alignment: center;
+    }
+}
+
+export component RkTextarea inherits Rectangle {
+    in-out property <string> text;
+    in property <string> placeholder;
+    in property <int> rows: 3;
+    callback edited(string);
+    min-width: 200px;
+    height: max(2, root.rows) * 22px + 24px;
+    border-radius: 4px;
+    border-width: input.has-focus ? 2px : 1px;
+    border-color: input.has-focus ? MaterialPalette.primary : MaterialPalette.outline;
+    TouchArea { clicked => { input.focus(); } }
+    Rectangle {
+        x: 16px;
+        y: 12px;
+        width: parent.width - 32px;
+        height: parent.height - 24px;
+        clip: true;
+        if root.text == "" : MaterialText {
+            width: parent.width;
+            height: parent.height;
+            text: root.placeholder;
+            color: MaterialPalette.on_surface_variant;
+            style: MaterialTypography.body_large;
+            vertical-alignment: top;
+        }
+        input := TextInput {
+            width: parent.width;
+            height: parent.height;
+            text <=> root.text;
+            color: MaterialPalette.on_surface;
+            font-size: MaterialTypography.body_large.font_size;
+            single-line: false;
+            wrap: word-wrap;
+            edited => { root.edited(self.text); }
+        }
+    }
+}
+
+export component RkRadioGroup inherits VerticalLayout {
+    in property <[string]> options;
+    in-out property <string> value;
+    callback changed(string);
+    spacing: 0px;
+    alignment: start;
+    for option in root.options : HorizontalLayout {
+        spacing: 4px;
+        alignment: start;
+        RadioButton {
+            checked: root.value == option;
+            enabled: true;
+            clicked => {
+                root.value = option;
+                root.changed(option);
+            }
+        }
+        MaterialText {
+            text: option;
+            vertical-alignment: center;
+        }
+    }
+}
+
+export component RkToggle inherits Rectangle {
+    in property <string> text;
+    in-out property <bool> pressed;
+    callback toggled(bool);
+    min-width: label.preferred-width + 48px;
+    height: 40px;
+    border-radius: 20px;
+    border-width: root.pressed ? 0px : 1px;
+    border-color: MaterialPalette.outline;
+    background: root.pressed ? MaterialPalette.secondary_container
+        : (touch.has-hover ? MaterialPalette.surface_container_highest : transparent);
+    label := MaterialText {
+        width: parent.width;
+        height: parent.height;
+        text: (root.pressed ? "✓ " : "") + root.text;
+        style: MaterialTypography.label_large;
+        color: root.pressed ? MaterialPalette.on_secondary_container : MaterialPalette.on_surface;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        clicked => {
+            root.pressed = !root.pressed;
+            root.toggled(root.pressed);
+        }
+    }
+}
+
+export component RkBadge inherits Rectangle {
+    in property <string> text;
+    in property <string> variant: "default";
+    min-width: label.preferred-width + 16px;
+    height: 24px;
+    border-radius: 8px;
+    border-width: root.variant == "outline" ? 1px : 0px;
+    border-color: MaterialPalette.outline;
+    background: root.variant == "default" ? MaterialPalette.primary
+        : root.variant == "secondary" ? MaterialPalette.secondary_container
+        : root.variant == "destructive" ? MaterialPalette.error
+        : transparent;
+    label := MaterialText {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        style: MaterialTypography.label_medium;
+        color: root.variant == "default" ? MaterialPalette.on_primary
+            : root.variant == "secondary" ? MaterialPalette.on_secondary_container
+            : root.variant == "destructive" ? MaterialPalette.on_error
+            : MaterialPalette.on_surface;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+export component RkAvatar inherits HorizontalLayout {
+    in property <image> source;
+    in property <string> text;
+    in property <string> size: "md";
+    property <length> side: root.size == "sm" ? 32px : root.size == "lg" ? 56px : 40px;
+    alignment: start;
+    Rectangle {
+        width: root.side;
+        height: root.side;
+        border-radius: root.side / 2;
+        clip: true;
+        background: MaterialPalette.primary_container;
+        if root.source.width == 0 : MaterialText {
+            width: parent.width;
+            height: parent.height;
+            text: root.text;
+            color: MaterialPalette.on_primary_container;
+            font-size: root.side * 0.4;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+        if root.source.width > 0 : Image {
+            width: parent.width;
+            height: parent.height;
+            source: root.source;
+            image-fit: cover;
+        }
+    }
+}
+
+export component RkAlert inherits Rectangle {
+    in property <string> title;
+    in property <string> text;
+    in property <string> variant: "default";
+    border-radius: 12px;
+    background: root.variant == "destructive" ? MaterialPalette.error_container : MaterialPalette.surface_container_highest;
+    VerticalLayout {
+        padding: 16px;
+        spacing: 4px;
+        if root.title != "" : MaterialText {
+            text: root.title;
+            style: MaterialTypography.title_small;
+            color: root.variant == "destructive" ? MaterialPalette.on_error_container : MaterialPalette.on_surface;
+        }
+        MaterialText {
+            text: root.text;
+            style: MaterialTypography.body_medium;
+            color: root.variant == "destructive" ? MaterialPalette.on_error_container : MaterialPalette.on_surface_variant;
+            wrap: word-wrap;
+        }
+    }
+}
+
+// A loading placeholder: a block that pulses while content loads.
+export component RkSkeleton inherits HorizontalLayout {
+    in property <int> w: 200;
+    in property <int> h: 16;
+    alignment: start;
+    Rectangle {
+        width: root.w * 1px;
+        height: root.h * 1px;
+        border-radius: 4px;
+        background: MaterialPalette.surface_container_highest;
+        opacity: 0.6 + 0.35 * Math.sin(animation-tick() / 1.4s * 360deg);
+    }
+}
+
+// Eight dots fading in turn, clockwise. (Material's CircularProgressIndicator sizes its width from
+// its height, which loops with wrapped text in the same column.)
+export component RkSpinner inherits HorizontalLayout {
+    in property <string> size: "md";
+    property <length> side: root.size == "sm" ? 16px : root.size == "lg" ? 32px : 24px;
+    property <float> phase: Math.mod(animation-tick() / 1ms, 800) / 100;
+    alignment: start;
+    Rectangle {
+        width: root.side;
+        height: root.side;
+        for i in 8 : Rectangle {
+            width: root.side / 5;
+            height: self.width;
+            border-radius: self.width / 2;
+            x: (root.side - self.width) / 2 * (1 + Math.cos(i * 45deg));
+            y: (root.side - self.width) / 2 * (1 + Math.sin(i * 45deg));
+            background: MaterialPalette.primary;
+            opacity: 0.15 + 0.85 * Math.mod(i - root.phase + 8, 8) / 8;
+        }
+    }
 }

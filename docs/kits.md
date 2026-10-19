@@ -57,7 +57,21 @@ Every kit that provides a core element accepts exactly these attributes for it:
 | `Progress` | `value` (float, 0 to 1) |
 | `Card` | `title`, contains other elements |
 | `Separator` | (none) |
+| `Switch` | `text`, `checked` (two-way bool) |
+| `Textarea` | `value` (two-way string), `placeholder`, `rows` (int) |
+| `RadioGroup` | `value` (two-way string), `options` (list) |
+| `Toggle` | `text`, `pressed` (two-way bool) |
+| `Badge` | `text`, `variant` (`default`, `secondary`, `outline`, `destructive`) |
+| `Avatar` | `source` (image), `text` (shown without an image), `size` (`sm`, `md`, `lg`) |
+| `Alert` | `title`, `text`, `variant` (`default`, `destructive`) |
+| `Skeleton` | `width`, `height` (int, pixels) |
+| `Spinner` | `size` (`sm`, `md`, `lg`) |
 | `TabBar` | `titles` (list), `selected` (two-way int): used by `<Tabs>` in templates |
+| `WindowControls` | `maximized` (bool), events `onMinimize`, `onToggleMaximize`, `onClose`: used by layouts |
+
+Elements with a fixed size (`Avatar`, `Skeleton`, `Spinner`) should sit in a left-aligned row
+(inherit `HorizontalLayout` with `alignment: start`): a fixed width directly in a column limits the
+column's maximum width, and with it the window's.
 
 A kit may give a core element extra attributes. A template that uses them then builds only with
 that kit.

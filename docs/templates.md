@@ -277,6 +277,15 @@ any kit. A kit may lack one; it then falls back to the Material kit's version.
 | `Progress` | `value` | `float` from 0 to 1 |
 | `Card` | `title` | holds other elements |
 | `Separator` | (none) | a thin line |
+| `Switch` | `text`, `checked` | `checked`: two-way `bool` |
+| `Textarea` | `value`, `placeholder`, `rows` | multi-line; `value`: two-way `string`; `rows`: visible lines (default 3) |
+| `RadioGroup` | `value`, `options` | `value`: two-way `string`, the chosen option |
+| `Toggle` | `text`, `pressed` | a button that stays pressed; `pressed`: two-way `bool` |
+| `Badge` | `text`, `variant` | `variant`: `default`, `secondary`, `outline`, `destructive` |
+| `Avatar` | `source`, `text`, `size` | an image, else the `text` (initials); `size`: `sm`, `md` (default), `lg` |
+| `Alert` | `title`, `text`, `variant` | `variant`: `default`, `destructive` |
+| `Skeleton` | `width`, `height` | a pulsing placeholder while content loads, in pixels |
+| `Spinner` | `size` | `size`: `sm`, `md` (default), `lg` |
 | `Tabs` / `Tab` | `selected` / `title` | see below |
 
 Every element also accepts `grow`, `when` and `each`. Any other attribute is a build error that
