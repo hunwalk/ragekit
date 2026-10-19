@@ -21,7 +21,7 @@ final class KitTest extends TestCase
         self::assertSame('RkWindow', $material->window);
         self::assertStringEndsWith('/kits/material/rk-material.slint', $material->entry);
         self::assertStringEndsWith('/kits/material/library/material.slint', $material->libraries['material']);
-        self::assertSame(['Label', 'Button', 'Entry', 'Checkbox', 'Slider', 'Select', 'Image', 'Progress', 'Card', 'Separator', 'TabBar'], array_keys($material->elements));
+        self::assertSame(['Label', 'Button', 'Entry', 'Checkbox', 'Slider', 'Select', 'Image', 'Progress', 'Card', 'Separator', 'TabBar', 'WindowControls'], array_keys($material->elements));
 
         $entry = $material->elements['Entry']->props['value'];
         self::assertSame('string', $entry->type);
@@ -29,6 +29,17 @@ final class KitTest extends TestCase
         self::assertSame('edited', $entry->twoWay);
         self::assertSame(['body', 'title', 'display'], $material->elements['Label']->props['size']->enum);
         self::assertSame(['onClick' => 'clicked'], $material->elements['Button']->events);
+    }
+
+    public function testCoreKitsProvideWindowControls(): void
+    {
+        $kits = KitRegistry::load([self::ROOT . '/kits/material/kit.yml', self::ROOT . '/kits/shadcn/kit.yml'], '/rk');
+        foreach (['material', 'shadcn'] as $name) {
+            $controls = $kits->get($name)->elements['WindowControls'] ?? null;
+            self::assertNotNull($controls, "$name has no WindowControls");
+            self::assertSame('bool', $controls->props['maximized']->type);
+            self::assertSame(['onMinimize' => 'minimize', 'onToggleMaximize' => 'toggle-maximize', 'onClose' => 'close'], $controls->events);
+        }
     }
 
     public function testUsedKitsAreTheImportedOnes(): void

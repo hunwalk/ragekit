@@ -65,3 +65,11 @@ elements:
     props:
       titles: list
       selected: { type: int, twoWay: changed }
+  WindowControls:
+    component: RkWindowControls
+    props:
+      maximized: bool
+    events:
+      onMinimize: minimize
+      onToggleMaximize: toggle-maximize
+      onClose: close

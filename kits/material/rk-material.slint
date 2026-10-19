@@ -193,3 +193,38 @@ export component RkTabBar inherits HorizontalLayout {
         }
     }
 }
+
+// Title-bar buttons for frameless windows (layouts): minimise, maximise/restore, close.
+component RkWindowButton inherits Rectangle {
+    in property <string> icon; // minimize, maximize, restore or close
+    callback clicked;
+    width: 46px;
+    height: 32px;
+    background: touch.has-hover ? (root.icon == "close" ? #e81123 : MaterialPalette.surface_container_highest) : transparent;
+    animate background { duration: 100ms; }
+    Path {
+        width: 10px;
+        height: 10px;
+        viewbox-width: 10;
+        viewbox-height: 10;
+        fill: transparent;
+        stroke: touch.has-hover && root.icon == "close" ? #ffffff : MaterialPalette.on_surface;
+        stroke-width: 1px;
+        commands: root.icon == "minimize" ? "M 0 5 L 10 5"
+            : root.icon == "maximize" ? "M 0.5 0.5 L 9.5 0.5 L 9.5 9.5 L 0.5 9.5 Z"
+            : root.icon == "restore" ? "M 2.5 2.5 L 2.5 0.5 L 9.5 0.5 L 9.5 7.5 L 7.5 7.5 M 0.5 2.5 L 7.5 2.5 L 7.5 9.5 L 0.5 9.5 Z"
+            : "M 0 0 L 10 10 M 10 0 L 0 10";
+    }
+    touch := TouchArea { clicked => { root.clicked(); } }
+}
+
+export component RkWindowControls inherits HorizontalLayout {
+    in property <bool> maximized;
+    callback minimize;
+    callback toggle-maximize;
+    callback close;
+    spacing: 0px;
+    RkWindowButton { icon: "minimize"; clicked => { root.minimize(); } }
+    RkWindowButton { icon: root.maximized ? "restore" : "maximize"; clicked => { root.toggle-maximize(); } }
+    RkWindowButton { icon: "close"; clicked => { root.close(); } }
+}
