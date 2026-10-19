@@ -13,3 +13,11 @@ elements:
     props:
       title: string
     children: true
+  WindowControls:
+    component: ShadWindowControls
+    props:
+      maximized: bool
+    events:
+      onMinimize: minimize
+      onToggleMaximize: toggle-maximize
+      onClose: close

@@ -7,7 +7,8 @@ namespace RageKit\Cli\Slint;
 /** Attribute values of .rk templates: literal text with {name} references, as Slint strings. */
 final class Expression
 {
-    private const REF = '/\{([A-Za-z_][A-Za-z0-9_]*)\}/';
+    /** {name}, or {context.name} in a layout's template. */
+    private const REF = '/\{((?:context\.)?[A-Za-z_][A-Za-z0-9_]*)\}/';
 
     /** @return list<array{0: 'text'|'ref', 1: string}> */
     public static function parts(string $raw): array

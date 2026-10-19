@@ -21,14 +21,14 @@ final class ScreensJsonTest extends TestCase
         $model->action('set', 'name', [], $name);
         $json = json_decode(ScreensJson::emit([$model]), true);
         self::assertSame([
-            'class' => 'Demo\\S', 'name' => 'S',
+            'class' => 'Demo\\S', 'name' => 'S', 'layout' => null, 'frameless' => false,
             'values' => [
-                ['id' => 1, 'source' => 'property', 'name' => 'name', 'type' => 'string'],
-                ['id' => 2, 'source' => 'method', 'name' => 'label', 'type' => 'string'],
+                ['id' => 1, 'owner' => 'screen', 'source' => 'property', 'name' => 'name', 'type' => 'string'],
+                ['id' => 2, 'owner' => 'screen', 'source' => 'method', 'name' => 'label', 'type' => 'string'],
             ],
             'actions' => [
-                ['id' => 1, 'kind' => 'call', 'target' => 'press', 'args' => [['literal', 'go'], ['arg', 'key']], 'params' => ['string', 'int']],
-                ['id' => 2, 'kind' => 'set', 'target' => 'name', 'binding' => 1, 'type' => 'string'],
+                ['id' => 1, 'owner' => 'screen', 'kind' => 'call', 'target' => 'press', 'args' => [['literal', 'go'], ['arg', 'key']], 'params' => ['string', 'int']],
+                ['id' => 2, 'owner' => 'screen', 'kind' => 'set', 'target' => 'name', 'binding' => 1, 'type' => 'string'],
             ],
         ], $json['screens'][0]);
     }

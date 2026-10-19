@@ -47,7 +47,7 @@ final class SlintCompiler
             if (!is_file($class->template)) {
                 throw new TemplateException($class->file, 0, "{$class->short}::template() points to {$class->templateDeclared}, which doesn't exist ({$class->template})");
             }
-            if (!$class->isScreen) {
+            if (!$class->isScreen && !$class->isLayout) {
                 $this->children[$class->short] = $class;
             }
         }
@@ -62,7 +62,7 @@ final class SlintCompiler
         $screens = [];
         foreach ($classes as $class) {
             if ($class->isScreen) {
-                $model = new ScreenModel($class);
+                $model = new ScreenModel($class, $this->layoutOf($class, $classes));
                 $definitions[] = $this->screenComponent($class, $model, $window);
                 $screens[] = $model;
             }
@@ -143,20 +143,99 @@ final class SlintCompiler
             . Code::indent($body, 2) . "    }\n}\n";
     }
 
+    /**
+     * The Layout a screen's layout() names, checked: it exists, can be created by the runtime, and
+     * the screen implements its context() interface.
+     *
+     * @param array<string, ClassInfo> $classes
+     */
+    private function layoutOf(ClassInfo $screen, array $classes): ?ClassInfo
+    {
+        if ($screen->layout === '') {
+            return null;
+        }
+        $layout = $classes[$screen->layout] ?? null;
+        if ($layout === null || !$layout->isLayout) {
+            throw new TemplateException($screen->file, 0, "{$screen->short}::layout() names {$screen->layout}, which isn't a Layout of this app");
+        }
+        if (!$layout->constructible) {
+            throw new TemplateException($layout->file, 0, "{$layout->short} must be constructible without arguments: RageKit creates one for every window it frames");
+        }
+        if ($layout->context !== '' && !in_array($layout->context, $screen->interfaces, true)) {
+            throw new TemplateException($screen->file, 0, "{$screen->short} uses {$layout->short}, which needs {$layout->context}; implement it");
+        }
+        return $layout;
+    }
+
     private function screenComponent(ClassInfo $class, ScreenModel $model, string $window): string
     {
         $root = TemplateParser::parseFile($class->template);
-        $body = $this->elements->element($root, new Scope($class, $model), 'v');
+        $screen = new Scope($class, $model);
+        $layout = $model->layout;
+        if ($layout !== null) {
+            $frame = TemplateParser::parseFile($layout->template);
+            if (self::count($frame, 'Content') !== 1) {
+                throw new TemplateException($layout->template, 0, "{$layout->short}'s template needs exactly one <Content /> (where the screen goes)");
+            }
+            $body = $this->elements->element($frame, new Scope($layout, $model, [], 'layout', $screen, $root), 'v');
+        } else {
+            $body = $this->elements->element($root, $screen, 'v');
+        }
         $declarations = '';
         foreach ($model->bindings as $binding) {
             $declarations .= '    ' . ($binding->twoWay ? 'in-out' : 'in') . ' property <' . ValueCompiler::TYPES[$binding->type] . '> ' . $binding->slintName() . ";\n";
         }
-        $alignment = $this->elements->flag($root, 'grow') ? 'stretch' : 'start';
-        return "export component {$class->short} inherits $window {\n"
+        $head = "export component {$class->short} inherits $window {\n"
             . "    in property <string> rk-title;\n    title: root.rk-title;\n    callback action(int, string);\n"
-            . ($this->dev ? "    in property <bool> rk-on-top;\n    always-on-top: root.rk-on-top;\n" : '')
+            . ($this->dev ? "    in property <bool> rk-on-top;\n    always-on-top: root.rk-on-top;\n" : '');
+        if ($layout === null) {
+            $alignment = $this->elements->flag($root, 'grow') ? 'stretch' : 'start';
+            return $head . $declarations
+                . "    VerticalLayout {\n        padding: 16px;\n        alignment: $alignment;\n"
+                . Code::indent($body, 2) . "    }\n}\n";
+        }
+        return $head
+            . "    no-frame: true;\n    in property <bool> rk-maximized;\n    callback rk-window(string);\n"
+            . "    changed width => { root.rk-window(\"resized\"); }\n    changed height => { root.rk-window(\"resized\"); }\n"
             . $declarations
-            . "    VerticalLayout {\n        padding: 16px;\n        alignment: $alignment;\n"
-            . Code::indent($body, 2) . "    }\n}\n";
+            . "    VerticalLayout {\n        padding: 0px;\n        alignment: stretch;\n"
+            . Code::indent($body, 2) . "    }\n"
+            . Code::indent(self::grips(), 1) . "}\n";
+    }
+
+    private static function count(Element $element, string $tag): int
+    {
+        $count = $element->namespace === null && $element->tag === $tag ? 1 : 0;
+        foreach ($element->children as $child) {
+            $count += self::count($child, $tag);
+        }
+        return $count;
+    }
+
+    /** Invisible strips along a frameless window's edges and corners that resize it natively. */
+    private static function grips(): string
+    {
+        $edge = '6px';
+        $corner = '12px';
+        $grips = [
+            // edge => [x, y, width, height, cursor]
+            'top-left' => ['0', '0', $corner, $corner, 'nwse-resize'],
+            'top' => [$corner, '0', "root.width - 2 * $corner", $edge, 'ns-resize'],
+            'top-right' => ["root.width - $corner", '0', $corner, $corner, 'nesw-resize'],
+            'right' => ["root.width - $edge", $corner, $edge, "root.height - 2 * $corner", 'ew-resize'],
+            'bottom-right' => ["root.width - $corner", "root.height - $corner", $corner, $corner, 'nwse-resize'],
+            'bottom' => [$corner, "root.height - $edge", "root.width - 2 * $corner", $edge, 'ns-resize'],
+            'bottom-left' => ['0', "root.height - $corner", $corner, $corner, 'nesw-resize'],
+            'left' => ['0', $corner, $edge, "root.height - 2 * $corner", 'ew-resize'],
+        ];
+        $out = '';
+        foreach ($grips as $name => [$x, $y, $width, $height, $cursor]) {
+            $out .= "TouchArea {\n    x: $x;\n    y: $y;\n    width: $width;\n    height: $height;\n"
+                . "    visible: !root.rk-maximized;\n    mouse-cursor: MouseCursor.$cursor;\n"
+                . "    pointer-event(event) => {\n"
+                . "        if (event.kind == PointerEventKind.down && event.button == PointerEventButton.left) {\n"
+                . "            root.rk-window(\"resize-$name\");\n        }\n    }\n}\n";
+        }
+        return $out;
     }
 }

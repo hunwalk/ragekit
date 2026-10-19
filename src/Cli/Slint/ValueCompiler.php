@@ -41,14 +41,17 @@ final class ValueCompiler
         }
         $parts = Expression::parts($raw);
         $name = $parts[0][1];
+        if (str_starts_with($name, 'context.')) {
+            throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs in a layout must bind the layout's own properties; pass values to the screen from a handler through \$this->context");
+        }
         if (count($parts) !== 1 || $scope->model === null || $scope->item($name) !== null || !isset($scope->class->props[$name])) {
-            throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs must bind a property of the screen");
+            throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs must bind a property of the " . ($scope->inLayout() ? 'layout' : 'screen'));
         }
         $type = $this->valueType($scope->class->props[$name], $element, "property \$$name");
         if ($type !== $prop->type) {
             throw TemplateException::at($element, "$attribute=\"$raw\": expected " . (in_array($prop->type[0], ['a', 'e', 'i', 'o', 'u'], true) ? 'an' : 'a') . " {$prop->type} property, \$$name is $type");
         }
-        $binding = $scope->model->bind('property', $name, $type);
+        $binding = $scope->model->bind('property', $name, $type, $scope->owner);
         $binding->twoWay = true;
         return $binding;
     }
@@ -118,12 +121,22 @@ final class ValueCompiler
         if ($scope->model === null) {
             throw TemplateException::at($element, 'child components can\'t handle events yet; put interactive elements in the screen\'s template');
         }
-        if (preg_match('/^\s*([A-Za-z_]\w*)\s*(?:\((.*)\))?\s*$/', $raw, $m) !== 1) {
+        if (preg_match('/^\s*((?:context\.)?[A-Za-z_]\w*)\s*(?:\((.*)\))?\s*$/', $raw, $m) !== 1) {
             throw TemplateException::at($element, "\"$raw\" must look like method, method(item) or method('text')");
         }
         $method = $m[1];
-        $params = $scope->class->handlers[$method]
-            ?? throw TemplateException::at($element, "'$method' is not a public method of {$scope->class->short}");
+        $owner = $scope->owner;
+        if (str_starts_with($method, 'context.')) {
+            $method = substr($method, 8);
+            $member = $this->contextMember($method, $scope, $element);
+            $params = $member['params'];
+            $required = $member['required'];
+            $owner = 'screen';
+        } else {
+            $params = $scope->class->handlers[$method]
+                ?? throw TemplateException::at($element, "'$method' is not a public method of {$scope->class->short}");
+            $required = $scope->class->requiredParams[$method] ?? count($params);
+        }
         foreach ($params as $i => $type) {
             if (!in_array(ltrim($type, '?'), ['string', 'int', 'float', 'bool', 'mixed'], true)) {
                 throw TemplateException::at($element, "$method(): parameter " . ($i + 1) . " is a $type; handler parameters must be string, int, float or bool");
@@ -145,12 +158,11 @@ final class ValueCompiler
             $item = $arg;
             $args[] = ['arg', $arg];
         }
-        $required = $scope->class->requiredParams[$method] ?? count($params);
         if (count($args) < $required || count($args) > count($params)) {
             $takes = $required === count($params) ? (string) $required : "$required to " . count($params);
             throw TemplateException::at($element, "$method() takes $takes argument(s), the template passes " . count($args));
         }
-        $action = $scope->model->action('call', $method, $args);
+        $action = $scope->model->action('call', $method, $args, null, $owner, $params);
         return "root.action({$action->id}, $item);";
     }
 
@@ -160,13 +172,16 @@ final class ValueCompiler
         if ($item !== null) {
             return $item;
         }
+        if (str_starts_with($name, 'context.')) {
+            return $this->context(substr($name, 8), $scope, $at);
+        }
         $class = $scope->class;
         if (array_key_exists($name, $class->constants)) {
             return $this->constant($class->constants[$name], $name, $at);
         }
         if (isset($class->props[$name])) {
             $type = $this->valueType($class->props[$name], $at, "property \$$name");
-            $slint = $scope->model === null ? "root.rk-$name" : 'root.' . $scope->model->bind('property', $name, $type)->slintName();
+            $slint = $scope->model === null ? "root.rk-$name" : 'root.' . $scope->model->bind('property', $name, $type, $scope->owner)->slintName();
             return new Ref($type, $slint, $type === 'list' ? 'string' : null);
         }
         if (isset($class->computed[$name]) && in_array($class->computed[$name], array_keys(self::TYPES), true)) {
@@ -174,7 +189,7 @@ final class ValueCompiler
                 throw TemplateException::at($at, "'$name' is a method; child components can only show their properties (computed values in children aren't supported yet)");
             }
             $type = $class->computed[$name];
-            return new Ref($type, 'root.' . $scope->model->bind('method', $name, $type)->slintName(), $type === 'list' ? 'string' : null);
+            return new Ref($type, 'root.' . $scope->model->bind('method', $name, $type, $scope->owner)->slintName(), $type === 'list' ? 'string' : null);
         }
         if (isset($class->computed[$name])) {
             $type = $class->computed[$name];
@@ -186,6 +201,37 @@ final class ValueCompiler
             throw TemplateException::at($at, "'$name()' takes arguments; templates can only show methods without required parameters");
         }
         throw TemplateException::at($at, "'$name' is not a property, method or constant of {$class->short}");
+    }
+
+    /** {context.x} in a layout's template: method x() of the screen, declared by the layout's context() interface. */
+    private function context(string $member, Scope $scope, Element $at): Ref
+    {
+        $info = $this->contextMember($member, $scope, $at);
+        $interface = $scope->class->context;
+        if ($info['required'] > 0) {
+            throw TemplateException::at($at, "'$member()' takes arguments; templates can only show methods without required parameters");
+        }
+        $type = $info['return'];
+        if (!isset(self::TYPES[$type])) {
+            throw TemplateException::at($at, $type === 'mixed'
+                ? "'$member()' has no return type in $interface; give it one (string, int, float, bool or array) to show it in a template"
+                : "'$member()' returns $type; templates can show string, int, float, bool or array (a list of strings)");
+        }
+        return new Ref($type, 'root.' . $scope->model->bind('method', $member, $type, 'screen')->slintName(), $type === 'list' ? 'string' : null);
+    }
+
+    /** @return array{return: string, params: list<string>, required: int} */
+    private function contextMember(string $member, Scope $scope, Element $at): array
+    {
+        if (!$scope->inLayout() || $scope->model === null) {
+            throw TemplateException::at($at, "context.$member only works in a Layout's template");
+        }
+        $layout = $scope->class;
+        if ($layout->context === '') {
+            throw TemplateException::at($at, "{$layout->short} has no context(); return the interface its screens implement from context() to use context.$member");
+        }
+        return $layout->contextMembers[$member]
+            ?? throw TemplateException::at($at, "'$member' is not declared by {$layout->context}");
     }
 
     private function constant(mixed $value, string $name, Element $at): Ref

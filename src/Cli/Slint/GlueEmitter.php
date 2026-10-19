@@ -30,11 +30,14 @@ final class GlueEmitter
         }
         $code .= "} // namespace\n\n"
             . "std::unique_ptr<rk::Instance> rk::create_instance(std::string_view screen, int64_t window)\n{\n";
+        $frameless = false;
         foreach ($screens as $screen) {
             $name = $screen->class->short;
             $code .= "    if (screen == \"$name\") {\n        return std::make_unique<{$name}Instance>(window);\n    }\n";
+            $frameless = $frameless || $screen->layout !== null;
         }
-        return $code . "    return nullptr;\n}\n";
+        return $code . "    return nullptr;\n}\n\n"
+            . "bool rk::any_frameless()\n{\n    return " . ($frameless ? 'true' : 'false') . ";\n}\n";
     }
 
     private static function instance(ScreenModel $screen): string
@@ -62,7 +65,12 @@ final class GlueEmitter
             . "            rk::emit_action(window, action, std::string_view(arg));\n        });\n"
             . "        handle_->window().on_close_requested([window] {\n"
             . "            rk::emit_close(window);\n"
-            . "            return slint::CloseRequestResponse::KeepWindowShown;\n        });\n    }\n"
+            . "            return slint::CloseRequestResponse::KeepWindowShown;\n        });\n"
+            . ($screen->layout === null ? '' : "        handle_->on_rk_window([this, window](slint::SharedString command) {\n"
+                . "            rk::window_command(window, handle_->window(), std::string_view(command));\n        });\n")
+            . "    }\n"
+            . ($screen->layout === null ? '' : "    bool frameless() const override { return true; }\n"
+                . "    void set_maximized(bool value) override { handle_->set_rk_maximized(value); }\n")
             . "    slint::Window &window() override { return handle_->window(); }\n"
             . "    void show() override { handle_->show(); }\n"
             . "    void hide() override { handle_->hide(); }\n"

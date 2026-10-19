@@ -18,15 +18,22 @@ final class ScreensJson
         foreach ($screens as $screen) {
             $values = [];
             foreach ($screen->bindings as $binding) {
-                $values[] = ['id' => $binding->id, 'source' => $binding->source, 'name' => $binding->name, 'type' => $binding->type];
+                $values[] = ['id' => $binding->id, 'owner' => $binding->owner, 'source' => $binding->source, 'name' => $binding->name, 'type' => $binding->type];
             }
             $actions = [];
             foreach ($screen->actions as $action) {
                 $actions[] = $action->kind === 'set'
-                    ? ['id' => $action->id, 'kind' => 'set', 'target' => $action->target, 'binding' => $action->binding->id, 'type' => $action->binding->type]
-                    : ['id' => $action->id, 'kind' => 'call', 'target' => $action->target, 'args' => $action->args, 'params' => $screen->class->handlers[$action->target] ?? []];
+                    ? ['id' => $action->id, 'owner' => $action->owner, 'kind' => 'set', 'target' => $action->target, 'binding' => $action->binding->id, 'type' => $action->binding->type]
+                    : ['id' => $action->id, 'owner' => $action->owner, 'kind' => 'call', 'target' => $action->target, 'args' => $action->args, 'params' => $action->params ?? $screen->class->handlers[$action->target] ?? []];
             }
-            $out[] = ['class' => $screen->class->name, 'name' => $screen->class->short, 'values' => $values, 'actions' => $actions];
+            $out[] = [
+                'class' => $screen->class->name,
+                'name' => $screen->class->short,
+                'layout' => $screen->layout?->name,
+                'frameless' => $screen->layout !== null,
+                'values' => $values,
+                'actions' => $actions,
+            ];
         }
         return json_encode(['screens' => $out], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . "\n";
     }

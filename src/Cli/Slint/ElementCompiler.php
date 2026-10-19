@@ -57,6 +57,9 @@ final class ElementCompiler
     {
         $each = $element->attributes['each'] ?? null;
         $when = $element->attributes['when'] ?? null;
+        if ($element->namespace === null && $element->tag === 'Content' && ($each !== null || $when !== null)) {
+            throw TemplateException::at($element, "<Content /> can't have each= or when=; the screen is always shown");
+        }
         if ($each !== null && $when !== null) {
             throw TemplateException::at($element, 'an element can\'t have both each="…" and when="…"; wrap it in a <VStack>');
         }
@@ -89,6 +92,19 @@ final class ElementCompiler
 
     private function bare(Element $element, Scope $scope, string $axis): string
     {
+        if ($element->namespace === null && in_array($element->tag, ['Content', 'WindowDrag', 'WindowControls'], true)) {
+            if (!$scope->inLayout() || $scope->hasItems() && $element->tag === 'Content') {
+                $name = $element->tag === 'Content' ? '<Content />' : "<{$element->tag}>";
+                throw TemplateException::at($element, $scope->inLayout()
+                    ? "$name can't be repeated with each="
+                    : "$name is only allowed in a Layout's template");
+            }
+            return match ($element->tag) {
+                'Content' => $this->content($element, $scope, $axis),
+                'WindowDrag' => $this->windowDrag($element, $scope, $axis),
+                default => $this->windowControls($element, $axis),
+            };
+        }
         if ($element->namespace === null && $element->tag === 'Tabs') {
             return $this->tabs($element, $scope, $axis);
         }
@@ -161,7 +177,7 @@ final class ElementCompiler
             $titles[] = Expression::slintString($tab->attributes['title'] ?? '');
         }
         $this->useKit($kit, $spec->component);
-        $action = $scope->model?->action('set', $binding->name, [], $binding);
+        $action = $scope->model?->action('set', $binding->name, [], $binding, $binding->owner);
         $bar = $spec->component . " {\n"
             . "    {$titlesProp->property}: [" . implode(', ', $titles) . "];\n"
             . "    {$selected->property} <=> root.{$binding->slintName()};\n"
@@ -183,15 +199,70 @@ final class ElementCompiler
         $anyGrows = false;
         $children = '';
         foreach ($element->children as $child) {
-            $anyGrows = $anyGrows || $this->flag($child, 'grow');
+            $anyGrows = $anyGrows || $this->flag($child, 'grow') || ($child->namespace === null && $child->tag === 'Content');
             $children .= $this->element($child, $scope, $own);
         }
         $padded = !isset($element->attributes['padded']) || $this->flag($element, 'padded');
-        return self::LAYOUTS[$element->tag] . " {\n"
+        return self::LAYOUTS[$element->tag === 'WindowDrag' ? 'HStack' : $element->tag] . " {\n"
             . '    spacing: ' . ($padded ? '8px' : '0px') . ";\n"
             . '    alignment: ' . ($anyGrows ? 'stretch' : 'start') . ";\n"
             . '    ' . $this->stretch($element, $axis) . "\n"
             . Code::indent($children, 1) . "}\n";
+    }
+
+    /** A layout's <Content />: the screen's template, padded as a window without a layout would be. */
+    private function content(Element $element, Scope $scope, string $axis): string
+    {
+        $this->checkAttributes($element, []);
+        if ($element->children !== []) {
+            throw TemplateException::at($element, "<Content /> can't contain other elements");
+        }
+        $root = $scope->screenRoot;
+        $screen = $scope->screen;
+        if ($root === null || $screen === null) {
+            throw TemplateException::at($element, "<Content /> is only allowed in a Layout's template");
+        }
+        $body = $this->element($root, $screen, 'v');
+        return "VerticalLayout {\n    padding: 16px;\n    alignment: " . ($this->flag($root, 'grow') ? 'stretch' : 'start') . ";\n"
+            . '    ' . ($axis === 'h' ? 'horizontal' : 'vertical') . "-stretch: 1;\n"
+            . Code::indent($body, 1) . "}\n";
+    }
+
+    /** <WindowDrag>: an <HStack> whose background moves the window (double-click: maximise). */
+    private function windowDrag(Element $element, Scope $scope, string $axis): string
+    {
+        $stack = $this->layout($element, $scope, $axis);
+        return "TouchArea {\n"
+            . "    pointer-event(event) => {\n"
+            . "        if (event.kind == PointerEventKind.down && event.button == PointerEventButton.left) {\n"
+            . "            root.rk-window(\"move-start\");\n"
+            . "        }\n"
+            . "    }\n"
+            . "    moved => {\n        if (self.pressed) {\n            root.rk-window(\"move\");\n        }\n    }\n"
+            . "    double-clicked => { root.rk-window(\"toggle-maximize\"); }\n"
+            . '    ' . $this->stretch($element, $axis) . "\n"
+            . Code::indent($stack, 1) . "}\n";
+    }
+
+    /** <WindowControls />: the kit's minimise / maximise / close buttons, handled natively. */
+    private function windowControls(Element $element, string $axis): string
+    {
+        $this->checkAttributes($element, ['grow', 'when']);
+        if ($element->children !== []) {
+            throw TemplateException::at($element, "<WindowControls /> can't contain other elements");
+        }
+        [$kit, $spec] = $this->coreSpec('WindowControls') ?? throw TemplateException::at($element, 'no installed kit provides WindowControls');
+        $this->useKit($kit, $spec->component);
+        $lines = [];
+        if (isset($spec->props['maximized'])) {
+            $lines[] = "{$spec->props['maximized']->property}: root.rk-maximized;";
+        }
+        foreach (['onMinimize' => 'minimize', 'onToggleMaximize' => 'toggle-maximize', 'onClose' => 'close'] as $event => $command) {
+            $callback = $spec->events[$event] ?? throw TemplateException::at($element, "kit {$kit->name}: WindowControls has no $event event");
+            $lines[] = "$callback => { root.rk-window(\"$command\"); }";
+        }
+        $lines[] = $this->stretch($element, $axis);
+        return $spec->component . " {\n" . Code::indent(implode("\n", $lines), 1) . "}\n";
     }
 
     private function kitElement(Element $element, Kit $kit, ElementSpec $spec, Scope $scope, string $axis): string
@@ -209,7 +280,7 @@ final class ElementCompiler
             $raw = $element->attributes[$name];
             $binding = $prop->twoWay !== null ? $this->values->twoWayBinding($raw, $prop, $scope, $element, $name) : null;
             if ($binding !== null) {
-                $action = $scope->model?->action('set', $binding->name, [], $binding);
+                $action = $scope->model?->action('set', $binding->name, [], $binding, $binding->owner);
                 $value = match ($prop->type) {
                     'bool' => 'value ? "1" : "0"',
                     'string' => 'value',

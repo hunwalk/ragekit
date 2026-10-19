@@ -23,10 +23,19 @@ public:
     virtual void set_float(int id, double value) = 0;
     virtual void set_bool(int id, bool value) = 0;
     virtual void set_list(int id, std::vector<slint::SharedString> value) = 0;
+    /** Screens with a layout: frameless windows with an app-drawn title bar. */
+    virtual bool frameless() const { return false; }
+    virtual void set_maximized(bool) {}
 };
 
 /** Generated: creates the compiled screen named `screen`, or nullptr. */
 std::unique_ptr<Instance> create_instance(std::string_view screen, int64_t window);
+
+/** Generated: whether any compiled screen has a layout (frameless window). */
+bool any_frameless();
+
+/** Called by generated code: a frameless window's rk-window(command) callback (see native/slint/window). */
+void window_command(int64_t window, slint::Window &w, std::string_view command);
 
 /** Called by generated code: a screen's action(id, arg) callback / a close request. */
 void emit_action(int64_t window, int action, std::string_view arg);
