@@ -48,6 +48,16 @@ final class SlintBackend implements Backend
         }
     }
 
+    public function minimize(int $window): void
+    {
+        \slint_window_minimize($window);
+    }
+
+    public function setMaximized(int $window, bool $maximized): void
+    {
+        \slint_window_set_maximized($window, $maximized);
+    }
+
     public function quit(): void
     {
         \slint_quit();

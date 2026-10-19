@@ -14,6 +14,10 @@ interface Backend
     /** Closes a window. Closing the last one ends run(). */
     public function close(int $window): void;
 
+    public function minimize(int $window): void;
+
+    public function setMaximized(int $window, bool $maximized): void;
+
     public function quit(): void;
 
     /** Runs the event loop until the last window closes or quit() is called. */

@@ -12,6 +12,7 @@ sources:
   - src/Backend.php
   - src/Component.php
   - src/Screen.php
+  - src/Layout.php
   - src/Events.php
   - src/Modules.php
   - src/ModuleUnavailable.php

@@ -33,6 +33,9 @@ RK_API void rk_set_float(int64_t window, int32_t id, double value);
 RK_API void rk_set_bool(int64_t window, int32_t id, int value);
 RK_API void rk_set_list(int64_t window, int32_t id, const char *const *items, const size_t *lens, size_t count);
 RK_API void rk_close(int64_t window);
+/** Window controls for layouts (frameless windows); see native/slint/window. */
+RK_API void rk_window_minimize(int64_t window);
+RK_API void rk_window_set_maximized(int64_t window, int maximized);
 
 /* Native modules (modules/<name>): loaded at runtime, never linked (rk_modules.cc). */
 

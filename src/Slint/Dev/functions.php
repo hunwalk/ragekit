@@ -90,6 +90,16 @@ function slint_close(int $window): void
     Session::closed($window);
 }
 
+function slint_window_minimize(int $window): void
+{
+    Session::channel()->send('minimize', (string) $window);
+}
+
+function slint_window_set_maximized(int $window, bool $maximized): void
+{
+    Session::channel()->send('maximize', (string) $window, $maximized ? '1' : '0');
+}
+
 function slint_quit(): void
 {
     Session::quit();

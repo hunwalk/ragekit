@@ -188,6 +188,20 @@ RK_API void rk_close(int64_t window)
     slint::invoke_from_event_loop([] { parked.clear(); });
 }
 
+RK_API void rk_window_minimize(int64_t window)
+{
+    if (auto *instance = find(window)) {
+        instance->window().set_minimized(true);
+    }
+}
+
+RK_API void rk_window_set_maximized(int64_t window, int maximized)
+{
+    if (auto *instance = find(window)) {
+        instance->window().set_maximized(maximized != 0);
+    }
+}
+
 RK_API void rk_run(void)
 {
     slint::run_event_loop(slint::EventLoopMode::RunUntilQuit);

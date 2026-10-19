@@ -42,6 +42,8 @@ namespace {
     function slint_list_append(string $item): void { FakeHost::$calls[] = "  item $item"; }
     function slint_list_end(): void { FakeHost::$calls[] = 'list end'; }
     function slint_close(int $window): void { FakeHost::$calls[] = "close $window"; }
+    function slint_window_minimize(int $window): void { FakeHost::$calls[] = "minimize $window"; }
+    function slint_window_set_maximized(int $window, bool $maximized): void { FakeHost::$calls[] = "maximize $window " . ($maximized ? '1' : '0'); }
     function slint_run(): void { FakeHost::$calls[] = 'run'; }
     function slint_quit(): void { FakeHost::$calls[] = 'quit'; }
     function slint_set_event_dispatcher(mixed $fn): void { FakeHost::$eventDispatcher = $fn; }

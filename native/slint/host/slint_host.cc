@@ -113,6 +113,16 @@ void php_slint_close(Int window)
     rk_close(window);
 }
 
+void php_slint_window_minimize(Int window)
+{
+    rk_window_minimize(window);
+}
+
+void php_slint_window_set_maximized(Int window, Bool maximized)
+{
+    rk_window_set_maximized(window, maximized ? 1 : 0);
+}
+
 void php_slint_run()
 {
     rk_run();
