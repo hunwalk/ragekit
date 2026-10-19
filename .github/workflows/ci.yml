@@ -77,4 +77,6 @@ jobs:
         run: DISPLAY=:99 tests/e2e/demos.sh
 
       - name: Title bar (drag, a button in the bar, close)
-        run: DISPLAY=:99 tests/e2e/titlebar.sh
+        run: |
+          DISPLAY=:99 tests/e2e/titlebar.sh
+          FAKE_WM=1 DISPLAY=:99 tests/e2e/titlebar.sh

@@ -83,7 +83,11 @@ void rk::window_command(int64_t window, slint::Window &w, std::string_view comma
 {
     static constexpr std::string_view edges[] = {"top-left", "top", "top-right", "right", "bottom-right", "bottom", "bottom-left", "left"};
     if (command == "move-start") {
-        rk::win::start_move(w);
+        if (rk::win::double_click()) {
+            w.set_maximized(!w.is_maximized());
+        } else {
+            rk::win::start_move(w);
+        }
     } else if (command == "move") {
         rk::win::move(w);
     } else if (command == "minimize") {

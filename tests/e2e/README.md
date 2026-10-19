@@ -9,6 +9,7 @@ manager, so this checks the hand-move fallback, not the WM's move), clicks a but
 bar, closes with the window's own close button:
 
     DISPLAY=:99 tests/e2e/titlebar.sh         # also with --nano
+    FAKE_WM=1 DISPLAY=:99 tests/e2e/titlebar.sh   # the root advertises _NET_WM_MOVERESIZE, nobody takes it
 
 By hand:
 

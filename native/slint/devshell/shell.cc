@@ -180,7 +180,11 @@ void Shell::windowCommand(int64_t id, const std::string &command)
     Win &win = it->second;
     auto &w = mutableWindow(*win.instance);
     if (command == "move-start") {
-        rk::win::start_move(w);
+        if (rk::win::double_click()) {
+            w.set_maximized(!w.is_maximized());
+        } else {
+            rk::win::start_move(w);
+        }
     } else if (command == "move") {
         rk::win::move(w);
     } else if (command == "minimize") {

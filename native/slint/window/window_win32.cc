@@ -4,6 +4,7 @@
 #ifdef _WIN32
 
 #include "window.h"
+#include "double_click.h"
 
 #include <windows.h>
 #include <dwmapi.h>
@@ -47,6 +48,16 @@ void make_floating(slint::Window &window)
     DwmSetWindowAttribute(hwnd, CornerPreference, &corner, sizeof corner); // fails harmlessly before Windows 11
     MARGINS margins{1, 1, 1, 1};
     DwmExtendFrameIntoClientArea(hwnd, &margins); // keeps DWM's shadow on a window without a frame
+}
+
+bool double_click()
+{
+    static DoubleClick clicks;
+    POINT point;
+    if (!GetCursorPos(&point)) {
+        return false;
+    }
+    return clicks.press(static_cast<long long>(GetTickCount64()), point.x, point.y, GetDoubleClickTime(), GetSystemMetrics(SM_CXDOUBLECLK) / 2);
 }
 
 void start_move(slint::Window &window)

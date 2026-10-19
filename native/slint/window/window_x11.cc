@@ -4,6 +4,9 @@
 #if !defined(_WIN32) && !defined(__APPLE__)
 
 #include "window.h"
+#include "double_click.h"
+
+#include <chrono>
 
 #include <dlfcn.h>
 #include <cstdio>
@@ -57,9 +60,15 @@ struct Xlib {
     Display *display = nullptr;
 };
 
-// Opened once, on first use; nullptr when libX11 or the X display isn't there.
+// Opened once, on first use; nullptr when libX11 or the X display isn't there, or when the app
+// runs on native Wayland (prefer_x11() unsets WAYLAND_DISPLAY whenever it switches to X11): our
+// windows aren't X11 windows then, and the pointer XWayland reports may be over another app's.
 Xlib *xlib()
 {
+    const char *wayland = std::getenv("WAYLAND_DISPLAY");
+    if (wayland != nullptr && *wayland != '\0') {
+        return nullptr;
+    }
     static bool tried = false;
     static Xlib lib;
     if (tried) {
@@ -179,7 +188,7 @@ bool moveResize(int direction)
     if (window == 0) {
         return false;
     }
-    // The press grabbed the pointer for our app; the window manager needs it for its own loop.
+    // Releases a grab this connection might hold; the press's grab is winit's (see start_move).
     x->XUngrabPointer(x->display, 0 /* CurrentTime */);
     XEvent event;
     std::memset(&event, 0, sizeof event);
@@ -224,12 +233,24 @@ void make_floating(slint::Window &)
 {
 }
 
+bool double_click()
+{
+    static DoubleClick clicks;
+    int x = 0, y = 0;
+    if (!pointer(x, y)) {
+        return false;
+    }
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    return clicks.press(ms, x, y, 400, 4); // GTK's and Qt's defaults
+}
+
 void start_move(slint::Window &window)
 {
     drag.active = false;
-    if (moveResize(MoveResizeMove)) {
-        return;
-    }
+    // The window manager may not get the pointer: the press grabbed it on winit's connection, which
+    // only winit can release. Stay ready to move by hand: while the WM moves the window, the app
+    // gets no pointer motion, so move() only runs when the WM didn't take the drag.
+    moveResize(MoveResizeMove);
     int x = 0, y = 0;
     if (pointer(x, y)) {
         auto position = window.position();

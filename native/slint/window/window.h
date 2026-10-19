@@ -21,6 +21,12 @@ void prefer_x11();
 /** After the window is shown: the OS's shadow and rounded corners (Windows 11; elsewhere a no-op). */
 void make_floating(slint::Window &window);
 
+/**
+ * The primary button was just pressed on a drag area: whether this press completes a double-click
+ * (then maximise instead of moving). Uses the OS's double-click time and distance.
+ */
+bool double_click();
+
 /** The primary button was just pressed on a drag area: let the OS move the window. */
 void start_move(slint::Window &window);
 

@@ -69,7 +69,8 @@ final class LayoutCompilerTest extends TestCase
         self::assertStringContainsString('in property <bool> rk-maximized;', $out->slint);
         self::assertStringContainsString('root.rk-window("move-start");', $out->slint);
         self::assertStringContainsString('root.rk-window("move");', $out->slint);
-        self::assertStringContainsString('double-clicked => { root.rk-window("toggle-maximize"); }', $out->slint);
+        // Double-clicks are found natively from presses (the OS's move loop eats the releases).
+        self::assertStringNotContainsString('double-clicked', $out->slint);
         self::assertStringContainsString('changed width => { root.rk-window("resized"); }', $out->slint);
         self::assertStringContainsString('root.rk-window("resize-bottom-right");', $out->slint);
         self::assertStringContainsString('ShadWindowControls {', $out->slint);

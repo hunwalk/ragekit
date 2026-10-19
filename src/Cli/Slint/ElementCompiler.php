@@ -228,7 +228,7 @@ final class ElementCompiler
             . Code::indent($body, 1) . "}\n";
     }
 
-    /** <WindowDrag>: an <HStack> whose background moves the window (double-click: maximise). */
+    /** <WindowDrag>: an <HStack> whose background moves the window (a double-click, found natively, maximises). */
     private function windowDrag(Element $element, Scope $scope, string $axis): string
     {
         $stack = $this->layout($element, $scope, $axis);
@@ -239,7 +239,6 @@ final class ElementCompiler
             . "        }\n"
             . "    }\n"
             . "    moved => {\n        if (self.pressed) {\n            root.rk-window(\"move\");\n        }\n    }\n"
-            . "    double-clicked => { root.rk-window(\"toggle-maximize\"); }\n"
             . '    ' . $this->stretch($element, $axis) . "\n"
             . Code::indent($stack, 1) . "}\n";
     }
