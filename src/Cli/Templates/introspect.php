@@ -19,6 +19,7 @@ $map = [
     'RageKit\\Backend' => "$root/src/Backend.php",
     'RageKit\\Component' => "$root/src/Component.php",
     'RageKit\\Screen' => "$root/src/Screen.php",
+    'RageKit\\Layout' => "$root/src/Layout.php",
 ];
 foreach ($input['files'] as $file) {
     foreach (declaredClasses($file) as $class) {
@@ -95,10 +96,14 @@ function typeName(?ReflectionType $type): string
 /** @return array<string, mixed> */
 function describe(ReflectionClass $class, string $projectDir): array
 {
-    $base = ['RageKit\\Component', 'RageKit\\Screen'];
+    $base = ['RageKit\\Component', 'RageKit\\Screen', 'RageKit\\Layout'];
+    // What Layout itself offers templates: its maximised flag and window buttons.
+    $layoutMembers = ['maximized', 'minimize', 'toggleMaximize', 'close'];
+    $inherited = fn(ReflectionProperty|ReflectionMethod $member): bool => in_array($member->getDeclaringClass()->getName(), $base, true)
+        && !in_array($member->getName(), $layoutMembers, true);
     $props = [];
     foreach ($class->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
-        if (!$property->isStatic() && !in_array($property->getDeclaringClass()->getName(), $base, true)) {
+        if (!$property->isStatic() && !$inherited($property)) {
             $props[$property->getName()] = typeName($property->getType());
         }
     }
@@ -106,8 +111,7 @@ function describe(ReflectionClass $class, string $projectDir): array
     $handlers = [];
     $required = [];
     foreach ($class->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-        if ($method->isStatic() || str_starts_with($method->getName(), '__')
-            || in_array($method->getDeclaringClass()->getName(), $base, true)) {
+        if ($method->isStatic() || str_starts_with($method->getName(), '__') || $inherited($method)) {
             continue;
         }
         $handlers[$method->getName()] = array_map(fn(ReflectionParameter $p) => typeName($p->getType()), $method->getParameters());
@@ -126,6 +130,19 @@ function describe(ReflectionClass $class, string $projectDir): array
     $declared = (string) $class->getName()::template();
     $absolute = preg_match('~^([A-Za-z]:[\\\\/]|[\\\\/])~', $declared) === 1;
     $template = $declared === '' ? '' : ($absolute ? $declared : rtrim($projectDir, '/\\') . '/' . $declared);
+    $isLayout = $class->isSubclassOf('RageKit\\Layout');
+    $context = $isLayout ? (string) $class->getName()::context() : '';
+    $members = [];
+    if ($context !== '' && interface_exists($context)) {
+        foreach ((new ReflectionClass($context))->getMethods() as $method) {
+            $members[$method->getName()] = [
+                'return' => typeName($method->getReturnType()),
+                'params' => array_map(fn(ReflectionParameter $p) => typeName($p->getType()), $method->getParameters()),
+                'required' => $method->getNumberOfRequiredParameters(),
+            ];
+        }
+    }
+    $constructor = $class->getConstructor();
     return [
         'name' => $class->getName(),
         'short' => $class->getShortName(),
@@ -138,5 +155,11 @@ function describe(ReflectionClass $class, string $projectDir): array
         'handlers' => (object) $handlers,
         'constants' => (object) $constants,
         'requiredParams' => (object) $required,
+        'isLayout' => $isLayout,
+        'layout' => $class->isSubclassOf('RageKit\\Screen') ? (string) $class->getName()::layout() : '',
+        'context' => $context,
+        'contextMembers' => (object) $members,
+        'interfaces' => $class->getInterfaceNames(),
+        'constructible' => $constructor === null || $constructor->getNumberOfRequiredParameters() === 0,
     ];
 }

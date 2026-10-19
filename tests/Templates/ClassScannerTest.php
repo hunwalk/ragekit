@@ -37,6 +37,46 @@ final class ClassScannerTest extends TestCase
         self::assertSame(Paths::normalize((string) realpath(self::APP)) . '/ui/screens/../shared/history.rk', $history->template);
     }
 
+    /** @return array<string, \RageKit\Cli\Templates\ClassInfo> */
+    private function layouts(): array
+    {
+        $dir = (string) realpath(__DIR__ . '/../fixtures/layouts');
+        return ClassScanner::scan(SourceFiles::php(["$dir/src"]), (string) realpath(__DIR__ . '/../..'), $dir);
+    }
+
+    public function testLayoutIsDescribed(): void
+    {
+        $layout = $this->layouts()['Fix\AppLayout'];
+        self::assertTrue($layout->isLayout);
+        self::assertFalse($layout->isScreen);
+        self::assertSame('Fix\TitleBarContext', $layout->context);
+        self::assertSame(['return' => 'string', 'params' => [], 'required' => 0], $layout->contextMembers['title']);
+        self::assertSame(['return' => 'void', 'params' => ['string'], 'required' => 0], $layout->contextMembers['refresh']);
+        self::assertSame(['query' => 'string', 'maximized' => 'bool'], $layout->props);
+        self::assertSame([], $layout->handlers['minimize']);
+        self::assertSame([], $layout->handlers['toggleMaximize']);
+        self::assertSame([], $layout->handlers['close']);
+        self::assertSame([], $layout->handlers['search']);
+        self::assertArrayNotHasKey('attach', $layout->handlers);
+        self::assertTrue($layout->constructible);
+    }
+
+    public function testScreenNamesItsLayout(): void
+    {
+        $screen = $this->layouts()['Fix\HomeScreen'];
+        self::assertTrue($screen->isScreen);
+        self::assertSame('Fix\AppLayout', $screen->layout);
+        self::assertContains('Fix\TitleBarContext', $screen->interfaces);
+        self::assertSame(['count' => 'int'], $screen->props);
+        self::assertArrayNotHasKey('useLayout', $screen->handlers);
+        self::assertArrayNotHasKey('layoutObject', $screen->handlers);
+    }
+
+    public function testLayoutWithRequiredConstructorArgIsNotConstructible(): void
+    {
+        self::assertFalse($this->layouts()['Fix\ConfiguredLayout']->constructible);
+    }
+
     public function testBrokenClassReportsPhpError(): void
     {
         $file = sys_get_temp_dir() . '/rk-broken-' . uniqid() . '.php';

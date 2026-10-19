@@ -1,0 +1,8 @@
+<VStack padded="false">
+    <WindowDrag>
+        <Label text="{context.title}" />
+        <Entry value="{query}" />
+        <WindowControls />
+    </WindowDrag>
+    <Content />
+</VStack>

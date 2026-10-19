@@ -15,6 +15,9 @@ final class ClassInfo
      * @param array<string, list<string>> $handlers  public methods => parameter types
      * @param array<string, mixed>        $constants class constants (any visibility) => value
      * @param array<string, int>          $requiredParams handler => number of required parameters (missing: all)
+     * @param array<string, array{return: string, params: list<string>, required: int}> $contextMembers
+     *                                              layouts: the methods of the context() interface
+     * @param list<string>                $interfaces interfaces the class implements
      * @param string                     $templateDeclared what template() returned ('' = not declared);
      *                                              $template is that path resolved against the project root
      */
@@ -30,6 +33,12 @@ final class ClassInfo
         public readonly array $constants = [],
         public readonly array $requiredParams = [],
         public readonly string $templateDeclared = '',
+        public readonly bool $isLayout = false,
+        public readonly string $layout = '',
+        public readonly string $context = '',
+        public readonly array $contextMembers = [],
+        public readonly array $interfaces = [],
+        public readonly bool $constructible = true,
     ) {
     }
 
@@ -48,6 +57,12 @@ final class ClassInfo
             $row['constants'],
             (array) ($row['requiredParams'] ?? []),
             (string) ($row['templateDeclared'] ?? ''),
+            (bool) ($row['isLayout'] ?? false),
+            (string) ($row['layout'] ?? ''),
+            (string) ($row['context'] ?? ''),
+            (array) ($row['contextMembers'] ?? []),
+            (array) ($row['interfaces'] ?? []),
+            (bool) ($row['constructible'] ?? true),
         );
     }
 }
