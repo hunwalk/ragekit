@@ -83,7 +83,7 @@ After every event the window shows the screen's new state; there is no manual re
 - **Native modules.** Device and OS features as runtime-loaded libraries with a PHP API, starting
   with audio and HTTP. An app still runs when a module's library is missing.
 - **Your own title bar.** A layout frames screens in a frameless window with an app-drawn bar that
-  moves, maximises and closes the window (Linux; Windows not tested yet).
+  moves, resizes, maximises and closes the window (Windows and Linux).
 - **Nano builds.** One small executable with a stripped-down PHP runtime compiled in.
 
 ## What's inside the executable

@@ -452,9 +452,6 @@ the drag over, so there's no edge snapping), so apps with a layout run on XWayla
 session (text can look blurry with fractional scaling). Set `RAGEKIT_WAYLAND=1` to stay on
 Wayland, where the title bar can't move the window. The corners stay square on Linux.
 
-**Windows:** written but not tested yet; moving, snapping, resizing and the rounded corners still
-need a check on a real Windows machine.
-
 `demo/titlebar` is a complete example.
 
 ## Elements from a kit

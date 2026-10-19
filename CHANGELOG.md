@@ -23,7 +23,7 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
   (double-click maximises), `<WindowControls />` adds the kit's minimise, maximise and close
   buttons, and the edges resize. On Linux the app moves and resizes the window itself (no window
   manager snapping) and these apps run on XWayland in a Wayland session (`RAGEKIT_WAYLAND=1` keeps
-  Wayland). Windows: not tested yet. Example:
+  Wayland). On Windows the OS moves and resizes the window (with snapping). Example:
   `demo/titlebar`.
 
 ## [0.1.2] - 2026-10-19
