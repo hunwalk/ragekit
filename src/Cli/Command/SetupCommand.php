@@ -6,6 +6,7 @@ namespace RageKit\Cli\Command;
 
 use RageKit\Cli\Fetch\Fetcher;
 use RageKit\Cli\RageKitException;
+use RageKit\Cli\Setup\BuildTools;
 use RageKit\Cli\Setup\Installer;
 use RageKit\Cli\Setup\Pins;
 use RageKit\Cli\Setup\ToolchainDir;
@@ -15,6 +16,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
 
 /** `ragekit setup`: installs the pinned toolchain (toolchain/toolchain.yml) into .ragekit/. */
 final class SetupCommand extends Command
@@ -49,6 +51,15 @@ final class SetupCommand extends Command
             }
             $process = new Process(getenv());
             $say = fn(string $line) => $output->writeln("  $line");
+            if (getenv(BuildTools::OFFERED) === false && BuildTools::missing()) {
+                // Composer's scripts can't read the keyboard on Windows: only ask in a console.
+                $canAsk = $input->isInteractive() && stream_isatty(STDIN);
+                BuildTools::offer(
+                    $canAsk ? fn(string $question): bool => (bool) $this->getHelper('question')->ask($input, $output, new ConfirmationQuestion("  $question", true)) : null,
+                    fn(): int => BuildTools::install(),
+                    $say,
+                );
+            }
             foreach ($pins->components() as $name => $component) {
                 if (!$component->available()) {
                     $output->writeln("  <comment>$name: nothing pinned for " . Platform::key() . ' (set its *_HOME variable)</comment>');

@@ -44,10 +44,21 @@ final class MsvcEnvironment
         return $env;
     }
 
-    /** How to install the Build Tools: RageKit's install-build-tools.ps1, wherever RageKit is. */
+    /** RageKit's install-build-tools.ps1, wherever RageKit is (e.g. vendor\\ragekit\\ragekit). */
+    public static function installScript(): string
+    {
+        return str_replace('/', '\\', dirname(__DIR__, 3)) . '\\install-build-tools.ps1';
+    }
+
+    /** The command that installs the Build Tools. */
+    public static function installCommand(): string
+    {
+        return 'powershell -ExecutionPolicy Bypass -File "' . self::installScript() . '"';
+    }
+
+    /** For error messages. */
     public static function installHint(): string
     {
-        $script = str_replace('/', '\\', dirname(__DIR__, 3)) . '\\install-build-tools.ps1';
-        return "to install them: powershell -ExecutionPolicy Bypass -File \"$script\"";
+        return 'to install them: ' . self::installCommand();
     }
 }

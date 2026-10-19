@@ -15,7 +15,9 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 - Windows: `install-build-tools.ps1` installs Visual Studio 2022 Build Tools with the C++
   workload (or adds the workload to an existing install, or finishes an interrupted one).
-  `setup.ps1` offers to run it, and the "Build Tools not found" error points to it.
+  `ragekit setup` offers to run it when they're missing, and the "Build Tools not found" error
+  points to it. Apps can ask during `composer create-project` with the Composer hook
+  `RageKit\Cli\Composer\Hooks::offerBuildTools` (the starter does).
 
 ### Fixed
 

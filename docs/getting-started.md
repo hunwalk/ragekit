@@ -24,7 +24,8 @@ powershell -ExecutionPolicy Bypass -File vendor\ragekit\ragekit\install-build-to
 ```
 
 It does nothing when they're already installed, and adds the C++ workload to an existing Build
-Tools install that lacks it.
+Tools install that lacks it. You rarely need to run it yourself: `composer create-project
+ragekit/starter` and `ragekit setup` ask whether to install the Build Tools when they're missing.
 
 The `ragekit` command itself runs on PHP 8.2+, but TypePHP (the compiler) needs PHP 8.4 or 8.5, so
 in practice you need 8.4+.
