@@ -176,7 +176,8 @@ method, and after every event the window shows the new values:
 </VStack>
 ```
 
-More on templates, elements and child components: [templates.md](templates.md).
+More on templates, elements and child components: [templates.md](templates.md). For a custom title
+bar (a frameless window framed by your own layout), see [Layouts](templates.md#layouts-a-window-frame-and-a-custom-title-bar).
 
 ## Build, run, develop
 

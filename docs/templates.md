@@ -364,6 +364,97 @@ Current limits of child components:
 - A child can't contain other elements (`<History>…</History>`).
 - Components may use other components, but not in a cycle.
 
+## Layouts: a window frame and a custom title bar
+
+A layout is the frame around a screen: a title bar with the app's own buttons, a sidebar, a footer.
+It's a `RageKit\Layout` class with its own template, its own state and its own handlers. A screen
+opts in by naming it:
+
+```php
+final class HomeScreen extends Screen implements TitleBarContext
+{
+    public static function template(): string
+    {
+        return 'templates/HomeScreen.rk';
+    }
+
+    public static function layout(): string
+    {
+        return AppLayout::class;
+    }
+
+    public function title(): string
+    {
+        return 'Home';
+    }
+}
+```
+
+```php
+final class AppLayout extends Layout
+{
+    public string $query = '';
+
+    public static function template(): string
+    {
+        return 'templates/AppLayout.rk';
+    }
+
+    /** What screens using this layout must provide. */
+    public static function context(): string
+    {
+        return TitleBarContext::class;
+    }
+
+    public function submit(): void
+    {
+        $this->context->search($this->query); // the screen it frames
+    }
+}
+```
+
+```xml
+<!-- templates/AppLayout.rk -->
+<VStack padded="false">
+    <WindowDrag>
+        <Label text="{context.title}" grow="true" />
+        <Entry value="{query}" />
+        <Button text="Search" onClick="submit" />
+        <WindowControls />
+    </WindowDrag>
+    <Content />
+</VStack>
+```
+
+- **`<Content />`** is where the screen goes. A layout's template has exactly one.
+- **A window whose screen has a layout has no OS frame**: the layout draws the title bar. The
+  window keeps the OS's shadow (and, on Windows 11, rounded corners) and can still be resized from
+  its edges.
+- **`<WindowDrag>`** lays out its children like `<HStack>`. Pressing on its background and dragging
+  moves the window with the OS's own move, so snapping to screen edges works; double-clicking it
+  maximises or restores. Buttons and inputs inside it still work as usual.
+- **`<WindowControls />`** shows the kit's minimise, maximise/restore and close buttons. Close
+  works like the OS's close button.
+- **The context.** `context()` names an interface; every screen using the layout must implement
+  it, or the build fails. The layout's template shows its methods as `{context.title}` and calls
+  them with `onClick="context.refresh"`; in PHP, `$this->context` is the screen. Inputs in a
+  layout bind the layout's own properties (`{query}` above); pass values on in a handler.
+- **State.** Each window gets its own layout object, created by RageKit (so its constructor can't
+  require arguments). `public bool $maximized` is kept up to date, also when the OS maximised the
+  window. `minimize()`, `toggleMaximize()` and `close()` can be used from your own buttons. A
+  screen reaches its layout as `$this->layout`.
+- `<Content />`, `<WindowDrag>` and `<WindowControls />` are only allowed in a layout's template.
+  Screens without `layout()` keep the ordinary OS window.
+
+**Linux:** an app moves its own window through X11, so apps with a layout run on XWayland in a
+Wayland session (text can look blurry with fractional scaling). Set `RAGEKIT_WAYLAND=1` to stay on
+Wayland, where the title bar can't move the window. The corners stay square on Linux.
+
+**Windows:** written but not tested yet; moving, snapping, resizing and the rounded corners still
+need a check on a real Windows machine.
+
+`demo/titlebar` is a complete example.
+
 ## Elements from a kit
 
 Kits can add elements beyond the core set. Use them with an XML namespace whose value is the
@@ -397,6 +488,12 @@ Template errors are reported as `file:line: message` and stop the build. The mos
 | `'x' is not a public method of X` | Handlers must be public methods of the screen. |
 | `text content isn't supported, use text="…"` | Move the text into an attribute. |
 | `components use each other in a cycle` | A component can't (indirectly) contain itself. |
+| `X's template needs exactly one <Content />` | A layout's template marks where the screen goes, once. |
+| `<Content /> is only allowed in a Layout's template` | Also `<WindowDrag>`, `<WindowControls>`, `context.x`: move them to the layout. |
+| `X uses L, which needs I; implement it` | The screen must implement the interface the layout's `context()` names. |
+| `'x' is not declared by I` | `{context.x}` can only use methods of the context interface. |
+| `two-way inputs in a layout must bind the layout's own properties` | Bind a layout property; pass it to the screen in a handler. |
+| `L must be constructible without arguments` | RageKit creates the layout; drop the constructor's required parameters. |
 
 ## TypePHP and your PHP code
 

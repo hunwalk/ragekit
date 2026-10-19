@@ -17,6 +17,13 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
   (`RageKit\Http\Http::get($url)->send(fn (Response $r) => …)`), with headers, bodies, timeouts,
   downloads to a file with progress, and cancelling. Works in Nano builds. Linux uses libcurl
   (building needs `libcurl4-openssl-dev`), Windows WinHTTP. Example: `demo/fetch`.
+- Layouts: `RageKit\Layout` frames screens that name it in `layout()`, with its own template
+  (`<Content />` marks the screen), state and handlers, and a context interface the screens
+  implement (`{context.title}`). Such windows are frameless: `<WindowDrag>` moves the window with
+  the OS's own move (double-click maximises), `<WindowControls />` adds the kit's minimise,
+  maximise and close buttons, and the edges resize. On Linux these apps run on XWayland in a
+  Wayland session (`RAGEKIT_WAYLAND=1` keeps Wayland). Windows: not tested yet. Example:
+  `demo/titlebar`.
 
 ## [0.1.2] - 2026-10-19
 

@@ -82,7 +82,13 @@ native/
                          calls. Compiled into the app by TypePHP (also in Nano builds).
     devshell/            ragekit-devshell (C++20): runs Slint's interpreter and the app's PHP
                          for `ragekit dev`.
+    window/              what Slint's C++ API lacks for frameless windows (layouts): the OS's
+                         move/resize loop and the floating look. window.h + one file per platform
+                         (window_x11.cc, window_win32.cc), compiled into both bridge and dev shell.
 ```
+
+Platform-specific code follows one pattern: a shared header plus one file per platform, each
+wrapped whole in `#if` (the build compiles whole folders), like `modules/http/native/transfer_*.cc`.
 
 The split between bridge (C++20) and host (C++17) exists because TypePHP's Nano builds require
 C++17 while Slint requires C++20; the two talk through the plain C functions in

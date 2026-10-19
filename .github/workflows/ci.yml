@@ -39,7 +39,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential git tar xvfb x11-utils \
             libfontconfig1 libfreetype6 libxkbcommon0 libxkbcommon-x11-0 libinput10 libgbm1 libudev1 \
-            libx11-xcb1 libxcursor1 libxi6 libxrandr2 \
+            libx11-xcb1 libxcursor1 libxi6 libxrandr2 libxtst6 imagemagick \
             php8.4-dev libphp8.4-embed cmake libgmp-dev libmpfr-dev \
             libcurl4-openssl-dev
 
@@ -75,3 +75,6 @@ jobs:
       # Normal builds link Ubuntu's libphp8.4-embed (see docs/toolchain.md).
       - name: Demos, normal builds (start and close under Xvfb)
         run: DISPLAY=:99 tests/e2e/demos.sh
+
+      - name: Title bar (drag, a button in the bar, close)
+        run: DISPLAY=:99 tests/e2e/titlebar.sh

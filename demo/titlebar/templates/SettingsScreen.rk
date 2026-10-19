@@ -1,0 +1,4 @@
+<VStack>
+    <Label text="Each window has its own layout: search here doesn't touch Home's box." />
+    <Checkbox text="Compact" checked="{compact}" />
+</VStack>

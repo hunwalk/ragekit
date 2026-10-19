@@ -82,6 +82,8 @@ After every event the window shows the screen's new state; there is no manual re
   changes, keeping the screen's state (Linux only for now).
 - **Native modules.** Device and OS features as runtime-loaded libraries with a PHP API, starting
   with audio and HTTP. An app still runs when a module's library is missing.
+- **Your own title bar.** A layout frames screens in a frameless window with an app-drawn bar that
+  moves, maximises and closes the window (Linux; Windows not tested yet).
 - **Nano builds.** One small executable with a stripped-down PHP runtime compiled in.
 
 ## What's inside the executable
@@ -159,6 +161,7 @@ On Windows, run `setup.ps1` instead of `setup.sh`.
 | `demo/kitchen-sink` | every core element, in three tabs (`--kit=material` to compare kits) |
 | `demo/kit-demo` | an app's own kit (`kits/icons`) with SVG icons embedded at build time |
 | `demo/player` | the audio module: play, pause, progress, volume |
+| `demo/titlebar` | a layout: frameless window, own title bar with a search box and window buttons |
 | `demo/fetch` | the http module: a GitHub API lookup and a download with progress (needs the internet) |
 
 Run one with `../../bin/ragekit run` from its folder, or `../../bin/ragekit dev` for hot reload.

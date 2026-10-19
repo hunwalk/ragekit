@@ -4,6 +4,12 @@
 
     DISPLAY=:99 tests/e2e/demos.sh            # extra arguments go to ragekit build, e.g. --nano
 
+`tests/e2e/titlebar.sh` drives `demo/titlebar` (a layout): drags the bar (Xvfb has no window
+manager, so this checks the hand-move fallback, not the WM's move), clicks a button inside the
+bar, closes with the window's own close button:
+
+    DISPLAY=:99 tests/e2e/titlebar.sh         # also with --nano
+
 By hand:
 
     Xvfb :99 -screen 0 1280x1024x24 -nolisten tcp &

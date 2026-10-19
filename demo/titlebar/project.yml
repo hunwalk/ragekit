@@ -1,0 +1,11 @@
+# A frameless window with the app's own title bar (a Layout around the screens):
+#   cd demo/titlebar && ../../bin/ragekit run
+name: titlebar
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  renderer: software
+  kit: shadcn
