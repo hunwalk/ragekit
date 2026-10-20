@@ -450,3 +450,325 @@ export component RkSpinner inherits HorizontalLayout {
         }
     }
 }
+
+// Navigation: a panel to hold a NavList (and anything else).
+export component RkSidebar inherits Rectangle {
+    in property <string> title;
+    background: MaterialPalette.surface_container;
+    border-radius: 16px;
+    min-width: 180px;
+    VerticalLayout {
+        padding: 12px;
+        spacing: 4px;
+        alignment: start;
+        if root.title != "" : MaterialText {
+            text: root.title;
+            style: MaterialTypography.title_small;
+            color: MaterialPalette.on_surface_variant;
+        }
+        @children
+    }
+}
+
+export component RkNavList inherits VerticalLayout {
+    in property <[string]> items;
+    in-out property <string> selected;
+    callback changed(string);
+    spacing: 2px;
+    alignment: start;
+    for item in root.items : Rectangle {
+        height: 40px;
+        border-radius: 20px;
+        background: root.selected == item ? MaterialPalette.secondary_container
+            : (touch.has-hover ? MaterialPalette.surface_container_highest : transparent);
+        MaterialText {
+            x: 16px;
+            height: parent.height;
+            text: item;
+            style: MaterialTypography.label_large;
+            color: root.selected == item ? MaterialPalette.on_secondary_container : MaterialPalette.on_surface_variant;
+            vertical-alignment: center;
+        }
+        touch := TouchArea {
+            clicked => {
+                root.selected = item;
+                root.changed(item);
+            }
+        }
+    }
+}
+
+export component RkBreadcrumb inherits HorizontalLayout {
+    in property <[string]> items;
+    callback selected(string);
+    spacing: 6px;
+    alignment: start;
+    for item[i] in root.items : HorizontalLayout {
+        spacing: 6px;
+        if i > 0 : MaterialText {
+            text: "›";
+            color: MaterialPalette.on_surface_variant;
+            vertical-alignment: center;
+        }
+        Rectangle {
+            width: label.preferred-width;
+            label := MaterialText {
+                text: item;
+                style: MaterialTypography.body_medium;
+                color: i == root.items.length - 1 ? MaterialPalette.on_surface : MaterialPalette.primary;
+                vertical-alignment: center;
+                height: parent.height;
+            }
+            TouchArea { clicked => { root.selected(item); } }
+        }
+    }
+}
+
+component RkPageButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> current;
+    in property <bool> enabled: true;
+    callback clicked;
+    width: max(40px, label.preferred-width + 16px);
+    height: 40px;
+    border-radius: 20px;
+    background: root.current ? MaterialPalette.secondary_container
+        : (touch.has-hover && root.enabled ? MaterialPalette.surface_container_highest : transparent);
+    label := MaterialText {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        style: MaterialTypography.label_large;
+        color: root.enabled ? MaterialPalette.on_surface : MaterialPalette.outline;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component RkPagination inherits HorizontalLayout {
+    in-out property <int> page: 1;
+    in property <int> pages: 1;
+    callback changed(int);
+    spacing: 4px;
+    alignment: start;
+    RkPageButton {
+        text: "‹";
+        enabled: root.page > 1;
+        clicked => {
+            root.page = root.page - 1;
+            root.changed(root.page);
+        }
+    }
+    for n in root.pages : RkPageButton {
+        text: n + 1;
+        current: root.page == n + 1;
+        clicked => {
+            root.page = n + 1;
+            root.changed(root.page);
+        }
+    }
+    RkPageButton {
+        text: "›";
+        enabled: root.page < root.pages;
+        clicked => {
+            root.page = root.page + 1;
+            root.changed(root.page);
+        }
+    }
+}
+
+// One <Section> header of an <Accordion> (the compiler wires open/toggled).
+export component RkAccordionHeader inherits Rectangle {
+    in property <string> title;
+    in property <bool> open;
+    callback toggled;
+    height: 48px;
+    background: touch.has-hover ? MaterialPalette.surface_container_highest : transparent;
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: MaterialPalette.outline_variant;
+    }
+    MaterialText {
+        x: 16px;
+        width: parent.width - 56px;
+        height: parent.height;
+        text: root.title;
+        style: MaterialTypography.title_small;
+        vertical-alignment: center;
+    }
+    MaterialText {
+        x: parent.width - 32px;
+        height: parent.height;
+        text: root.open ? "▾" : "▸";
+        color: MaterialPalette.on_surface_variant;
+        vertical-alignment: center;
+    }
+    touch := TouchArea { clicked => { root.toggled(); } }
+}
+
+// <Text variant="…">: shadcn's typography names mapped onto Material's type scale.
+export component RkText {
+    in property <string> text;
+    in property <string> variant: "p";
+    in property <color> color: root.variant == "muted" || root.variant == "lead" ? MaterialPalette.on_surface_variant : MaterialPalette.on_background;
+    in property <length> font-size: root.variant == "h1" ? MaterialTypography.display_small.font-size
+        : root.variant == "h2" ? MaterialTypography.headline_large.font-size
+        : root.variant == "h3" ? MaterialTypography.headline_small.font-size
+        : root.variant == "h4" ? MaterialTypography.title_large.font-size
+        : root.variant == "lead" || root.variant == "large" ? MaterialTypography.title_medium.font-size
+        : root.variant == "small" ? MaterialTypography.label_medium.font-size
+        : root.variant == "muted" || root.variant == "code" ? MaterialTypography.body_small.font-size
+        : MaterialTypography.body_medium.font-size;
+    in property <int> font-weight: root.variant == "large" || root.variant == "small" ? MaterialTypography.medium
+        : MaterialTypography.regular;
+    in property <TextHorizontalAlignment> horizontal-alignment: left;
+    // code hugs its text (start-aligned); the other variants fill the width, so long text wraps.
+    VerticalLayout {
+        padding-left: root.variant == "blockquote" ? 14px : 0px;
+        HorizontalLayout {
+            alignment: root.variant == "code" ? start : stretch;
+            Rectangle {
+                background: root.variant == "code" ? MaterialPalette.surface_container_highest : transparent;
+                border-radius: 4px;
+                HorizontalLayout {
+                    padding-left: root.variant == "code" ? 6px : 0px;
+                    padding-right: root.variant == "code" ? 6px : 0px;
+                    padding-top: root.variant == "code" ? 2px : 0px;
+                    padding-bottom: root.variant == "code" ? 2px : 0px;
+                    Text {
+                        text: root.text;
+                        color: root.color;
+                        font-size: root.font-size;
+                        font-weight: root.font-weight;
+                        font-italic: root.variant == "blockquote";
+                        font-family: root.variant == "code" ? "monospace" : "";
+                        horizontal-alignment: root.horizontal-alignment;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+    }
+    if root.variant == "blockquote" : Rectangle {
+        x: 0;
+        width: 2px;
+        background: MaterialPalette.outline_variant;
+    }
+}
+
+// <Dialog>: the compiler sizes it to the whole window. Material's scrim and a surface-container-high
+// panel with 28px corners; a click on the scrim or Esc dismisses.
+export component RkDialog inherits Rectangle {
+    in property <string> title;
+    callback dismissed;
+    background: #00000066;
+    TouchArea {
+        clicked => { root.dismissed(); }
+    }
+    keys := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                root.dismissed();
+                return accept;
+            }
+            return reject;
+        }
+        panel := Rectangle {
+            x: (root.width - self.width) / 2;
+            y: (root.height - self.height) / 2;
+            width: min(root.width * 0.9, max(320px, content.preferred-width));
+            height: content.preferred-height;
+            background: MaterialPalette.surface_container_high;
+            border-radius: 28px;
+            TouchArea { } // clicks on the panel don't reach the scrim
+            content := VerticalLayout {
+                width: parent.width;
+                padding: 24px;
+                spacing: 16px;
+                if root.title != "" : MaterialText {
+                    text: root.title;
+                    style: MaterialTypography.headline_small;
+                    color: MaterialPalette.on_surface;
+                    wrap: word-wrap;
+                }
+                @children
+            }
+        }
+    }
+    init => { keys.focus(); }
+}
+
+// <DropdownMenu>: a Material button that opens a menu below it; picking an item calls selected(index).
+export component RkDropdownMenu inherits Rectangle {
+    in property <string> text;
+    in property <string> variant: "outline";
+    in property <[string]> items;
+    in property <[string]> variants;
+    callback selected(int);
+    min-width: button.min-width;
+    min-height: button.min-height;
+    button := RkButton {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        variant: root.variant;
+        clicked => { popup.show(); }
+    }
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: max(200px, root.width);
+        height: root.items.length * 48px + 16px;
+        Rectangle {
+            background: MaterialPalette.surface_container;
+            border-radius: 4px;
+            drop-shadow-blur: 8px;
+            drop-shadow-color: #00000050;
+            VerticalLayout {
+                padding-top: 8px;
+                padding-bottom: 8px;
+                for item[i] in root.items : Rectangle {
+                    height: 48px;
+                    background: touch.has-hover ? MaterialPalette.surface_container_highest : transparent;
+                    Text {
+                        x: 12px;
+                        height: parent.height;
+                        text: item;
+                        font-size: MaterialTypography.body_large.font-size;
+                        color: root.variants[i] == "destructive" ? MaterialPalette.error : MaterialPalette.on_surface;
+                        vertical-alignment: center;
+                    }
+                    touch := TouchArea {
+                        clicked => { root.selected(i); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// A toast ($this->toast('Saved') in PHP), drawn as a Material snackbar; the compiler stacks them.
+export component RkToast inherits Rectangle {
+    in property <string> text;
+    background: MaterialPalette.inverse_surface;
+    border-radius: 4px;
+    drop-shadow-blur: 6px;
+    drop-shadow-color: #00000050;
+    VerticalLayout {
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-top: 14px;
+        padding-bottom: 14px;
+        MaterialText {
+            text: root.text;
+            style: MaterialTypography.body_medium;
+            color: MaterialPalette.inverse_on_surface;
+            wrap: word-wrap;
+        }
+    }
+}

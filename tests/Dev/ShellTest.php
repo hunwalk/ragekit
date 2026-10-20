@@ -69,6 +69,20 @@ final class ShellTest extends TestCase
         self::assertStringNotContainsString('error', strtolower($shellLog));
     }
 
+    public function testViewScreenLoadsInTheInterpreter(): void
+    {
+        [$shell, $entries] = $this->buildShellAndEntries();
+        $log = "$this->dir/app.log";
+        $proc = $this->start($shell, $entries, $log, 'view');
+        $this->waitFor($log, "opened 1\n");
+        fwrite($this->stdin, "stop\n");
+        fclose($this->stdin);
+        self::assertSame(0, proc_close($proc));
+        $shellLog = (string) file_get_contents("$this->dir/shell.log");
+        self::assertStringContainsString('opened window 1 (V)', $shellLog);
+        self::assertStringNotContainsString('error', strtolower($shellLog));
+    }
+
     public function testUnknownScreenAnswersZero(): void
     {
         [$shell, $entries] = $this->buildShellAndEntries();
@@ -185,6 +199,7 @@ final class ShellTest extends TestCase
         file_put_contents("$project/S.rk", '<VStack><Label text="{name}" /></VStack>');
         file_put_contents("$project/F.rk", '<Label text="framed" />');
         file_put_contents("$project/L.rk", '<VStack><WindowDrag><WindowControls /></WindowDrag><Content /></VStack>');
+        file_put_contents("$project/V.rk", "<View style=\"box\">\n@foreach (\$tags as \$tag)\n<Label text=\"{{ \$tag }}\" />\n@endforeach\n<Label text=\"corner\" style=\"corner\" />\n</View>");
         $root = (string) realpath(self::ROOT);
         $context = new BuildContext(Project::load($project), BackendModule::find($root, 'slint', InstalledToolchain::dir()), InstalledToolchain::toolchain(), new NullOutput());
         $shell = ShellBuilder::ensure($context, "$project/build/dev")['path'];
@@ -192,7 +207,11 @@ final class ShellTest extends TestCase
         $framed = new ClassInfo('Demo\\F', 'F', "$project/F.php", true, "$project/F.rk", layout: 'Demo\\L');
         $layout = new ClassInfo('Demo\\L', 'L', "$project/L.php", false, "$project/L.rk", isLayout: true);
         $kits = KitRegistry::load(["$root/kits/material/kit.yml"], $root);
-        $classes = ['Demo\\S' => $class, 'Demo\\F' => $framed, 'Demo\\L' => $layout];
+        $view = new ClassInfo('Demo\\V', 'V', "$project/V.php", true, "$project/V.rk", ['tags' => 'list'], constants: ['STYLES' => [
+            'box' => ['flexDirection' => 'row', 'flexWrap' => 'wrap', 'gap' => 4, 'backgroundColor' => '#111111', 'padding' => 8],
+            'corner' => ['position' => 'absolute', 'top' => 0, 'right' => 0],
+        ]]);
+        $classes = ['Demo\\S' => $class, 'Demo\\F' => $framed, 'Demo\\L' => $layout, 'Demo\\V' => $view];
         $out = DevViews::write(new ViewProject($classes, $kits, 'material', "$project/build/dev", $project), "$project/build/dev");
         return self::$built = [$shell, $out->entries];
     }

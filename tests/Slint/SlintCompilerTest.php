@@ -76,7 +76,7 @@ final class SlintCompilerTest extends TestCase
         ]);
         $slint = $out->slint;
 
-        self::assertStringContainsString('import { RkWindow, RkLabel, RkButton, RkEntry, RkCheckbox } from "', $slint);
+        self::assertStringContainsString('import { RkWindow, RkLabel, RkButton, RkEntry, RkCheckbox, RkToast } from "', $slint);
         self::assertStringContainsString('export component CounterScreen inherits RkWindow {', $slint);
         self::assertStringContainsString("    in property <int> p1;\n", $slint);
         self::assertStringContainsString("    in-out property <string> p2;\n", $slint);
@@ -92,7 +92,7 @@ final class SlintCompilerTest extends TestCase
         self::assertStringContainsString("VerticalLayout {\n            spacing: 8px;\n            alignment: stretch;", $slint);
         self::assertStringContainsString('vertical-stretch: 1;', $slint);
         self::assertSame(['material' => realpath(self::ROOT) . '/kits/material/library/material.slint'], $out->libraries);
-        self::assertSame(['count', 'name', 'show', 'greeting'], array_map(fn($b) => $b->name, array_values($out->screens[0]->bindings)));
+        self::assertSame(['count', 'name', 'show', 'greeting', 'toastTexts'], array_map(fn($b) => $b->name, array_values($out->screens[0]->bindings)));
     }
 
     public function testKeypadFromNestedConstantAndItemArgument(): void

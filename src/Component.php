@@ -25,6 +25,29 @@ abstract class Component
         return '';
     }
 
+    /** @var list<string> toasts fired since the window last read them */
+    private array $pendingToasts = [];
+
+    /**
+     * Shows a short message in the window's bottom-right corner for about 3 seconds, e.g.
+     * `$this->toast('Saved');`. Several stack up. Works in screens and layouts.
+     */
+    public function toast(string $text): void
+    {
+        $this->pendingToasts[] = $text;
+    }
+
+    /**
+     * @internal
+     * @return list<string>
+     */
+    public function takeToasts(): array
+    {
+        $toasts = $this->pendingToasts;
+        $this->pendingToasts = [];
+        return $toasts;
+    }
+
     /** @internal */
     public function mount(App $app): void
     {

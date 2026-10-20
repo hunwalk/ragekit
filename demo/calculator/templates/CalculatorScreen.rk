@@ -1,7 +1,11 @@
 <VStack>
-    <Label text="{pending}" />
-    <Label text="{display}" size="display" />
-    <HStack each="row in KEYPAD">
-        <Button each="key in row" text="{key}" onClick="press(key)" grow="true" />
-    </HStack>
+    <Label text="{{ pending() }}" />
+    <Label text="{{ display() }}" size="display" />
+    @foreach (self::KEYPAD as $row)
+        <HStack>
+            @foreach ($row as $key)
+                <Button text="{{ $key }}" onClick="press($key)" grow="true" />
+            @endforeach
+        </HStack>
+    @endforeach
 </VStack>

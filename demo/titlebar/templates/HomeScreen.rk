@@ -1,5 +1,5 @@
 <VStack>
     <Label text="Drag the bar to move the window, double-click it to maximise." />
-    <Label text="{summary}" size="title" />
+    <Label text="{{ summary() }}" size="title" />
     <Button text="Open settings" variant="outline" onClick="openSettings" />
 </VStack>

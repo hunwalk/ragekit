@@ -21,6 +21,10 @@ final class SlintViewGenerator implements ViewGenerator
     public function generate(ViewProject $project, BuildContext $context): ViewResult
     {
         $compiled = (new SlintCompiler($project->kits, $project->activeKit, $project->projectDir))->compile($project->classes);
+        foreach ($compiled->warnings as $warning) {
+            $context->status->clear();
+            $context->output->writeln("<comment>ragekit: $warning</comment>");
+        }
         $out = $project->outDir;
         @mkdir($out, 0777, true);
         GeneratedFile::write("$out/app.slint", $compiled->slint);

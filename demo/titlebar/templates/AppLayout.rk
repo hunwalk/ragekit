@@ -1,7 +1,7 @@
 <VStack padded="false">
     <WindowDrag>
-        <Label text="  {context.title}" grow="true" />
-        <Entry value="{query}" />
+        <Label text="  {{ $context->title() }}" grow="true" />
+        <Entry value="{{ $query }}" />
         <Button text="Search" variant="secondary" onClick="submit" />
         <WindowControls />
     </WindowDrag>

@@ -60,7 +60,7 @@ final class DevViews
         foreach ($project->classes as $class) {
             $watch[] = $class->template;
         }
-        return new DevOutput($entries, "$outDir/screens.json", array_values(array_unique([...$watch, ...$compiled->images])), $changed);
+        return new DevOutput($entries, "$outDir/screens.json", array_values(array_unique([...$watch, ...$compiled->images])), $changed, $compiled->warnings);
     }
 
     /** @return list<string> files below $dir, relative to it */

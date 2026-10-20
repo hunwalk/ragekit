@@ -127,6 +127,16 @@ final class RuntimeTest extends TestCase
         self::assertSame('abc', $freshLayout->query);
     }
 
+    public function testExpressionArgumentsAreSplit(): void
+    {
+        $json = '{"screens":[{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFixtureScreen","name":"DevFixtureScreen","values":[],'
+            . '"actions":[{"id":1,"kind":"call","target":"add","args":[["expr",0],["expr",1]],"params":["int","string"]}]}]}';
+        $s = new DevFixtureScreen();
+        Bindings::load($json)->dispatch($s, 1, "3\x1Fk");
+        self::assertSame(3, $s->count);
+        self::assertSame('k', $s->last);
+    }
+
     public function testUnknownScreenThrows(): void
     {
         $this->expectException(\RuntimeException::class);

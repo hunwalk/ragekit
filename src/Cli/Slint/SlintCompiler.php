@@ -78,6 +78,7 @@ final class SlintCompiler
             $this->elements->libraries(),
             array_keys($this->elements->imports()),
             $this->values->images(),
+            $this->elements->warnings(),
         );
     }
 
@@ -179,8 +180,12 @@ final class SlintCompiler
             }
             $body = $this->elements->element($frame, new Scope($layout, $model, [], 'layout', $screen, $root), 'v');
         } else {
+            if ($root->namespace === null && $root->tag === 'View') {
+                $this->elements->markRoot($root); // like React Native's root: it fills the window
+            }
             $body = $this->elements->element($root, $screen, 'v');
         }
+        $overlays = $this->elements->takeOverlays() . $this->toasts($model);
         $declarations = '';
         foreach ($model->bindings as $binding) {
             $declarations .= '    ' . ($binding->twoWay ? 'in-out' : 'in') . ' property <' . ValueCompiler::TYPES[$binding->type] . '> ' . $binding->slintName() . ";\n";
@@ -188,11 +193,14 @@ final class SlintCompiler
         $head = "export component {$class->short} inherits $window {\n"
             . "    in property <string> rk-title;\n    title: root.rk-title;\n    callback action(int, string);\n"
             . ($this->dev ? "    in property <bool> rk-on-top;\n    always-on-top: root.rk-on-top;\n" : '');
+        if ($layout === null && $root->namespace === null && $root->tag === 'View') {
+            return $head . $declarations . Code::indent($body . $overlays, 1) . "}\n";
+        }
         if ($layout === null) {
             $alignment = $this->elements->flag($root, 'grow') ? 'stretch' : 'start';
             return $head . $declarations
                 . "    VerticalLayout {\n        padding: 16px;\n        alignment: $alignment;\n"
-                . Code::indent($body, 2) . "    }\n}\n";
+                . Code::indent($body, 2) . "    }\n" . Code::indent($overlays, 1) . "}\n";
         }
         return $head
             . "    no-frame: true;\n    in property <bool> rk-maximized;\n    callback rk-window(string);\n"
@@ -200,7 +208,30 @@ final class SlintCompiler
             . $declarations
             . "    VerticalLayout {\n        padding: 0px;\n        alignment: stretch;\n"
             . Code::indent($body, 2) . "    }\n"
-            . Code::indent(self::grips(), 1) . "}\n";
+            . Code::indent($overlays . self::grips(), 1) . "}\n";
+    }
+
+    /**
+     * Every window's toasts ($this->toast() in PHP): Screen::toastTexts() as a list, shown
+     * bottom-right with the kit's Toast; a timer ticks (action -2) while any is shown, so PHP
+     * drops the expired ones.
+     */
+    private function toasts(ScreenModel $model): string
+    {
+        $kit = $this->kits->get($this->activeKit);
+        if (!isset($kit->elements['Toast'])) {
+            $kit = $this->kits->get('material');
+        }
+        $spec = $kit->elements['Toast'] ?? throw new TemplateException($model->class->template, 0, 'no installed kit provides Toast');
+        $this->elements->useKit($kit, $spec->component);
+        $p = 'root.' . $model->bind('method', 'toastTexts', 'list')->slintName();
+        $text = $spec->props['text']->property ?? 'text';
+        return "if $p.length > 0 : VerticalLayout {\n"
+            . "    width: min(360px, root.width - 32px);\n    height: self.preferred-height;\n"
+            . "    x: root.width - self.width - 16px;\n    y: root.height - self.height - 16px;\n    spacing: 8px;\n"
+            . "    for text in $p : {$spec->component} { $text: text; }\n"
+            . "}\n"
+            . "Timer {\n    interval: 250ms;\n    running: $p.length > 0;\n    triggered => { root.action(-2, \"\"); }\n}\n";
     }
 
     private static function count(Element $element, string $tag): int

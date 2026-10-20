@@ -47,6 +47,9 @@ final class BinderEmitter
             . "    /** Runs an action; returns the id of a property the UI already shows (two-way input), else 0. */\n"
             . "    public static function dispatch(Screen \$screen, int \$action, string \$arg): int\n    {\n{$dispatch}        return 0;\n    }\n\n"
             . $helpers
+            . "    /** Argument \$index of an action that sends several, separated by U+001F. */\n"
+            . "    private static function part(string \$arg, int \$index): string\n    {\n"
+            . "        \$parts = explode(\"\\x1F\", \$arg);\n        return \$index < count(\$parts) ? \$parts[\$index] : '';\n    }\n\n"
             . "    /** @return list<string> */\n"
             . "    private static function strings(array \$items): array\n    {\n"
             . "        \$out = [];\n        foreach (\$items as \$item) {\n            \$out[] = (string) \$item;\n        }\n        return \$out;\n    }\n}\n";
@@ -82,9 +85,11 @@ final class BinderEmitter
             $params = $action->params ?? $screen->class->handlers[$action->target] ?? [];
             $args = [];
             foreach ($action->args as $i => [$kind, $value]) {
-                $args[] = $kind === 'arg'
-                    ? self::convert('$arg', $params[$i] ?? 'string')
-                    : self::literal((string) $value, $params[$i] ?? 'string');
+                $args[] = match ($kind) {
+                    'arg' => self::convert('$arg', $params[$i] ?? 'string'),
+                    'expr' => self::convert("self::part(\$arg, $value)", $params[$i] ?? 'string'),
+                    default => self::literal((string) $value, $params[$i] ?? 'string'),
+                };
             }
             $cases .= "            case {$action->id}:\n"
                 . "                $object->{$action->target}(" . implode(', ', $args) . ");\n"

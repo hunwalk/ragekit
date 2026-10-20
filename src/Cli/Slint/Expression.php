@@ -29,9 +29,10 @@ final class Expression
         return $parts;
     }
 
+    /** Whether the value refers to state: {name} or a Rageblade {{ expression }}. */
     public static function hasRefs(string $raw): bool
     {
-        return preg_match(self::REF, $raw) === 1;
+        return preg_match(self::REF, $raw) === 1 || str_contains($raw, '{{');
     }
 
     /** Escapes text for the inside of a Slint string literal. */

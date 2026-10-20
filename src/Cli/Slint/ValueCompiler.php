@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace RageKit\Cli\Slint;
 
+use RageKit\Cli\Rageblade\Node;
+use RageKit\Cli\Rageblade\Parser;
 use RageKit\Cli\Templates\Element;
 use RageKit\Cli\Templates\PropSpec;
 use RageKit\Cli\Templates\TemplateException;
@@ -20,6 +22,8 @@ final class ValueCompiler
     /** @var list<string> absolute paths of the images templates embed */
     private array $images = [];
 
+    private ?ExpressionCompiler $expressions = null;
+
     /** @param string $projectRoot what image paths in templates are relative to */
     public function __construct(private readonly string $projectRoot = '')
     {
@@ -35,6 +39,14 @@ final class ValueCompiler
     {
         if (!Expression::hasRefs($raw)) {
             return null;
+        }
+        if (str_contains($raw, '{{')) {
+            // value="{{ $name }}" is the Rageblade spelling of value="{name}"; any other expression
+            // is shown one-way (the input displays it; edits don't reach PHP).
+            if (preg_match('/^\s*\{\{\s*\$([A-Za-z_]\w*)\s*\}\}\s*$/', $raw, $m) !== 1) {
+                return null;
+            }
+            $raw = '{' . $m[1] . '}';
         }
         if ($scope->hasItems()) {
             throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs can't be repeated with each= yet");
@@ -69,6 +81,9 @@ final class ValueCompiler
         if ($type === 'image') {
             return $this->image($raw, $element, $attribute);
         }
+        if (str_contains($raw, '{{')) {
+            return $this->rageblade($raw, $type, $scope, $element, $attribute);
+        }
         if ($type === 'string') {
             $out = '';
             foreach ($parts as [$kind, $text]) {
@@ -101,6 +116,27 @@ final class ValueCompiler
         };
     }
 
+    private function expressions(): ExpressionCompiler
+    {
+        return $this->expressions ??= new ExpressionCompiler($this);
+    }
+
+    /** An attribute with {{ expressions }}: text for strings, else one expression of the attribute's type. */
+    private function rageblade(string $raw, string $type, Scope $scope, Element $element, string $attribute): string
+    {
+        if ($type === 'string') {
+            return $this->expressions()->compileText($raw, $scope, $element);
+        }
+        if (preg_match('/^\s*\{\{(.*)\}\}\s*$/s', $raw, $m) !== 1 || str_contains($m[1], '}}')) {
+            throw TemplateException::at($element, "$attribute=\"$raw\": a $type attribute takes one {{ expression }} and no other text");
+        }
+        $ref = $this->expressions()->compile(Parser::parse($m[1], $element->file, $element->line), $scope, $element);
+        if ($ref->type === $type || ($type === 'float' && $ref->type === 'int')) {
+            return $ref->slint;
+        }
+        throw TemplateException::at($element, "$attribute=\"$raw\": expected " . ($type === 'int' ? 'an' : 'a') . " $type, the expression is " . ($ref->type === 'int' ? 'an' : 'a') . " {$ref->type}");
+    }
+
     /** A literal image path (project-relative or absolute), embedded at build time via @image-url. */
     private function image(string $raw, Element $element, string $attribute): string
     {
@@ -120,6 +156,9 @@ final class ValueCompiler
     {
         if ($scope->model === null) {
             throw TemplateException::at($element, 'child components can\'t handle events yet; put interactive elements in the screen\'s template');
+        }
+        if (str_contains($raw, '$')) {
+            return $this->ragebladeHandler($raw, $scope, $element);
         }
         if (preg_match('/^\s*((?:context\.)?[A-Za-z_]\w*)\s*(?:\((.*)\))?\s*$/', $raw, $m) !== 1) {
             throw TemplateException::at($element, "\"$raw\" must look like method, method(item) or method('text')");
@@ -164,6 +203,84 @@ final class ValueCompiler
         }
         $action = $scope->model->action('call', $method, $args, null, $owner, $params);
         return "root.action({$action->id}, $item);";
+    }
+
+    /**
+     * onClick="move($i, 1)": a method call whose arguments are expressions. Literal arguments are
+     * converted at build time; the others are evaluated in Slint and sent as text, separated by
+     * U+001F when there are several.
+     */
+    private function ragebladeHandler(string $raw, Scope $scope, Element $element): string
+    {
+        $node = Parser::parse($raw, $element->file, $element->line);
+        if ($node->kind === 'call') {
+            $method = (string) $node->value;
+            $params = $scope->class->handlers[$method]
+                ?? throw TemplateException::at($element, "'$method' is not a public method of {$scope->class->short}");
+            $required = $scope->class->requiredParams[$method] ?? count($params);
+            $owner = $scope->owner;
+        } elseif ($node->kind === 'context') {
+            $method = (string) $node->value;
+            $member = $this->contextMember($method, $scope, $element);
+            $params = $member['params'];
+            $required = $member['required'];
+            $owner = 'screen';
+        } else {
+            throw TemplateException::at($element, "\"$raw\" must call a method, e.g. pick(\$item)");
+        }
+        if (count($node->children) < $required || count($node->children) > count($params)) {
+            $takes = $required === count($params) ? (string) $required : "$required to " . count($params);
+            throw TemplateException::at($element, "$method() takes $takes argument(s), the template passes " . count($node->children));
+        }
+        $args = [];
+        $pieces = [];
+        foreach ($node->children as $i => $arg) {
+            $param = ltrim($params[$i] ?? 'string', '?');
+            if (in_array($arg->kind, ['string', 'int', 'float', 'bool'], true)) {
+                $this->checkLiteral($method, $i, $arg, $param, $element);
+                $args[] = ['literal', $arg->kind === 'bool' ? ($arg->value ? 'true' : 'false') : (string) $arg->value];
+                continue;
+            }
+            $ref = $this->expressions()->compile($arg, $scope, $element);
+            $fits = match ($param) {
+                'int' => $ref->type === 'int',
+                'float' => in_array($ref->type, ['int', 'float'], true),
+                'bool' => $ref->type === 'bool',
+                default => in_array($ref->type, ['string', 'int', 'float'], true),
+            };
+            if (!$fits) {
+                throw TemplateException::at($element, "$method(): argument " . ($i + 1) . ' is ' . self::article($ref->type) . ', the parameter is ' . self::article($param));
+            }
+            $args[] = ['expr', count($pieces)];
+            $pieces[] = $ref->type === 'bool' ? '\{(' . $ref->slint . ' ? "1" : "0")}' : '\{' . $ref->slint . '}';
+        }
+        $action = $scope->model->action('call', $method, $args, null, $owner, $params);
+        return "root.action({$action->id}, \"" . implode('\u{1f}', $pieces) . '");';
+    }
+
+    /** A literal handler argument must fit its parameter: no silent (int) 'abc' = 0. */
+    private function checkLiteral(string $method, int $i, Node $arg, string $param, Element $element): void
+    {
+        $value = $arg->value;
+        $fits = match ($param) {
+            'int' => $arg->kind === 'int' || ($arg->kind === 'string' && preg_match('/^-?\d+$/', (string) $value) === 1),
+            'float' => in_array($arg->kind, ['int', 'float'], true) || ($arg->kind === 'string' && is_numeric($value)),
+            'bool' => $arg->kind === 'bool' || ($arg->kind === 'string' && in_array(strtolower((string) $value), ['true', 'false', '1', '0'], true)),
+            default => $arg->kind !== 'bool',
+        };
+        if (!$fits) {
+            $shown = match ($arg->kind) {
+                'string' => "the text '$value'",
+                'bool' => $value ? 'true' : 'false',
+                default => (string) $value,
+            };
+            throw TemplateException::at($element, "$method(): argument " . ($i + 1) . " is $shown, the parameter is " . self::article($param));
+        }
+    }
+
+    private static function article(string $type): string
+    {
+        return ($type === 'int' ? 'an ' : 'a ') . $type;
     }
 
     public function resolve(string $name, Scope $scope, Element $at): Ref

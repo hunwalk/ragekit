@@ -24,6 +24,7 @@ By hand:
     python3 -I tests/e2e/xclick.py 48,268 121,268      # click x,y pairs (window coords = screen)
     python3 -I tests/e2e/xdrag.py 20,269 320,269    # press, move in steps, release (sliders)
     python3 -I tests/e2e/xtype.py Ann <id>             # focus the window (no WM does it), type into the focused field
+    python3 -I tests/e2e/xkey.py Escape <id>           # press one key by X keysym name
     python3 -I tests/e2e/xclose.py <id>                # WM_DELETE_WINDOW, like the close button
 
 ## Dev mode (`ragekit dev`)

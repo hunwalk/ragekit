@@ -72,7 +72,11 @@ final class Bindings
         $args = [];
         foreach ($spec['args'] as $i => [$kind, $value]) {
             $type = $spec['params'][$i] ?? 'string';
-            $args[] = $kind === 'arg' ? self::convert($arg, $type) : self::literal((string) $value, $type);
+            $args[] = match ($kind) {
+                'arg' => self::convert($arg, $type),
+                'expr' => self::convert(explode("\x1F", $arg)[(int) $value] ?? '', $type),
+                default => self::literal((string) $value, $type),
+            };
         }
         $object->{$spec['target']}(...$args);
         return 0;

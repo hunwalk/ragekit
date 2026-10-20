@@ -1,19 +1,21 @@
 <VStack>
     <Label text="GitHub repository" size="title" />
-    <Label when="!available" text="Network unavailable (the http module isn't next to the app)" />
+    @if (!available())
+        <Label text="Network unavailable (the http module isn't next to the app)" />
+    @endif
     <HStack>
-        <Entry value="{repo}" grow="true" />
+        <Entry value="{{ $repo }}" grow="true" />
         <Button text="Look up" onClick="lookUp" />
     </HStack>
-    <Label text="{status}" />
-    <Card title="{name}">
-        <Label text="{description}" />
-        <Label text="{stats}" />
+    <Label text="{{ $status }}" />
+    <Card title="{{ $name }}">
+        <Label text="{{ $description }}" />
+        <Label text="{{ $stats }}" />
     </Card>
     <HStack>
         <Button text="Download README" variant="secondary" onClick="download" />
         <Button text="Cancel" variant="outline" onClick="cancel" />
     </HStack>
-    <Progress value="{downloaded}" />
-    <Label text="{downloadStatus}" />
+    <Progress value="{{ $downloaded }}" />
+    <Label text="{{ $downloadStatus }}" />
 </VStack>

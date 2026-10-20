@@ -117,6 +117,18 @@ final class LayoutCompilerTest extends TestCase
         self::assertSame(['string'], $action->params);
     }
 
+    public function testRagebladeContextCalls(): void
+    {
+        $out = $this->compile([
+            $this->layout('<VStack><Label text="{{ $context->title() }}!" /><Button text="r" onClick="$context->refresh(\'bar\')" /><Content /></VStack>'),
+            $this->screen('<Label text="x" />'),
+        ]);
+        $model = $out->screens[0];
+        self::assertSame('screen', $model->bindings['screen:method:title']->owner);
+        $action = $model->actions[0];
+        self::assertSame(['screen', 'refresh', [['literal', 'bar']]], [$action->owner, $action->target, $action->args]);
+    }
+
     public function testScreenWithoutLayoutUnchanged(): void
     {
         file_put_contents("$this->dir/Plain.rk", '<Label text="{count}" />');

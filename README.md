@@ -30,6 +30,14 @@ final class CounterScreen extends \RageKit\Screen
 {
     public int $count = 0;
     public string $name = '';
+    /** @var list<string> */
+    public array $history = [];
+
+    // React Native-style styles: named style objects, used by name in the template
+    public const STYLES = [
+        'card' => ['backgroundColor' => '#18181b', 'borderRadius' => 12, 'padding' => 16, 'gap' => 8],
+        'tags' => ['flexDirection' => 'row', 'flexWrap' => 'wrap', 'gap' => 6],
+    ];
 
     public static function template(): string
     {
@@ -44,18 +52,26 @@ final class CounterScreen extends \RageKit\Screen
     public function increment(): void
     {
         $this->count++;
+        $this->history[] = "+1 → {$this->count}";
     }
 }
 ```
 
-```xml
-<!-- templates/CounterScreen.rk -->
-<VStack>
-    <Label text="Count: {count}" />
+```blade
+<!-- templates/CounterScreen.rk: Rageblade, compiled ahead of time -->
+<View style="card">
+    <Label text="Count: {{ $count }}" size="title" />
     <Button text="+" onClick="increment" />
-    <Entry value="{name}" />
-    <Label text="{greeting}" />
-</VStack>
+    <Entry value="{{ $name }}" />
+    <Label text="{{ greeting() }}" />
+    @if (count($history) > 0)
+        <View style="tags">
+            @foreach ($history as $entry)
+                <Badge text="{{ $entry }}" variant="secondary" />
+            @endforeach
+        </View>
+    @endif
+</View>
 ```
 
 ```php
@@ -76,8 +92,11 @@ After every event the window shows the screen's new state; there is no manual re
   machine code.
 - **A drawn UI.** Slint renders the widgets itself, so you get custom looks (rounded cards,
   shadows, themes) on every platform. They are not the OS's own widgets.
+- **Rageblade templates and React Native styles.** Blade-style `{{ }}`, `@foreach`, `@if` and
+  `@style`, typed and compiled ahead of time; style objects with React Native's property names;
+  `<View>` with flexbox (including wrapping) and absolute positioning.
 - **Kits.** The same template builds with `shadcn` (dark, minimal) or `material` (Material 3), or
-  with a kit you write.
+  with a kit you write. `ragekit eject shadcn` copies a kit into your app to restyle it freely.
 - **Hot reload.** `ragekit dev` reloads templates in place and restarts only your PHP when it
   changes, keeping the screen's state (Linux only for now).
 - **Native modules.** Device and OS features as runtime-loaded libraries with a PHP API, starting

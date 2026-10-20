@@ -22,7 +22,7 @@ if ($mode === 'module') {
     fwrite($out, Protocol::encode('quit'));
     exit(0);
 }
-fwrite($out, Protocol::encode('open', $mode === 'nope' ? 'Nope' : ($mode === 'framed' ? 'F' : 'S'), 'Fake', '300', '200'));
+fwrite($out, Protocol::encode('open', match ($mode) { 'nope' => 'Nope', 'framed' => 'F', 'view' => 'V', default => 'S' }, 'Fake', '300', '200'));
 $reply = Protocol::decode((string) fgets($in));
 file_put_contents($log, implode(' ', $reply) . "\n", FILE_APPEND);
 if ($mode === 'open-exit3') {
@@ -39,7 +39,9 @@ if ($mode === 'framed') {
     }
     exit(0);
 }
-fwrite($out, Protocol::encode('set-string', $reply[1], 'p1', "tab\there"));
+fwrite($out, $mode === 'view'
+    ? Protocol::encode('set-list', $reply[1], 'p1', 'php', 'slint', 'desktop')
+    : Protocol::encode('set-string', $reply[1], 'p1', "tab\there"));
 fwrite($out, Protocol::encode('run'));
 while (($line = fgets($in)) !== false) {
     file_put_contents($log, implode(' ', Protocol::decode($line)) . "\n", FILE_APPEND);

@@ -1,13 +1,15 @@
 <VStack>
-    <Label text="Count: {count}" />
+    <Label text="Count: {{ $count }}" />
     <HStack>
         <Button text="−" onClick="decrement" grow="true" />
         <Button text="+" onClick="increment" grow="true" />
         <Button text="Reset" onClick="reset" />
     </HStack>
-    <Entry value="{name}" />
-    <Label text="{greeting}" />
-    <Checkbox text="Show history" checked="{showHistory}" />
-    <History when="showHistory" entries="{history}" />
+    <Entry value="{{ $name }}" />
+    <Label text="{{ greeting() }}" />
+    <Checkbox text="Show history" checked="{{ $showHistory }}" />
+    @if ($showHistory)
+        <History entries="{{ $history }}" />
+    @endif
     <Button text="About…" onClick="about" />
 </VStack>

@@ -111,3 +111,56 @@ elements:
     component: ShadSpinner
     props:
       size: { type: string, enum: [sm, md, lg] }
+  Sidebar:
+    component: ShadSidebar
+    props:
+      title: string
+    children: true
+  NavList:
+    component: ShadNavList
+    props:
+      items: list
+      selected: { type: string, twoWay: changed }
+  Breadcrumb:
+    component: ShadBreadcrumb
+    props:
+      items: list
+    events:
+      onSelect: { callback: selected, value: string }
+  Pagination:
+    component: ShadPagination
+    props:
+      page: { type: int, twoWay: changed }
+      pages: int
+  AccordionHeader:
+    component: ShadAccordionHeader
+    props:
+      title: string
+      open: bool
+    events:
+      onToggle: toggled
+  Text:
+    component: ShadText
+    props:
+      text: string
+      variant: { type: string, enum: [h1, h2, h3, h4, p, lead, large, small, muted, code, blockquote] }
+  Dialog:
+    component: ShadDialog
+    children: true
+    props:
+      title: string
+    events:
+      onDismiss: dismissed
+  DropdownMenu:
+    component: ShadDropdownMenu
+    props:
+      text: string
+      variant: { type: string, enum: [default, secondary, outline, ghost, destructive] }
+      items: list
+      variants: list
+    events:
+      onSelect: { callback: selected, value: int }
+  Toast:
+    component: ShadToast
+    props:
+      text: string

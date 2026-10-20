@@ -120,3 +120,56 @@ elements:
     component: RkSpinner
     props:
       size: { type: string, enum: [sm, md, lg] }
+  Sidebar:
+    component: RkSidebar
+    props:
+      title: string
+    children: true
+  NavList:
+    component: RkNavList
+    props:
+      items: list
+      selected: { type: string, twoWay: changed }
+  Breadcrumb:
+    component: RkBreadcrumb
+    props:
+      items: list
+    events:
+      onSelect: { callback: selected, value: string }
+  Pagination:
+    component: RkPagination
+    props:
+      page: { type: int, twoWay: changed }
+      pages: int
+  AccordionHeader:
+    component: RkAccordionHeader
+    props:
+      title: string
+      open: bool
+    events:
+      onToggle: toggled
+  Text:
+    component: RkText
+    props:
+      text: string
+      variant: { type: string, enum: [h1, h2, h3, h4, p, lead, large, small, muted, code, blockquote] }
+  Dialog:
+    component: RkDialog
+    children: true
+    props:
+      title: string
+    events:
+      onDismiss: dismissed
+  DropdownMenu:
+    component: RkDropdownMenu
+    props:
+      text: string
+      variant: { type: string, enum: [default, secondary, outline, ghost, destructive] }
+      items: list
+      variants: list
+    events:
+      onSelect: { callback: selected, value: int }
+  Toast:
+    component: RkToast
+    props:
+      text: string

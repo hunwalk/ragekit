@@ -7,6 +7,7 @@ namespace RageKit\Cli;
 use RageKit\Cli\Command\BuildCommand;
 use RageKit\Cli\Command\DevCommand;
 use RageKit\Cli\Command\DoctorCommand;
+use RageKit\Cli\Command\EjectCommand;
 use RageKit\Cli\Command\SetupCommand;
 use RageKit\Cli\Project\Paths;
 use Symfony\Component\Console\Application as ConsoleApplication;
@@ -24,6 +25,7 @@ final class Application extends ConsoleApplication
             new DevCommand($rageKitRoot),
             new SetupCommand($rageKitRoot),
             new DoctorCommand($rageKitRoot),
+            new EjectCommand($rageKitRoot),
         ]);
         $this->setDefaultCommand('build');
     }

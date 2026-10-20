@@ -18,6 +18,8 @@ final class DevOutput
         public readonly string $screensJson,
         public readonly array $watch,
         public readonly bool $changed = true,
+        /** @var list<string> hints for the author, e.g. old template syntax */
+        public readonly array $warnings = [],
     ) {
     }
 }

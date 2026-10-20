@@ -619,3 +619,332 @@ export component ShadSpinner inherits HorizontalLayout {
         }
     }
 }
+
+// Navigation: a panel to hold a NavList (and anything else).
+export component ShadSidebar inherits Rectangle {
+    in property <string> title;
+    background: Shad.card;
+    border-radius: Shad.radius;
+    border-width: 1px;
+    border-color: Shad.border;
+    min-width: 180px;
+    VerticalLayout {
+        padding: 12px;
+        spacing: 8px;
+        alignment: start;
+        if root.title != "" : Text {
+            text: root.title;
+            color: Shad.muted;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        @children
+    }
+}
+
+export component ShadNavList inherits VerticalLayout {
+    in property <[string]> items;
+    in-out property <string> selected;
+    callback changed(string);
+    spacing: 2px;
+    alignment: start;
+    for item in root.items : Rectangle {
+        height: 32px;
+        border-radius: 6px;
+        background: root.selected == item ? Shad.secondary : (touch.has-hover ? Shad.hover : transparent);
+        animate background { duration: 100ms; }
+        Text {
+            x: 10px;
+            height: parent.height;
+            text: item;
+            color: root.selected == item ? Shad.foreground : Shad.muted;
+            font-weight: root.selected == item ? 600 : 400;
+            vertical-alignment: center;
+        }
+        touch := TouchArea {
+            clicked => {
+                root.selected = item;
+                root.changed(item);
+            }
+        }
+    }
+}
+
+export component ShadBreadcrumb inherits HorizontalLayout {
+    in property <[string]> items;
+    callback selected(string);
+    spacing: 6px;
+    alignment: start;
+    for item[i] in root.items : HorizontalLayout {
+        spacing: 6px;
+        if i > 0 : Text {
+            text: "/";
+            color: Shad.muted;
+            vertical-alignment: center;
+        }
+        Rectangle {
+            width: label.preferred-width;
+            label := Text {
+                text: item;
+                color: i == root.items.length - 1 ? Shad.foreground : (touch.has-hover ? Shad.foreground : Shad.muted);
+                font-weight: i == root.items.length - 1 ? 600 : 400;
+                vertical-alignment: center;
+                height: parent.height;
+            }
+            touch := TouchArea { clicked => { root.selected(item); } }
+        }
+    }
+}
+
+component ShadPageButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> current;
+    in property <bool> enabled: true;
+    callback clicked;
+    width: max(32px, label.preferred-width + 16px);
+    height: 32px;
+    border-radius: 6px;
+    border-width: root.current ? 1px : 0px;
+    border-color: Shad.border;
+    background: touch.has-hover && root.enabled && !root.current ? Shad.hover : transparent;
+    label := Text {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: root.enabled ? Shad.foreground : Shad.muted;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component ShadPagination inherits HorizontalLayout {
+    in-out property <int> page: 1;
+    in property <int> pages: 1;
+    callback changed(int);
+    spacing: 4px;
+    alignment: start;
+    ShadPageButton {
+        text: "‹";
+        enabled: root.page > 1;
+        clicked => {
+            root.page = root.page - 1;
+            root.changed(root.page);
+        }
+    }
+    for n in root.pages : ShadPageButton {
+        text: n + 1;
+        current: root.page == n + 1;
+        clicked => {
+            root.page = n + 1;
+            root.changed(root.page);
+        }
+    }
+    ShadPageButton {
+        text: "›";
+        enabled: root.page < root.pages;
+        clicked => {
+            root.page = root.page + 1;
+            root.changed(root.page);
+        }
+    }
+}
+
+// One <Section> header of an <Accordion> (the compiler wires open/toggled).
+export component ShadAccordionHeader inherits Rectangle {
+    in property <string> title;
+    in property <bool> open;
+    callback toggled;
+    height: 44px;
+    border-width: 0px;
+    background: transparent;
+    Rectangle {
+        y: parent.height - 1px;
+        height: 1px;
+        background: Shad.border;
+    }
+    Text {
+        x: 12px;
+        width: parent.width - 48px;
+        height: parent.height;
+        text: root.title;
+        color: Shad.foreground;
+        font-weight: 600;
+        vertical-alignment: center;
+    }
+    Text {
+        x: parent.width - 28px;
+        height: parent.height;
+        text: root.open ? "▾" : "▸";
+        color: Shad.muted;
+        vertical-alignment: center;
+    }
+    TouchArea { clicked => { root.toggled(); } }
+}
+
+// <Text variant="…">: shadcn's typography. color / font-size / font-weight / horizontal-alignment
+// default to the variant and can be overridden by the template's text styles.
+export component ShadText {
+    in property <string> text;
+    in property <string> variant: "p";
+    in property <color> color: root.variant == "muted" || root.variant == "lead" ? Shad.muted : Shad.foreground;
+    in property <length> font-size: root.variant == "h1" ? 36px : root.variant == "h2" ? 30px : root.variant == "h3" ? 24px
+        : root.variant == "h4" ? 20px : root.variant == "lead" ? 18px : root.variant == "large" ? 16px
+        : root.variant == "small" ? 12px : root.variant == "muted" || root.variant == "code" ? 13px : Shad.font-size;
+    in property <int> font-weight: root.variant == "h1" ? 800
+        : root.variant == "h2" || root.variant == "h3" || root.variant == "h4" || root.variant == "large" ? 600
+        : root.variant == "small" ? 500 : 400;
+    in property <TextHorizontalAlignment> horizontal-alignment: left;
+    // code hugs its text (start-aligned); the other variants fill the width, so long text wraps.
+    VerticalLayout {
+        padding-left: root.variant == "blockquote" ? 14px : 0px;
+        HorizontalLayout {
+            alignment: root.variant == "code" ? start : stretch;
+            Rectangle {
+                background: root.variant == "code" ? Shad.secondary : transparent;
+                border-radius: 4px;
+                HorizontalLayout {
+                    padding-left: root.variant == "code" ? 6px : 0px;
+                    padding-right: root.variant == "code" ? 6px : 0px;
+                    padding-top: root.variant == "code" ? 2px : 0px;
+                    padding-bottom: root.variant == "code" ? 2px : 0px;
+                    Text {
+                        text: root.text;
+                        color: root.color;
+                        font-size: root.font-size;
+                        font-weight: root.font-weight;
+                        font-italic: root.variant == "blockquote";
+                        font-family: root.variant == "code" ? "monospace" : "";
+                        horizontal-alignment: root.horizontal-alignment;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+    }
+    if root.variant == "blockquote" : Rectangle {
+        x: 0;
+        width: 2px;
+        background: Shad.border;
+    }
+}
+
+// <Dialog>: the compiler sizes it to the whole window. A dimmed scrim (a click on it dismisses),
+// a centred panel with the title and the template's elements, and Esc dismisses.
+export component ShadDialog inherits Rectangle {
+    in property <string> title;
+    callback dismissed;
+    background: #000000b3;
+    TouchArea {
+        clicked => { root.dismissed(); }
+    }
+    keys := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                root.dismissed();
+                return accept;
+            }
+            return reject;
+        }
+        panel := Rectangle {
+            x: (root.width - self.width) / 2;
+            y: (root.height - self.height) / 2;
+            width: min(root.width * 0.9, max(360px, content.preferred-width));
+            height: content.preferred-height;
+            background: Shad.background;
+            border-radius: Shad.radius;
+            border-width: 1px;
+            border-color: Shad.border;
+            drop-shadow-blur: 24px;
+            drop-shadow-color: #00000080;
+            TouchArea { } // clicks on the panel don't reach the scrim
+            content := VerticalLayout {
+                width: parent.width;
+                padding: 24px;
+                spacing: 12px;
+                if root.title != "" : Text {
+                    text: root.title;
+                    color: Shad.foreground;
+                    font-size: 18px;
+                    font-weight: 600;
+                    wrap: word-wrap;
+                }
+                @children
+            }
+        }
+    }
+    init => { keys.focus(); }
+}
+
+// <DropdownMenu>: a button that opens a list of items below it; picking one calls selected(index).
+export component ShadDropdownMenu inherits Rectangle {
+    in property <string> text;
+    in property <string> variant: "outline";
+    in property <[string]> items;
+    in property <[string]> variants;
+    callback selected(int);
+    min-width: button.min-width;
+    height: 36px;
+    button := ShadButton {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        variant: root.variant;
+        clicked => { popup.show(); }
+    }
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: max(180px, root.width);
+        height: root.items.length * 32px + 10px;
+        Rectangle {
+            background: Shad.card;
+            border-radius: Shad.radius;
+            border-width: 1px;
+            border-color: Shad.border;
+            drop-shadow-blur: 12px;
+            drop-shadow-color: #00000060;
+            VerticalLayout {
+                padding: 4px;
+                for item[i] in root.items : Rectangle {
+                    height: 32px;
+                    border-radius: 4px;
+                    background: touch.has-hover ? Shad.hover : transparent;
+                    Text {
+                        x: 8px;
+                        height: parent.height;
+                        text: item;
+                        color: root.variants[i] == "destructive" ? Shad.destructive : Shad.foreground;
+                        vertical-alignment: center;
+                    }
+                    touch := TouchArea {
+                        clicked => { root.selected(i); }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// A toast ($this->toast('Saved') in PHP); the compiler stacks them bottom-right.
+export component ShadToast inherits Rectangle {
+    in property <string> text;
+    background: Shad.card;
+    border-radius: Shad.radius;
+    border-width: 1px;
+    border-color: Shad.border;
+    drop-shadow-blur: 16px;
+    drop-shadow-color: #00000080;
+    VerticalLayout {
+        padding: 16px;
+        Text {
+            text: root.text;
+            color: Shad.foreground;
+            font-weight: 500;
+            wrap: word-wrap;
+        }
+    }
+}

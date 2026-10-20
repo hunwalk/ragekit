@@ -1,3 +1,5 @@
 <VStack padded="false">
-    <Label each="entry in entries" text="{entry}" />
+    @foreach ($entries as $entry)
+        <Label text="{{ $entry }}" />
+    @endforeach
 </VStack>

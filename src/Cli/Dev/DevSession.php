@@ -42,6 +42,9 @@ final class DevSession
     /** whether what the shell loads changed in the last generate() */
     private bool $uiChanged = false;
 
+    /** @var array<string, true> hints already shown this session */
+    private array $warned = [];
+
     /** a reload failed: the shell's UI is behind the generated files until one succeeds */
     private bool $uiStale = false;
 
@@ -173,6 +176,12 @@ final class DevSession
         }
         $this->entries = $views->entries;
         $this->templateFiles = $views->watch;
+        foreach ($views->warnings as $warning) {
+            if (!isset($this->warned[$warning])) {
+                $this->warned[$warning] = true;
+                $this->context->output->writeln("<comment>ragekit: $warning</comment>");
+            }
+        }
         $this->uiChanged = $views->changed;
         if ($this->goodScreens === '') {
             $this->goodScreens = (string) file_get_contents($views->screensJson);

@@ -66,15 +66,55 @@ Every kit that provides a core element accepts exactly these attributes for it:
 | `Alert` | `title`, `text`, `variant` (`default`, `destructive`) |
 | `Skeleton` | `width`, `height` (int, pixels) |
 | `Spinner` | `size` (`sm`, `md`, `lg`) |
+| `Sidebar` | `title`, contains other elements |
+| `NavList` | `items` (list), `selected` (two-way string) |
+| `Breadcrumb` | `items` (list), event `onSelect` passing the clicked item (string) |
+| `Pagination` | `page` (two-way int), `pages` (int) |
 | `TabBar` | `titles` (list), `selected` (two-way int): used by `<Tabs>` in templates |
+| `AccordionHeader` | `title`, `open` (bool), event `onToggle`: used by `<Accordion>` in templates |
+| `Text` | `text`, `variant` (h1, h2, h3, h4, p, lead, large, small, muted, code, blockquote); also takes text styles, so it declares `color`, `font-size`, `font-weight`, `horizontal-alignment` (see `ShadText`) |
+| `Dialog` | `title`, contains other elements, event `onDismiss`; the compiler sizes it to the whole window: draw the scrim, the centred panel, and call `onDismiss` on a scrim click or Esc (see `ShadDialog`) |
+| `DropdownMenu` | `text`, `variant` (Button's), `items` (list), `variants` (list: `default`/`destructive` per item), event `onSelect` passing the picked index (int): used by `<DropdownMenu>` in templates |
+| `Toast` | `text`: one toast; the compiler stacks them bottom-right of every window |
 | `WindowControls` | `maximized` (bool), events `onMinimize`, `onToggleMaximize`, `onClose`: used by layouts |
 
 Elements with a fixed size (`Avatar`, `Skeleton`, `Spinner`) should sit in a left-aligned row
 (inherit `HorizontalLayout` with `alignment: start`): a fixed width directly in a column limits the
 column's maximum width, and with it the window's.
 
+A kit's `Label` component must inherit Slint's `Text` (directly or through another component): text
+styles (`color`, `fontSize`, `fontWeight`, `textAlign`) are set on it directly.
+
 A kit may give a core element extra attributes. A template that uses them then builds only with
 that kit.
+
+## Customizing a kit: eject
+
+Styles (see [templates](templates.md#styles)) change an element's size, margin and position, but
+how a kit *draws* its elements (colours, corners, hover effects) is the kit's own Slint code. To
+change that, copy the kit into your app:
+
+```sh
+ragekit eject                 # lists the kits you can eject
+ragekit eject shadcn          # copies it to kits/<your project's name>/ and uses it
+ragekit eject shadcn brand    # … named "brand"; --no-use copies without switching project.yml
+```
+
+- The copy lands in `kits/<name>/` and `project.yml` switches to it (`ragekit: kit: <name>`; the
+  rest of the file, comments included, stays as it was).
+- Its components are renamed after the new name (`ShadButton` → `GalleryButton`), so the copy and
+  the original never clash. The original stays installed, and Material is still the fallback for
+  core elements a kit lacks.
+- From then on it's your app's code: edit its `.slint` files freely (in shadcn, the colours and
+  corner radius are one global block at the top of `shadcn.slint`). `ragekit dev` reloads kit edits.
+  RageKit's later updates to the original kit don't reach the copy; its `kit.yml` notes where it
+  came from.
+- Code a kit fetches (Material's `library/`) isn't copied; the build fetches it again. Eject tells
+  you the line to add to your `.gitignore`.
+- The name must be lowercase letters, digits and dashes, and not an installed kit's. Eject never
+  overwrites an existing `kits/<name>/`.
+- Keep the [core element contract](#the-core-element-contract) when you edit, so your templates
+  keep building.
 
 ## Elements a kit adds
 
@@ -191,8 +231,10 @@ elements:
   - `enum`: the allowed literal values (templates can't bind enum attributes);
   - `twoWay`: makes it an input (see below).
 - **`events`**: template attribute → Slint callback, e.g. `onClick: clicked`. When the callback
-  fires, RageKit calls the template's handler. Arguments the callback passes are ignored; declare
-  it without any (`callback clicked;`).
+  fires, RageKit calls the template's handler; declare such a callback without arguments
+  (`callback clicked;`). An event that hands the handler a value (a clicked item) is a map:
+  `onSelect: { callback: selected, value: string }` with `callback selected(string);` in Slint;
+  the template then names just the method (`onSelect="goTo"`), which takes that one value.
 - **`children: true`**: the element can contain other elements. Its component places them with
   Slint's `@children`.
 

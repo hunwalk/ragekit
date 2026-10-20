@@ -23,7 +23,8 @@ final class KitTest extends TestCase
         self::assertStringEndsWith('/kits/material/rk-material.slint', $material->entry);
         self::assertStringEndsWith('/kits/material/library/material.slint', $material->libraries['material']);
         self::assertSame(['Label', 'Button', 'Entry', 'Checkbox', 'Slider', 'Select', 'Image', 'Progress', 'Card', 'Separator', 'TabBar', 'WindowControls',
-            'Switch', 'Textarea', 'RadioGroup', 'Toggle', 'Badge', 'Avatar', 'Alert', 'Skeleton', 'Spinner'], array_keys($material->elements));
+            'Switch', 'Textarea', 'RadioGroup', 'Toggle', 'Badge', 'Avatar', 'Alert', 'Skeleton', 'Spinner',
+            'Sidebar', 'NavList', 'Breadcrumb', 'Pagination', 'AccordionHeader', 'Text', 'Dialog', 'DropdownMenu', 'Toast'], array_keys($material->elements));
 
         $entry = $material->elements['Entry']->props['value'];
         self::assertSame('string', $entry->type);
@@ -46,7 +47,8 @@ final class KitTest extends TestCase
 
     public function testShippedKitsAgreeOnTheCoreContract(): void
     {
-        $new = ['Switch', 'Textarea', 'RadioGroup', 'Toggle', 'Badge', 'Avatar', 'Alert', 'Skeleton', 'Spinner'];
+        $new = ['Switch', 'Textarea', 'RadioGroup', 'Toggle', 'Badge', 'Avatar', 'Alert', 'Skeleton', 'Spinner',
+            'Sidebar', 'NavList', 'Breadcrumb', 'Pagination'];
         foreach ($new as $name) {
             self::assertContains($name, ElementCompiler::CORE, "$name is a core element");
         }
@@ -61,9 +63,11 @@ final class KitTest extends TestCase
             ksort($props);
             $events = array_keys($spec->events);
             sort($events);
-            return [$props, $events, $spec->children];
+            $values = $spec->eventValues;
+            ksort($values);
+            return [$props, $events, $values, $spec->children];
         };
-        foreach ([...ElementCompiler::CORE, 'TabBar', 'WindowControls'] as $element) {
+        foreach ([...ElementCompiler::CORE, 'TabBar', 'WindowControls', 'AccordionHeader', 'Toast'] as $element) {
             self::assertSame($describe('material', $element), $describe('shadcn', $element), "$element differs between kits");
         }
     }

@@ -17,6 +17,36 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
   (`RageKit\Http\Http::get($url)->send(fn (Response $r) => …)`), with headers, bodies, timeouts,
   downloads to a file with progress, and cancelling. Works in Nano builds. Linux uses libcurl
   (building needs `libcurl4-openssl-dev`), Windows WinHTTP. Example: `demo/fetch`.
+- **Rageblade** templates: a Blade-flavoured syntax in `.rk` files, compiled ahead of time like
+  the rest: `{{ expressions }}` (a strict, typed PHP subset: properties, methods, constants,
+  arithmetic, comparisons, logic, ternaries, `count()`), `@foreach ($list as $i => $item)`,
+  `@if`/`@elseif`/`@else`, and handlers with expression arguments (`onClick="move($i, 1)"`).
+  The older syntax (`{name}`, `each=`, `when=`) still builds; `each=`/`when=` print a hint.
+- **Styles, React Native's way:** a `STYLES` constant with React Native's property names,
+  `style="card row"`, conditional styles with `@style(['selected' => $cond])`, inline style
+  attributes that take expressions (`width="{{ $p * 200 }}"`), and `transition` to animate style
+  changes. Kit elements take the outer-box styles (size, margin, flex, position, opacity; Label
+  also text styles).
+- **`<View>`:** React Native's box: background, border, corners, clip and shadow around a flexbox
+  layout (direction, wrap, justify/align, gap, padding), with `position: 'absolute'` children for
+  corners and overlays. A root `<View>` fills the window. The demos use Rageblade now, and
+  kitchen-sink's Layout tab shows View, wrapping, a corner badge and a styled selectable list.
+- `ragekit eject <kit> [name]` copies a kit (shadcn, material, or a Composer kit) into the app's
+  `kits/` folder with its components renamed, and switches `project.yml` to it, so the app can
+  change how elements are drawn. `ragekit eject` lists the kits.
+- `<Dialog open="{{ $confirmDelete }}" title="…">`: a dialog over the whole window, shown while a
+  bool property is true; a click outside it or Esc closes it.
+- `$this->toast('Saved')` in a screen or layout shows a message in the window's bottom-right
+  corner for about 3 seconds.
+- `<DropdownMenu text="⋯">` with `<MenuItem text="…" onClick="…" />`s: a button that opens a menu;
+  each item calls its own handler.
+- `<Text variant="h1">Settings</Text>`: React Native's Text with shadcn's typography variants (`h1`
+  to `h4`, `p`, `lead`, `large`, `small`, `muted`, `code`, `blockquote`); the text is the element's
+  content, `{{ expressions }}` included. `Label` is unchanged.
+- Navigation core elements `Sidebar`, `NavList` (two-way `selected`), `Breadcrumb` (`onSelect`
+  calls the handler with the clicked item), `Pagination` (two-way `page`) and `<Accordion>` with
+  `<Section>`s (one open at a time), in shadcn and Material; kitchen-sink's new Navigation tab
+  shows them. Kit events can now pass a value: `onSelect: { callback: selected, value: string }`.
 - Core elements `Switch`, `Textarea`, `RadioGroup`, `Toggle`, `Badge`, `Avatar`, `Alert`,
   `Skeleton` and `Spinner`, in the shadcn and Material kits. `demo/kitchen-sink` shows them in two
   new tabs and has its own title bar.

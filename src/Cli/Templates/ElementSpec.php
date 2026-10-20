@@ -12,12 +12,15 @@ final class ElementSpec
     /**
      * @param array<string, PropSpec> $props  attribute => spec
      * @param array<string, string>   $events attribute (onClick) => Slint callback (clicked)
+     * @param array<string, string>   $eventValues attribute => type of the value its callback passes
+     *                                             (onSelect: the clicked item, a string), handed to the handler
      */
     public function __construct(
         public readonly string $component,
         public readonly array $props,
         public readonly array $events,
         public readonly bool $children,
+        public readonly array $eventValues = [],
     ) {
     }
 
@@ -30,11 +33,17 @@ final class ElementSpec
         foreach ($raw['props'] ?? [] as $name => $prop) {
             $props[(string) $name] = PropSpec::fromYaml((string) $name, $prop, "$where.props.$name");
         }
-        return new self(
-            (string) $raw['component'],
-            $props,
-            array_map('strval', $raw['events'] ?? []),
-            (bool) ($raw['children'] ?? false),
-        );
+        $events = [];
+        $values = [];
+        foreach ($raw['events'] ?? [] as $attribute => $event) {
+            // onClick: clicked, or onSelect: { callback: selected, value: string } for one that passes a value
+            if (is_array($event)) {
+                $events[(string) $attribute] = (string) ($event['callback'] ?? throw new RageKitException("$where.events.$attribute: needs a callback"));
+                $values[(string) $attribute] = (string) ($event['value'] ?? 'string');
+            } else {
+                $events[(string) $attribute] = (string) $event;
+            }
+        }
+        return new self((string) $raw['component'], $props, $events, (bool) ($raw['children'] ?? false), $values);
     }
 }

@@ -1,14 +1,16 @@
 <VStack>
     <Label text="Player" size="title" />
-    <Label text="{status}" />
-    <Label when="!available" text="Audio unavailable (the audio module isn't next to the app)" />
+    <Label text="{{ $status }}" />
+    @if (!available())
+        <Label text="Audio unavailable (the audio module isn't next to the app)" />
+    @endif
     <HStack>
         <Button text="Play" onClick="play" />
         <Button text="Pause" variant="secondary" onClick="pause" />
         <Button text="Stop" variant="outline" onClick="stop" />
     </HStack>
-    <Progress value="{progress}" />
-    <Label text="{timeText}" />
-    <Label text="{volumeText}" />
-    <Slider value="{volume}" />
+    <Progress value="{{ progress() }}" />
+    <Label text="{{ timeText() }}" />
+    <Label text="{{ volumeText() }}" />
+    <Slider value="{{ $volume }}" />
 </VStack>

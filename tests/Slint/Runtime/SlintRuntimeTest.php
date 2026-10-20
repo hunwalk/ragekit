@@ -65,6 +65,14 @@ final class SlintRuntimeTest extends TestCase
         self::assertFalse($screen->layoutObject()?->maximized);
     }
 
+    public function testToastTickOnlyResyncs(): void
+    {
+        $screen = new CounterScreen();
+        $this->app->open($screen, title: 'Counter');
+        $this->event(1, -2);
+        self::assertSame([], FakeHost::$calls, 'nothing changed, nothing pushed, no handler');
+    }
+
     public function testLayoutCloseButtonClosesWindow(): void
     {
         $this->app->open(new FramedScreen(), title: 'One');
