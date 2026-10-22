@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace RageKit\Cli\Templates;
+namespace RageKit\Cli\Kits;
 
 /** What `ragekit eject` did. */
 final class EjectResult

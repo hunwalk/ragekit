@@ -10,7 +10,7 @@ use RageKit\Cli\Project\ConfigMerger;
 use RageKit\Cli\Project\SourceFiles;
 use RageKit\Cli\RageKitException;
 use RageKit\Cli\Templates\ClassScanner;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\ViewGenerator;
 use RageKit\Cli\Templates\ViewProject;
 

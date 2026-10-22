@@ -9,7 +9,7 @@ use RageKit\Cli\Slint\BinderEmitter;
 use RageKit\Cli\Slint\CompiledViews;
 use RageKit\Cli\Slint\SlintCompiler;
 use RageKit\Cli\Templates\ClassInfo;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\TemplateException;
 
 /** Rageblade directives and {{ }} in screen templates. */

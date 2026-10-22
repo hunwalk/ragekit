@@ -1,5 +1,5 @@
 # RageKit's shadcn-style kit: dark zinc palette, 8px radius, 1px borders. Self-contained Slint.
-# Same element contract as kits/material (see src/Cli/Templates/ElementSpec.php and PropSpec.php).
+# Same element contract as kits/material (see src/Cli/Kits/ElementSpec.php and PropSpec.php).
 name: shadcn
 entry: shadcn.slint
 window: ShadWindow

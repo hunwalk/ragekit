@@ -6,10 +6,10 @@ namespace RageKit\Tests\Slint;
 
 use PHPUnit\Framework\TestCase;
 use RageKit\Cli\Slint\CompiledViews;
-use RageKit\Cli\Slint\Expression;
+use RageKit\Cli\Slint\TextAttribute;
 use RageKit\Cli\Slint\SlintCompiler;
 use RageKit\Cli\Templates\ClassInfo;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\TemplateException;
 use RageKit\Tests\Support\InstalledToolchain;
 
@@ -443,7 +443,7 @@ final class SlintCompilerTest extends TestCase
     {
         $out = $this->compileIn(__DIR__ . '/../fixtures', [$this->screen('S', '<VStack xmlns:p="pics"><p:ImageButton image="assets/my icon é.svg" text="Go" /></VStack>')]);
         $abs = (string) realpath(__DIR__ . '/../fixtures/assets/my icon é.svg');
-        self::assertStringContainsString('image: @image-url(' . Expression::slintString($abs) . ');', $out->slint);
+        self::assertStringContainsString('image: @image-url(' . TextAttribute::slintString($abs) . ');', $out->slint);
         self::assertSame([$abs], $out->images);
     }
 

@@ -7,7 +7,7 @@ namespace RageKit\Tests\Dev;
 use PHPUnit\Framework\TestCase;
 use RageKit\Cli\Dev\DevViews;
 use RageKit\Cli\Templates\ClassInfo;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\ViewProject;
 
 final class DevViewsTest extends TestCase

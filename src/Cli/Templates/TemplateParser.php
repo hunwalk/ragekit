@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace RageKit\Cli\Templates;
 
+use RageKit\Cli\Rageblade\Directives;
+
 /** Reads .rk files (XML + Rageblade directives) into Element trees. Whitespace between elements is ignored. */
 final class TemplateParser
 {
@@ -24,7 +26,7 @@ final class TemplateParser
         if (trim($xml) === '') {
             throw new TemplateException($file, 0, 'template is empty');
         }
-        $xml = Rageblade::toXml($xml, $file);
+        $xml = Directives::toXml($xml, $file);
         $document = new \DOMDocument();
         $previous = libxml_use_internal_errors(true);
         $loaded = $document->loadXML($xml, LIBXML_NONET);

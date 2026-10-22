@@ -7,7 +7,7 @@ namespace RageKit\Cli\Slint;
 use RageKit\Cli\Rageblade\Node;
 use RageKit\Cli\Rageblade\Parser;
 use RageKit\Cli\Templates\Element;
-use RageKit\Cli\Templates\PropSpec;
+use RageKit\Cli\Kits\PropSpec;
 use RageKit\Cli\Templates\TemplateException;
 
 /**
@@ -37,7 +37,7 @@ final class ValueCompiler
 
     public function twoWayBinding(string $raw, PropSpec $prop, Scope $scope, Element $element, string $attribute): ?Binding
     {
-        if (!Expression::hasRefs($raw)) {
+        if (!TextAttribute::hasRefs($raw)) {
             return null;
         }
         if (str_contains($raw, '{{')) {
@@ -51,7 +51,7 @@ final class ValueCompiler
         if ($scope->hasItems()) {
             throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs can't be repeated with each= yet");
         }
-        $parts = Expression::parts($raw);
+        $parts = TextAttribute::parts($raw);
         $name = $parts[0][1];
         if (str_starts_with($name, 'context.')) {
             throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs in a layout must bind the layout's own properties; pass values to the screen from a handler through \$this->context");
@@ -71,12 +71,12 @@ final class ValueCompiler
     /** @param list<string>|null $enum */
     public function value(string $raw, string $type, ?array $enum, Scope $scope, Element $element, string $attribute): string
     {
-        $parts = Expression::parts($raw);
+        $parts = TextAttribute::parts($raw);
         if ($enum !== null) {
-            if (Expression::hasRefs($raw) || !in_array($raw, $enum, true)) {
+            if (TextAttribute::hasRefs($raw) || !in_array($raw, $enum, true)) {
                 throw TemplateException::at($element, "$attribute=\"$raw\" must be one of: " . implode(', ', $enum));
             }
-            return Expression::slintString($raw);
+            return TextAttribute::slintString($raw);
         }
         if ($type === 'image') {
             return $this->image($raw, $element, $attribute);
@@ -88,7 +88,7 @@ final class ValueCompiler
             $out = '';
             foreach ($parts as [$kind, $text]) {
                 if ($kind === 'text') {
-                    $out .= Expression::escape($text);
+                    $out .= TextAttribute::escape($text);
                     continue;
                 }
                 $ref = $this->resolve($text, $scope, $element);
@@ -140,7 +140,7 @@ final class ValueCompiler
     /** A literal image path (project-relative or absolute), embedded at build time via @image-url. */
     private function image(string $raw, Element $element, string $attribute): string
     {
-        if (Expression::hasRefs($raw)) {
+        if (TextAttribute::hasRefs($raw)) {
             throw TemplateException::at($element, "$attribute=\"$raw\": image props take a file path; binding images to PHP values isn't supported yet");
         }
         $absolute = preg_match('~^([A-Za-z]:[\\\\/]|[\\\\/])~', $raw) === 1;
@@ -149,7 +149,7 @@ final class ValueCompiler
             throw TemplateException::at($element, "$attribute=\"$raw\": file not found");
         }
         $this->images[] = $path;
-        return '@image-url(' . Expression::slintString(str_replace('\\', '/', $path)) . ')';
+        return '@image-url(' . TextAttribute::slintString(str_replace('\\', '/', $path)) . ')';
     }
 
     public function handler(string $raw, Scope $scope, Element $element): string
@@ -354,7 +354,7 @@ final class ValueCompiler
     private function constant(mixed $value, string $name, Element $at): Ref
     {
         if (is_string($value)) {
-            return new Ref('string', Expression::slintString($value));
+            return new Ref('string', TextAttribute::slintString($value));
         }
         if (is_bool($value)) {
             return new Ref('bool', $value ? 'true' : 'false');
@@ -368,14 +368,14 @@ final class ValueCompiler
         if (is_array($value) && array_is_list($value)) {
             $scalars = array_filter($value, 'is_scalar');
             if (count($scalars) === count($value)) {
-                return new Ref('list', '[' . implode(', ', array_map(fn($v) => Expression::slintString((string) $v), $value)) . ']', 'string');
+                return new Ref('list', '[' . implode(', ', array_map(fn($v) => TextAttribute::slintString((string) $v), $value)) . ']', 'string');
             }
             $rows = [];
             foreach ($value as $row) {
                 if (!is_array($row) || count(array_filter($row, 'is_scalar')) !== count($row)) {
                     throw TemplateException::at($at, "constant $name: only lists of values or lists of lists of values are supported");
                 }
-                $rows[] = '[' . implode(', ', array_map(fn($v) => Expression::slintString((string) $v), $row)) . ']';
+                $rows[] = '[' . implode(', ', array_map(fn($v) => TextAttribute::slintString((string) $v), $row)) . ']';
             }
             return new Ref('list', '[' . implode(', ', $rows) . ']', 'list');
         }

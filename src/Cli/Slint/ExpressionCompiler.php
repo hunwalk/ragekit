@@ -30,7 +30,7 @@ final class ExpressionCompiler
                 $text = var_export((float) $node->value, true);
                 return new Ref('float', str_contains($text, '.') || str_contains($text, 'E') ? $text : "$text.0");
             case 'string':
-                return new Ref('string', Expression::slintString((string) $node->value));
+                return new Ref('string', TextAttribute::slintString((string) $node->value));
             case 'bool':
                 return new Ref('bool', $node->value ? 'true' : 'false');
             case 'var':
@@ -68,7 +68,7 @@ final class ExpressionCompiler
         $offset = 0;
         preg_match_all('/\{\{(.*?)\}\}|\{((?:context\.)?[A-Za-z_][A-Za-z0-9_]*)\}/s', $raw, $matches, PREG_OFFSET_CAPTURE | PREG_SET_ORDER);
         foreach ($matches as $match) {
-            $out .= Expression::escape(substr($raw, $offset, $match[0][1] - $offset));
+            $out .= TextAttribute::escape(substr($raw, $offset, $match[0][1] - $offset));
             $offset = $match[0][1] + strlen($match[0][0]);
             if (isset($match[2]) && $match[2][1] >= 0) {
                 $ref = $this->values->resolve($match[2][0], $scope, $at);
@@ -81,7 +81,7 @@ final class ExpressionCompiler
             $node = Parser::parse($match[1][0], $at->file, $at->line);
             $out .= $this->textPart($node, $scope, $at);
         }
-        return '"' . $out . Expression::escape(substr($raw, $offset)) . '"';
+        return '"' . $out . TextAttribute::escape(substr($raw, $offset)) . '"';
     }
 
     /** A value that must be a bool (conditions of @if, ?:, !, &&, ||, @style). */
@@ -206,7 +206,7 @@ final class ExpressionCompiler
     private function textPart(Node $node, Scope $scope, Element $at): string
     {
         if ($node->kind === 'string') {
-            return Expression::escape((string) $node->value);
+            return TextAttribute::escape((string) $node->value);
         }
         if ($node->kind === 'binary' && $node->value === '.') {
             return implode('', array_map(fn(Node $part) => $this->textPart($part, $scope, $at), self::joined($node)));

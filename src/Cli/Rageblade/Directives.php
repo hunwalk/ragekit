@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace RageKit\Cli\Templates;
+namespace RageKit\Cli\Rageblade;
+
+use RageKit\Cli\Templates\TemplateException;
 
 /**
  * Rageblade: the Blade-flavoured parts of .rk templates, turned into plain XML before parsing.
@@ -17,7 +19,7 @@ namespace RageKit\Cli\Templates;
  * plain PHP: & < > " are escaped here. A bare & in content (Rock & Roll) is escaped too.
  * Control directives count only as the first thing on a line; an @ anywhere else is left alone.
  */
-final class Rageblade
+final class Directives
 {
     private const OPENERS = ['foreach' => 'endforeach', 'if' => 'endif'];
 

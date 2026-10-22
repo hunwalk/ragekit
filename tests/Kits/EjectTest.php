@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace RageKit\Tests\Cli;
+namespace RageKit\Tests\Kits;
 
 use PHPUnit\Framework\TestCase;
 use RageKit\Cli\Command\EjectCommand;
 use RageKit\Cli\RageKitException;
 use RageKit\Cli\Slint\SlintCompiler;
 use RageKit\Cli\Templates\ClassInfo;
-use RageKit\Cli\Templates\KitEjector;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\KitEjector;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Tests\Support\InstalledToolchain;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -26,7 +26,7 @@ final class EjectTest extends TestCase
         file_put_contents("$this->project/project.yml", "# my app\nname: gallery\nsources:\n  - main.php\n\nragekit:\n  backend: slint   # the renderer\n  kit: shadcn\n");
     }
 
-    private function eject(string $kit, ?string $name = null, bool $use = true): \RageKit\Cli\Templates\EjectResult
+    private function eject(string $kit, ?string $name = null, bool $use = true): \RageKit\Cli\Kits\EjectResult
     {
         return (new KitEjector((string) realpath(self::ROOT)))->eject($this->project, $kit, $name, $use);
     }

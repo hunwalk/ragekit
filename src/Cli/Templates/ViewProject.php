@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace RageKit\Cli\Templates;
 
+use RageKit\Cli\Kits\KitRegistry;
+
 /** Input of a ViewGenerator. */
 final class ViewProject
 {

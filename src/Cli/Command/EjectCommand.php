@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace RageKit\Cli\Command;
 
 use RageKit\Cli\RageKitException;
-use RageKit\Cli\Templates\KitEjector;
+use RageKit\Cli\Kits\KitEjector;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;

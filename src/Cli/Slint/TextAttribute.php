@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace RageKit\Cli\Slint;
 
 /** Attribute values of .rk templates: literal text with {name} references, as Slint strings. */
-final class Expression
+final class TextAttribute
 {
     /** {name}, or {context.name} in a layout's template. */
     private const REF = '/\{((?:context\.)?[A-Za-z_][A-Za-z0-9_]*)\}/';

@@ -9,8 +9,8 @@ use RageKit\Cli\Build\Step;
 use RageKit\Cli\Fetch\Dependency;
 use RageKit\Cli\Fetch\Fetcher;
 use RageKit\Cli\Modules\ModuleRegistry;
-use RageKit\Cli\Templates\Kit;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\Kit;
+use RageKit\Cli\Kits\KitRegistry;
 
 /**
  * Third-party code the active kit and the app's modules declare under `fetch:` (e.g. Slint's

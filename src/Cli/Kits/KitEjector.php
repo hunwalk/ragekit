@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
-namespace RageKit\Cli\Templates;
+namespace RageKit\Cli\Kits;
 
+use RageKit\Cli\Kits\Kit;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\RageKitException;
 
 /**

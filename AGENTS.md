@@ -48,7 +48,7 @@ windows open at 0,0, so window coordinates are screen coordinates.
 
 ## Templates and kits
 
-`.rk` templates are compiled to Slint at build time (`src/Cli/Templates`, `src/Cli/Slint`). Every
+`.rk` templates are compiled to Slint at build time (`src/Cli/Templates`, `src/Cli/Rageblade`, `src/Cli/Kits`, `src/Cli/Slint`). Every
 kit accepts the same core element attributes (see docs/templates.md and docs/kits.md); a change to
 that contract changes every kit and the docs. Template errors name the file and line and say what's
 wrong; keep new errors that way.

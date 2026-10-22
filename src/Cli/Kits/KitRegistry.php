@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace RageKit\Cli\Templates;
+namespace RageKit\Cli\Kits;
 
+use RageKit\Cli\Kits\Kit;
 use RageKit\Cli\RageKitException;
 
 /** All installed kits: RageKit's own (kits/*) plus Composer packages declaring extra.ragekit.kit. */

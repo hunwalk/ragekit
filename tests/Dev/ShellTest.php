@@ -11,7 +11,7 @@ use RageKit\Cli\Dev\ShellBuilder;
 use RageKit\Cli\Project\BackendModule;
 use RageKit\Cli\Project\Project;
 use RageKit\Cli\Templates\ClassInfo;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\ViewProject;
 use RageKit\Cli\Toolchain\Platform;
 use Symfony\Component\Console\Output\NullOutput;

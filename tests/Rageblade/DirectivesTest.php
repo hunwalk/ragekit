@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace RageKit\Tests\Templates;
+namespace RageKit\Tests\Rageblade;
 
 use PHPUnit\Framework\TestCase;
-use RageKit\Cli\Templates\Rageblade;
+use RageKit\Cli\Rageblade\Directives;
 use RageKit\Cli\Templates\TemplateException;
 
-final class RagebladeTest extends TestCase
+final class DirectivesTest extends TestCase
 {
     private static function xml(string $source): string
     {
-        return Rageblade::toXml($source, 'T.rk');
+        return Directives::toXml($source, 'T.rk');
     }
 
     public function testForeachBecomesElement(): void

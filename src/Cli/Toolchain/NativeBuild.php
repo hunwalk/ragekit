@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace RageKit\Cli\Build;
+namespace RageKit\Cli\Toolchain;
 
+use RageKit\Cli\Build\BuildContext;
 use RageKit\Cli\RageKitException;
 use RageKit\Cli\Toolchain\CompileCommand;
 

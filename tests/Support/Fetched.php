@@ -7,7 +7,7 @@ namespace RageKit\Tests\Support;
 use RageKit\Cli\Fetch\Fetcher;
 use RageKit\Cli\Modules\Module;
 use RageKit\Cli\RageKitException;
-use RageKit\Cli\Templates\Kit;
+use RageKit\Cli\Kits\Kit;
 
 /** Makes a kit's or module's `fetch:` dependencies present for a test (false: couldn't, e.g. offline). */
 final class Fetched

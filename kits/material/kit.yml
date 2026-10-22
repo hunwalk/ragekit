@@ -1,5 +1,5 @@
 # RageKit's default kit: Slint's Material 3 library (MIT), wrapped once per core element.
-# Contract: see src/Cli/Templates/ElementSpec.php and PropSpec.php.
+# Contract: see src/Cli/Kits/ElementSpec.php and PropSpec.php.
 name: material
 entry: rk-material.slint
 # Slint's Material library (MIT), at the Slint version RageKit uses; fetched into library/.

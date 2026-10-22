@@ -64,7 +64,7 @@ final class Doctor
             : new Check(Check::FAIL, $label, "not set up: run `ragekit setup` (installs into $this->toolchainDir)");
     }
 
-    private function version(Component $component): string
+    private function version(ToolchainComponent $component): string
     {
         return $component->git !== null && $component->version === $component->commit ? substr($component->version, 0, 8) : $component->version;
     }

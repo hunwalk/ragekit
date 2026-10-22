@@ -7,9 +7,9 @@ namespace RageKit\Cli\Slint;
 use RageKit\Cli\Rageblade\Parser;
 use RageKit\Cli\Templates\ClassInfo;
 use RageKit\Cli\Templates\Element;
-use RageKit\Cli\Templates\ElementSpec;
-use RageKit\Cli\Templates\Kit;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\ElementSpec;
+use RageKit\Cli\Kits\Kit;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\TemplateException;
 
 /**
@@ -221,7 +221,7 @@ final class ElementCompiler
         if ($when !== null) {
             $name = ltrim($when, '!');
             if (preg_match('/^[A-Za-z_]\w*$/', $name) !== 1) {
-                throw TemplateException::at($element, Expression::hasRefs($name) || str_contains($name, '{')
+                throw TemplateException::at($element, TextAttribute::hasRefs($name) || str_contains($name, '{')
                     ? "when=\"$when\": write the name without braces, e.g. when=\"" . trim($when, '{}') . '"'
                     : "when=\"$when\": expressions aren't supported; name a bool property or a computed method returning bool, optionally with !, e.g. when=\"hasItems\"");
             }
@@ -336,13 +336,13 @@ final class ElementCompiler
                 throw TemplateException::at($tab, '<Tabs> may only contain <Tab> elements');
             }
             $this->checkAttributes($tab, ['title']);
-            if (Expression::hasRefs($tab->attributes['title'] ?? '')) {
+            if (TextAttribute::hasRefs($tab->attributes['title'] ?? '')) {
                 throw TemplateException::at($tab, "title=\"{$tab->attributes['title']}\": tab titles are fixed text; bindings aren't supported there yet");
             }
             if (count($tab->children) !== 1) {
                 throw TemplateException::at($tab, '<Tab> must contain exactly one element (wrap several in a <VStack>)');
             }
-            $titles[] = Expression::slintString($tab->attributes['title'] ?? '');
+            $titles[] = TextAttribute::slintString($tab->attributes['title'] ?? '');
         }
         $this->useKit($kit, $spec->component);
         $action = $scope->model?->action('set', $binding->name, [], $binding, $binding->owner);
@@ -514,7 +514,7 @@ final class ElementCompiler
         $this->checkAttributes($element, ['open', 'grow', 'when', 'each']);
         [$kit, $spec] = $this->coreSpec('AccordionHeader') ?? throw TemplateException::at($element, 'no installed kit provides AccordionHeader');
         $raw = $element->attributes['open'] ?? '';
-        $binding = $this->values->twoWayBinding($raw, new \RageKit\Cli\Templates\PropSpec('int', 'open', null, 'changed'), $scope, $element, 'open');
+        $binding = $this->values->twoWayBinding($raw, new \RageKit\Cli\Kits\PropSpec('int', 'open', null, 'changed'), $scope, $element, 'open');
         if ($binding === null || $binding->type !== 'int') {
             throw TemplateException::at($element, "<Accordion open=\"$raw\">: open must bind an int property, e.g. open=\"{{ \$open }}\" (-1: all closed)");
         }
@@ -534,7 +534,7 @@ final class ElementCompiler
                 throw TemplateException::at($section, '<Section> must contain exactly one element (wrap several in a <VStack>)');
             }
             $out .= $spec->component . " {\n"
-                . "    $title: " . Expression::slintString($section->attributes['title'] ?? '') . ";\n"
+                . "    $title: " . TextAttribute::slintString($section->attributes['title'] ?? '') . ";\n"
                 . "    $open: $p == $i;\n"
                 . "    $toggled => {\n        $p = $p == $i ? -1 : $i;\n        root.action({$action?->id}, \"\\{" . $p . "}\");\n    }\n}\n"
                 . "if $p == $i : VerticalLayout {\n    padding-top: 12px;\n    padding-left: 12px;\n    padding-right: 12px;\n    padding-bottom: 16px;\n"
@@ -561,7 +561,7 @@ final class ElementCompiler
         }
         [$kit, $spec] = $this->coreSpec('Dialog') ?? throw TemplateException::at($element, 'no installed kit provides Dialog');
         $raw = $element->attributes['open'] ?? throw TemplateException::at($element, '<Dialog> needs open="{{ $prop }}", a bool property that shows it');
-        $binding = $this->values->twoWayBinding($raw, new \RageKit\Cli\Templates\PropSpec('bool', 'open', null, 'changed'), $scope, $element, 'open');
+        $binding = $this->values->twoWayBinding($raw, new \RageKit\Cli\Kits\PropSpec('bool', 'open', null, 'changed'), $scope, $element, 'open');
         if ($binding === null || $binding->type !== 'bool') {
             throw TemplateException::at($element, "<Dialog open=\"$raw\">: open must bind a bool property, e.g. open=\"{{ \$confirmDelete }}\"");
         }
@@ -610,7 +610,7 @@ final class ElementCompiler
                 throw TemplateException::at($item, "<MenuItem variant=\"$variant\">: variant is default or destructive");
             }
             $items[] = $this->values->value($item->attributes['text'] ?? '', 'string', null, $scope, $item, 'text');
-            $variants[] = Expression::slintString($variant);
+            $variants[] = TextAttribute::slintString($variant);
             $branches[] = "if (rk-index == $i) {\n" . Code::indent($this->values->handler($handler, $scope, $item), 1) . "}";
         }
         if ($items === []) {

@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 use RageKit\Cli\Slint\CompiledViews;
 use RageKit\Cli\Slint\SlintCompiler;
 use RageKit\Cli\Templates\ClassInfo;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\TemplateException;
 use RageKit\Tests\Support\InstalledToolchain;
 

@@ -57,10 +57,15 @@ src/
 src/Cli/
   Application.php        boots symfony/console; Command/ holds build, run, dev
   Project/               project.yml, backend.yml, merging them into TypePHP's config, paths
-  Toolchain/             TypePHP, the C++ compiler (Gcc / Msvc), running processes
-  Build/                 the build pipeline: one class per step in Build/Steps, NativeBuild for
-                         compiling C++ only when its inputs changed
-  Templates/             .rk parser, kits, reading the app's classes (introspect.php)
+  Toolchain/             TypePHP, the C++ compiler (Gcc / Msvc), running processes, NativeBuild
+                         for compiling C++ only when its inputs changed
+  Build/                 the build pipeline: one class per step in Build/Steps
+  Templates/             .rk parser, reading the app's classes (introspect.php), the
+                         ViewGenerator interface backends implement
+  Rageblade/             the Blade-style parts of .rk files: @foreach/@if (Directives) and the
+                         {{ expression }} parser
+  Kits/                  kit.yml (the element contract: ElementSpec, PropSpec), finding kits,
+                         ragekit eject
   Slint/                 turning templates into Slint + the C++/PHP glue that connects them
   Modules/               module.yml and the glue generated for modules
   Fetch/                 downloading what kits and modules declare under fetch:

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace RageKit\Tests\Slint;
 
 use PHPUnit\Framework\TestCase;
-use RageKit\Cli\Rageblade\Parser;
 use RageKit\Cli\Slint\CompiledViews;
 use RageKit\Cli\Slint\Scope;
 use RageKit\Cli\Slint\ScreenModel;
@@ -14,7 +13,7 @@ use RageKit\Cli\Slint\StyleResolver;
 use RageKit\Cli\Slint\ValueCompiler;
 use RageKit\Cli\Templates\ClassInfo;
 use RageKit\Cli\Templates\Element;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\TemplateException;
 
 final class StyleTest extends TestCase

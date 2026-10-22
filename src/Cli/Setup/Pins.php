@@ -11,7 +11,7 @@ use Symfony\Component\Yaml\Yaml;
 /** toolchain/toolchain.yml: the exact toolchain versions this RageKit version builds with. */
 final class Pins
 {
-    /** @param array<string, Component> $components */
+    /** @param array<string, ToolchainComponent> $components */
     private function __construct(private readonly array $components)
     {
     }
@@ -29,17 +29,17 @@ final class Pins
         $components = [];
         foreach (Yaml::parseFile($file) ?? [] as $name => $spec) {
             $spec = ConfigMerger::forPlatform($spec, "$file: $name", $platform);
-            $components[$name] = Component::fromArray((string) $name, $spec, dirname($file));
+            $components[$name] = ToolchainComponent::fromArray((string) $name, $spec, dirname($file));
         }
         return new self($components);
     }
 
-    public function component(string $name): Component
+    public function component(string $name): ToolchainComponent
     {
         return $this->components[$name] ?? throw new RageKitException("toolchain.yml has no $name");
     }
 
-    /** @return array<string, Component> */
+    /** @return array<string, ToolchainComponent> */
     public function components(): array
     {
         return $this->components;

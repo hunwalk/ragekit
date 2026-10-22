@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace RageKit\Tests\Cli;
+namespace RageKit\Tests\Cli\Toolchain;
 
 use PHPUnit\Framework\TestCase;
-use RageKit\Cli\Build\NativeBuild;
+use RageKit\Cli\Toolchain\NativeBuild;
 
 final class NativeBuildTest extends TestCase
 {

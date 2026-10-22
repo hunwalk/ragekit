@@ -7,7 +7,7 @@ namespace RageKit\Cli\Setup;
 use RageKit\Cli\RageKitException;
 
 /** One pinned part of the toolchain (TypePHP, Slint), as toolchain.yml declares it for this platform. */
-final class Component
+final class ToolchainComponent
 {
     /**
      * @param list<string>                                                  $patches   absolute paths

@@ -11,7 +11,7 @@ use RageKit\Cli\Slint\GlueEmitter;
 use RageKit\Cli\Slint\ScreensJson;
 use RageKit\Cli\Slint\SlintCompiler;
 use RageKit\Cli\Templates\ClassInfo;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\TemplateException;
 
 final class LayoutCompilerTest extends TestCase

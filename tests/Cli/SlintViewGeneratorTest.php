@@ -10,7 +10,7 @@ use RageKit\Cli\Build\BuildContext;
 use RageKit\Cli\Project\Project;
 use RageKit\Cli\Slint\SlintViewGenerator;
 use RageKit\Cli\Templates\ClassInfo;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\ViewProject;
 use Symfony\Component\Console\Output\BufferedOutput;
 use RageKit\Tests\Support\InstalledToolchain;

@@ -10,7 +10,7 @@ use RageKit\Cli\RageKitException;
 use RageKit\Cli\Toolchain\Process;
 
 /**
- * Installs a Component into its folder: git checkout of the pinned commit, composer.lock +
+ * Installs a ToolchainComponent into its folder: git checkout of the pinned commit, composer.lock +
  * `composer install`, downloads (checked, extracted), patches (`git apply`, must fit exactly).
  * A marker holding the component's fingerprint is written last, so an interrupted or failed
  * install never counts as installed and the next run starts over.
@@ -19,13 +19,13 @@ final class Installer
 {
     public const MARKER = '.ragekit-setup';
 
-    public static function installed(Component $component, string $dir): bool
+    public static function installed(ToolchainComponent $component, string $dir): bool
     {
         return @file_get_contents("$dir/" . self::MARKER) === $component->fingerprint() . "\n";
     }
 
     /** @return list<string> the commands install() runs for $component (checked before it starts) */
-    public static function tools(Component $component): array
+    public static function tools(ToolchainComponent $component): array
     {
         $tools = [];
         if ($component->git !== null) {
@@ -44,7 +44,7 @@ final class Installer
      * @param callable(string): void $say progress lines
      * @return bool whether it was installed (false: already up to date)
      */
-    public static function install(Component $component, string $dir, Process $process, callable $say): bool
+    public static function install(ToolchainComponent $component, string $dir, Process $process, callable $say): bool
     {
         if (self::installed($component, $dir)) {
             return false;

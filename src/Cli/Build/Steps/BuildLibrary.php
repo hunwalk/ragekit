@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace RageKit\Cli\Build\Steps;
 
 use RageKit\Cli\Build\BuildContext;
-use RageKit\Cli\Build\NativeBuild;
+use RageKit\Cli\Toolchain\NativeBuild;
 use RageKit\Cli\Build\Step;
 use RageKit\Cli\Project\SourceFiles;
 use RageKit\Cli\Toolchain\CppBuild;

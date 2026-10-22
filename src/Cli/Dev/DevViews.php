@@ -6,7 +6,7 @@ namespace RageKit\Cli\Dev;
 
 use RageKit\Cli\Build\Steps\FetchDependencies;
 use RageKit\Cli\Project\GeneratedFile;
-use RageKit\Cli\Slint\Expression;
+use RageKit\Cli\Slint\TextAttribute;
 use RageKit\Cli\Slint\ScreensJson;
 use RageKit\Cli\Slint\SlintCompiler;
 use RageKit\Cli\Templates\ViewProject;
@@ -38,14 +38,14 @@ final class DevViews
                 $contents = (string) file_get_contents($source);
                 if (str_ends_with($relative, '.slint')) {
                     foreach ($kit->libraries as $library => $path) {
-                        $contents = str_replace('"@' . $library . '"', Expression::slintString($path), $contents);
+                        $contents = str_replace('"@' . $library . '"', TextAttribute::slintString($path), $contents);
                     }
                 }
                 @mkdir(dirname("$copy/$relative"), 0777, true);
                 $changed = GeneratedFile::write("$copy/$relative", $contents) || $changed;
             }
             $entry = $copy . substr($kit->entry, strlen($kit->dir));
-            $slint = str_replace(Expression::slintString($kit->entry), Expression::slintString($entry), $slint);
+            $slint = str_replace(TextAttribute::slintString($kit->entry), TextAttribute::slintString($entry), $slint);
         }
         $changed = GeneratedFile::write("$outDir/app.slint", $slint) || $changed;
 
@@ -53,7 +53,7 @@ final class DevViews
         foreach ($compiled->screens as $screen) {
             $short = $screen->class->short;
             $entries[$short] = "$outDir/screens/$short.slint";
-            $changed = GeneratedFile::write($entries[$short], "export { $short } from " . Expression::slintString("$outDir/app.slint") . ";\n") || $changed;
+            $changed = GeneratedFile::write($entries[$short], "export { $short } from " . TextAttribute::slintString("$outDir/app.slint") . ";\n") || $changed;
         }
         GeneratedFile::write("$outDir/screens.json", ScreensJson::emit($compiled->screens));
 

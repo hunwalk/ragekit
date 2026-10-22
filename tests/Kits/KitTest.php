@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace RageKit\Tests\Templates;
+namespace RageKit\Tests\Kits;
 
 use PHPUnit\Framework\TestCase;
 use RageKit\Cli\Project\Paths;
 use RageKit\Cli\RageKitException;
 use RageKit\Cli\Slint\ElementCompiler;
-use RageKit\Cli\Templates\KitRegistry;
+use RageKit\Cli\Kits\KitRegistry;
 
 final class KitTest extends TestCase
 {
