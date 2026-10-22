@@ -1,0 +1,6 @@
+<VStack>
+    <Text variant="muted">Photos in {{ $album }}</Text>
+    @foreach ($photos as $photo)
+        <Button text="{{ $photo }}" variant="ghost" onClick="open($photo)" />
+    @endforeach
+</VStack>

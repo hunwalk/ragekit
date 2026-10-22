@@ -5,14 +5,23 @@
 namespace RageKit\Generated;
 
 use RageKit\Layout;
+use RageKit\Navigator;
 use RageKit\Screen;
 
-/** Each Screen's compiled Slint component: shown values, and actions → handlers. */
+/** Each Screen's compiled window component and page there: shown values, and actions → handlers. */
 final class Screens
 {
-    public static function name(Screen $screen): string
+    /** The window component $screen shows in: one per layout (rk-screens-<Layout>), rk-screens without one. */
+    public static function window(Screen $screen): string
     {
-        {{ names }}
+        {{ windows }}
+        throw new \RuntimeException('No compiled template for ' . \get_class($screen));
+    }
+
+    /** $screen's page in its window component (rk-page shows it). */
+    public static function page(Screen $screen): int
+    {
+        {{ pages }}
         throw new \RuntimeException('No compiled template for ' . \get_class($screen));
     }
 
@@ -23,16 +32,22 @@ final class Screens
         return null;
     }
 
-    /** @return array<int, mixed> property id => current value */
-    public static function values(Screen $screen): array
+    /** @return array<int, mixed> property id => current value: the window's and the top screen's */
+    public static function values(Navigator $n): array
     {
+        $s = $n->top();
         {{ values }}
         return [];
     }
 
-    /** Runs an action; returns the id of a property the UI already shows (two-way input), else 0. */
-    public static function dispatch(Screen $screen, int $action, string $arg): int
+    /**
+     * Runs an action of the window or of the screen on top; another page's action (a click sent
+     * before the page changed) does nothing. Returns the id of a property the UI already shows
+     * (two-way input), else 0.
+     */
+    public static function dispatch(Navigator $n, int $action, string $arg): int
     {
+        $s = $n->top();
         {{ dispatch }}
         return 0;
     }

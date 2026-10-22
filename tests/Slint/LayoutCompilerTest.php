@@ -78,8 +78,9 @@ final class LayoutCompilerTest extends TestCase
         self::assertStringContainsString('maximized: root.rk-maximized;', $out->slint);
         self::assertStringContainsString('close => { root.rk-window("close"); }', $out->slint);
         self::assertStringContainsString('"Hi"', $out->slint);
-        $title = $out->screens[0]->bindings['screen:method:title'];
-        self::assertSame('screen', $title->owner);
+        // {context.title}: the screen on top's title(), a window-level binding.
+        $title = $out->screens[0]->window->bindings['context:method:title'];
+        self::assertSame('context', $title->owner);
         self::assertSame($this->layoutClass()->name, $out->screens[0]->layout?->name);
     }
 
@@ -95,13 +96,14 @@ final class LayoutCompilerTest extends TestCase
             $this->screen('<Label text="{count}" />'),
         ]);
         $model = $out->screens[0];
-        $query = $model->bindings['layout:property:query'];
+        $window = $model->window;
+        $query = $window->bindings['layout:property:query'];
         self::assertTrue($query->twoWay);
         self::assertSame('layout', $query->owner);
         self::assertSame('screen', $model->bindings['screen:property:count']->owner);
-        $close = array_values(array_filter($model->actions, fn($a) => $a->target === 'close'))[0];
+        $close = array_values(array_filter($window->actions, fn($a) => $a->target === 'close'))[0];
         self::assertSame('layout', $close->owner);
-        $set = array_values(array_filter($model->actions, fn($a) => $a->kind === 'set'))[0];
+        $set = array_values(array_filter($window->actions, fn($a) => $a->kind === 'set'))[0];
         self::assertSame('layout', $set->owner);
     }
 
@@ -111,8 +113,8 @@ final class LayoutCompilerTest extends TestCase
             $this->layout('<VStack><Button text="r" onClick="context.refresh(\'bar\')" /><Content /></VStack>'),
             $this->screen('<Label text="x" />'),
         ]);
-        $action = $out->screens[0]->actions[0];
-        self::assertSame('screen', $action->owner);
+        $action = $out->screens[0]->window->actions[0];
+        self::assertSame('context', $action->owner);
         self::assertSame('refresh', $action->target);
         self::assertSame(['string'], $action->params);
     }
@@ -123,10 +125,10 @@ final class LayoutCompilerTest extends TestCase
             $this->layout('<VStack><Label text="{{ $context->title() }}!" /><Button text="r" onClick="$context->refresh(\'bar\')" /><Content /></VStack>'),
             $this->screen('<Label text="x" />'),
         ]);
-        $model = $out->screens[0];
-        self::assertSame('screen', $model->bindings['screen:method:title']->owner);
-        $action = $model->actions[0];
-        self::assertSame(['screen', 'refresh', [['literal', 'bar']]], [$action->owner, $action->target, $action->args]);
+        $window = $out->screens[0]->window;
+        self::assertSame('context', $window->bindings['context:method:title']->owner);
+        $action = $window->actions[0];
+        self::assertSame(['context', 'refresh', [['literal', 'bar']]], [$action->owner, $action->target, $action->args]);
     }
 
     public function testScreenWithoutLayoutUnchanged(): void
@@ -195,10 +197,10 @@ final class LayoutCompilerTest extends TestCase
             $this->layout('<VStack><WindowDrag><Label text="{context.title}" /><Entry value="{query}" /><Button text="s" onClick="search" /></WindowDrag><Content /></VStack>'),
             $this->screen('<Label text="{count}" />'),
         ]);
-        $php = BinderEmitter::emit($out->screens);
+        $php = BinderEmitter::emit($out->windows);
         self::assertStringContainsString('public static function layout(Screen $screen): ?Layout', $php);
         self::assertStringContainsString('return new \Fix\AppLayout();', $php);
-        self::assertStringContainsString('$l = $screen->layoutObject();', $php);
+        self::assertStringContainsString('$l = $n->layout();', $php);
         self::assertStringContainsString('if ($l instanceof \Fix\AppLayout) {', $php);
         self::assertStringContainsString('$l->query', $php);
         self::assertStringContainsString('$s->title()', $php);
@@ -210,28 +212,30 @@ final class LayoutCompilerTest extends TestCase
         unlink($lint);
         self::assertSame(0, $code, implode("\n", $lines));
 
-        $glue = GlueEmitter::emit($out->screens);
+        $glue = GlueEmitter::emit($out->windows);
         self::assertStringContainsString('handle_->on_rk_window(', $glue);
         self::assertStringContainsString('rk::window_command(window, handle_->window(), std::string_view(command));', $glue);
         self::assertStringContainsString('void set_maximized(bool value) override { handle_->set_rk_maximized(value); }', $glue);
         self::assertStringContainsString('bool frameless() const override { return true; }', $glue);
         self::assertStringContainsString('bool rk::any_frameless()' . "\n{\n    return true;\n}", $glue);
 
-        $json = json_decode(ScreensJson::emit($out->screens), true);
-        self::assertSame('Fix\AppLayout', $json['screens'][0]['layout']);
-        self::assertTrue($json['screens'][0]['frameless']);
-        self::assertContains('layout', array_column($json['screens'][0]['values'], 'owner'));
-        self::assertContains('screen', array_column($json['screens'][0]['values'], 'owner'));
-        self::assertSame('layout', $json['screens'][0]['actions'][0]['owner']);
+        $json = json_decode(ScreensJson::emit($out->windows), true);
+        $window = $json['windows'][0];
+        self::assertSame('Fix\AppLayout', $window['layout']);
+        self::assertTrue($window['frameless']);
+        self::assertContains('layout', array_column($window['values'], 'owner'));
+        self::assertContains('context', array_column($window['values'], 'owner'));
+        self::assertContains('screen', array_column($window['pages'][0]['values'], 'owner'));
+        self::assertSame('layout', $window['actions'][0]['owner']);
     }
 
     public function testGlueWithoutLayoutsIsNotFrameless(): void
     {
         file_put_contents("$this->dir/Plain.rk", '<Label text="x" />');
         $out = $this->compile([new ClassInfo('Fix\Plain', 'Plain', "$this->dir/Plain.php", true, "$this->dir/Plain.rk")]);
-        $glue = GlueEmitter::emit($out->screens);
+        $glue = GlueEmitter::emit($out->windows);
         self::assertStringContainsString('bool rk::any_frameless()' . "\n{\n    return false;\n}", $glue);
         self::assertStringNotContainsString('on_rk_window', $glue);
-        self::assertStringContainsString('return null;', BinderEmitter::emit($out->screens));
+        self::assertStringContainsString('return null;', BinderEmitter::emit($out->windows));
     }
 }

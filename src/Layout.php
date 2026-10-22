@@ -44,6 +44,37 @@ abstract class Layout extends Component
         $this->app->close($this->window);
     }
 
+    /** Goes back to the previous screen of this window (a back button: onClick="back"). */
+    public function back(): void
+    {
+        $this->navigator()->back();
+    }
+
+    /** Whether there's a screen to go back to, e.g. @if (canGoBack()) around a back button. */
+    public function canGoBack(): bool
+    {
+        return $this->navigator !== null && $this->navigator->canGoBack();
+    }
+
+    private ?Navigator $navigator = null;
+
+    private function navigator(): Navigator
+    {
+        return $this->navigator ?? throw new \LogicException('this layout has no navigator yet; it exists once its window is open');
+    }
+
+    /** @internal The window's navigator (set when the window opens). */
+    public function useNavigator(Navigator $navigator): void
+    {
+        $this->navigator = $navigator;
+    }
+
+    /** @internal The screen on top of the window's stack: what $this->context is. */
+    public function follow(Screen $top): void
+    {
+        $this->context = $top;
+    }
+
     /** @internal */
     public function attach(Screen $context, int $window): void
     {

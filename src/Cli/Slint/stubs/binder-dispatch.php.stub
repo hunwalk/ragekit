@@ -1,4 +1,4 @@
-private static function dispatch{{ short }}(\{{ class }} $s{{ layoutParam }}, int $action, string $arg): int
+private static function dispatch{{ short }}(Navigator $n, \{{ class }} $s{{ layoutParam }}, int $action, string $arg): int
 {
     switch ($action) {
         {{ cases }}

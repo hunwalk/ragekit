@@ -29,46 +29,36 @@ abstract class Screen extends Component
         return $this->layout;
     }
 
-    /** @var list<string> toasts on screen */
-    private array $toastTexts = [];
-
-    /** @var list<float> when each toast on screen goes (now() seconds) */
-    private array $toastExpiries = [];
+    private ?Navigator $navigator = null;
 
     /**
-     * @internal The window's toasts (this screen's and its layout's), read on every sync: new ones
-     * get 3 seconds, expired ones are dropped. While any is shown the window ticks (action -2).
-     * @return list<string>
+     * The window's stack of screens: `$this->navigator()->push(new DetailsScreen($id))`,
+     * `->back()`, `->replace(…)`, `->reset(…)`. It exists once the screen is shown in a window
+     * (not yet in the constructor).
      */
-    public function toastTexts(): array
+    protected function navigator(): Navigator
     {
-        $now = $this->now();
-        $new = $this->takeToasts();
-        if ($this->layout !== null) {
-            foreach ($this->layout->takeToasts() as $text) {
-                $new[] = $text;
-            }
+        if ($this->navigator === null) {
+            $class = \get_class($this);
+            $slash = strrpos($class, '\\');
+            throw new \LogicException(($slash === false ? $class : substr($class, $slash + 1)) . ': no navigator yet; it exists once the screen is shown in a window');
         }
-        foreach ($new as $text) {
-            $this->toastTexts[] = $text;
-            $this->toastExpiries[] = $now + 3.0;
-        }
-        $texts = [];
-        $expiries = [];
-        foreach ($this->toastTexts as $i => $text) {
-            if ($this->toastExpiries[$i] > $now) {
-                $texts[] = $text;
-                $expiries[] = $this->toastExpiries[$i];
-            }
-        }
-        $this->toastTexts = $texts;
-        $this->toastExpiries = $expiries;
-        return $texts;
+        return $this->navigator;
     }
 
-    /** Seconds, for toast timing (tests override it). */
-    protected function now(): float
+    /** @internal */
+    public function useNavigator(Navigator $navigator): void
     {
-        return \microtime(true);
+        $this->navigator = $navigator;
+    }
+
+    /** Called when this screen becomes the one the window shows (also after back() returns to it). */
+    public function shown(): void
+    {
+    }
+
+    /** Called when another screen covers this one, or it's dropped from the stack. */
+    public function hidden(): void
+    {
     }
 }

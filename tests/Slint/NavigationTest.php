@@ -84,7 +84,7 @@ final class NavigationTest extends TestCase
         $action = array_values(array_filter($out->screens[0]->actions, fn($a) => $a->target === 'goTo'))[0];
         self::assertSame([['arg', 'value']], $action->args);
         self::assertStringContainsString("selected(value) => { root.action({$action->id}, value); }", $out->slint);
-        self::assertStringContainsString('$s->goTo($arg);', BinderEmitter::emit($out->screens));
+        self::assertStringContainsString('$s->goTo($arg);', BinderEmitter::emit($out->windows));
     }
 
     public function testAccordion(): void

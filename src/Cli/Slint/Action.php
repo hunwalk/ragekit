@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace RageKit\Cli\Slint;
 
-/** What a screen's action(id, arg) callback does in PHP: call a handler or set a two-way property, on the screen or its layout ($owner). */
+/** What a window's action(id, arg) callback does in PHP: call a handler or set a two-way property, on a page's screen, the layout or the screen on top ($owner: screen, layout, context). */
 final class Action
 {
     /**

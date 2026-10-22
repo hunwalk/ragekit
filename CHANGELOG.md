@@ -7,9 +7,11 @@ to update. Patch versions (0.1.0 → 0.1.1) only fix things.
 "Breaking" covers more than the PHP API: the `.rk` template syntax, the core element contract
 (what every kit accepts), the `kit.yml` and `module.yml` formats, the C functions a module library
 implements, and `project.yml` options. Kits and modules distributed as Composer packages should
-require the RageKit minor version they were written for, e.g. `"ragekit/ragekit": "^0.1"`.
+require the RageKit minor version they were written for, e.g. `"ragekit/ragekit": "^0.2"`.
 
 ## [Unreleased]
+
+## [0.2.0] - 2026-10-22
 
 ### Added
 
@@ -43,6 +45,13 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 - `<Text variant="h1">Settings</Text>`: React Native's Text with shadcn's typography variants (`h1`
   to `h4`, `p`, `lead`, `large`, `small`, `muted`, `code`, `blockquote`); the text is the element's
   content, `{{ expressions }}` included. `Label` is unchanged.
+- **Navigator:** a window holds a stack of screens. `$this->navigator()->push(new PhotosScreen($album))`
+  shows the next screen in the same window, `back()`, `replace()` and `reset()` move around, and a
+  covered screen keeps its state. Layouts get `back()` / `canGoBack()` for a back button; Alt+Left
+  goes back too. `shown()` / `hidden()` hooks on Screen. Screens sharing a layout compile into one
+  Slint window component (a page each); `ragekit dev` keeps the whole stack across PHP restarts.
+  Toasts now belong to the window, so they stay up across navigation. Example: `demo/navigator`,
+  docs: docs/navigation.md.
 - Navigation core elements `Sidebar`, `NavList` (two-way `selected`), `Breadcrumb` (`onSelect`
   calls the handler with the clicked item), `Pagination` (two-way `page`) and `<Accordion>` with
   `<Section>`s (one open at a time), in shadcn and Material; kitchen-sink's new Navigation tab
@@ -58,6 +67,17 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
   manager snapping) and these apps run on XWayland in a Wayland session (`RAGEKIT_WAYLAND=1` keeps
   Wayland). On Windows the OS moves and resizes the window (with snapping). Example:
   `demo/titlebar`.
+
+### Upgrading from 0.1
+
+- Templates written for 0.1 still build: `{name}`, `each=` and `when=` work and print a hint
+  pointing to `{{ }}`, `@foreach` and `@if`.
+- New methods on the base classes: `Screen` has `shown()`, `hidden()` and `navigator()`, `Layout`
+  has `back()` and `canGoBack()`. A screen or layout of yours with a method of one of those names
+  (and another signature) must rename it.
+- Kits written for 0.1 keep working: core elements they don't provide (Text, Dialog, DropdownMenu,
+  the navigation elements, toasts) fall back to Material's. A kit that wants to offer them follows
+  the contract in docs/kits.md.
 
 ## [0.1.2] - 2026-10-19
 

@@ -60,13 +60,25 @@ final class SlintCompiler
         foreach ($this->childOrder() as $child) {
             $definitions[] = $this->childComponent($child);
         }
-        $screens = [];
+        // Screens sharing a layout (or sharing none) are one window component, a page each.
+        $groups = [];
         foreach ($classes as $class) {
             if ($class->isScreen) {
-                $model = new ScreenModel($class, $this->layoutOf($class, $classes));
-                $definitions[] = $this->screenComponent($class, $model, $window);
-                $screens[] = $model;
+                $layout = $this->layoutOf($class, $classes);
+                $groups[WindowModel::nameFor($layout)][] = [$class, $layout];
             }
+        }
+        ksort($groups);
+        $screens = [];
+        $windows = [];
+        foreach ($groups as $name => $members) {
+            usort($members, fn(array $a, array $b) => strcmp($a[0]->name, $b[0]->name));
+            $model = new WindowModel($name, $members[0][1]);
+            foreach ($members as [$class, $layout]) {
+                $screens[] = new ScreenModel($class, $layout, $model);
+            }
+            $definitions[] = $this->windowComponentFor($model, $window);
+            $windows[] = $model;
         }
 
         $imports = [];
@@ -80,6 +92,7 @@ final class SlintCompiler
             array_keys($this->elements->imports()),
             $this->values->images(),
             $this->elements->warnings(),
+            $windows,
         );
     }
 
@@ -171,38 +184,51 @@ final class SlintCompiler
         return $layout;
     }
 
-    private function screenComponent(ClassInfo $class, ScreenModel $model, string $window): string
+    private function windowComponentFor(WindowModel $model, string $window): string
     {
-        $root = TemplateParser::parseFile($class->template);
-        $screen = new Scope($class, $model);
         $layout = $model->layout;
+        $pages = [];
+        foreach ($model->pages as $page) {
+            $pages[] = new Page($page->page, new Scope($page->class, $page), TemplateParser::parseFile($page->class->template));
+        }
+        $several = count($pages) > 1;
         if ($layout !== null) {
             $frame = TemplateParser::parseFile($layout->template);
             if (self::count($frame, 'Content') !== 1) {
                 throw new TemplateException($layout->template, 0, "{$layout->short}'s template needs exactly one <Content /> (where the screen goes)");
             }
-            $body = $this->elements->element($frame, new Scope($layout, $model, [], 'layout', $screen, $root), 'v');
+            // A layout's window: frameless, its template fills it edge to edge, resize grips on top.
+            $body = $this->elements->element($frame, new Scope($layout, $model->pages[0], [], 'layout', $pages), 'v');
+            $body = Code::block('VerticalLayout', ['padding: 0px;', 'alignment: stretch;'], $body);
         } else {
-            if ($root->namespace === null && $root->tag === 'View') {
-                $this->elements->markRoot($root); // like React Native's root: it fills the window
+            $body = '';
+            foreach ($pages as $page) {
+                $guard = $several ? "root.rk-page == {$page->index}" : '';
+                $this->elements->setPageGuard($guard);
+                $body .= $this->pageBody($page, $guard, !$several);
+                $this->elements->setPageGuard('');
             }
-            $body = $this->elements->element($root, $screen, 'v');
+            if ($several) {
+                // In a layout, like <Tabs> pages: an `if` straight under the window wouldn't pass its
+                // minimum size on, and the window could shrink below the page.
+                $body = Code::block('VerticalLayout', ['padding: 0px;', 'spacing: 0px;', 'alignment: stretch;'], $body);
+            }
         }
         $overlays = $this->elements->takeOverlays() . $this->toasts($model);
+        if ($layout !== null) {
+            $overlays .= self::grips();
+        }
         $properties = [];
-        foreach ($model->bindings as $binding) {
+        $bindings = array_values($model->bindings);
+        foreach ($model->pages as $page) {
+            $bindings = [...$bindings, ...array_values($page->bindings)];
+        }
+        usort($bindings, fn(Binding $a, Binding $b) => $a->id <=> $b->id);
+        foreach ($bindings as $binding) {
             $properties[] = ($binding->twoWay ? 'in-out' : 'in') . ' property <' . ValueCompiler::TYPES[$binding->type] . '> ' . $binding->slintName() . ';';
         }
-        if ($layout !== null) {
-            // A layout's window: frameless, its template fills it edge to edge, resize grips on top.
-            $body = Code::block('VerticalLayout', ['padding: 0px;', 'alignment: stretch;'], $body);
-            $overlays .= self::grips();
-        } elseif ($root->namespace !== null || $root->tag !== 'View') {
-            // A root <View> fills the window itself; anything else sits in a padded column.
-            $body = Code::block('VerticalLayout', ['padding: 16px;', 'alignment: ' . ($this->elements->flag($root, 'grow') ? 'stretch' : 'start') . ';'], $body);
-        }
         return Code::stub('window', [
-            'name' => $class->short,
+            'name' => $model->name,
             'window' => $window,
             'dev' => $this->dev ? Code::stub('window-dev', []) : '',
             'frameless' => $layout !== null ? Code::stub('window-frameless', []) : '',
@@ -213,19 +239,37 @@ final class SlintCompiler
     }
 
     /**
-     * Every window's toasts ($this->toast() in PHP): Screen::toastTexts() as a list, shown
+     * A screen without a layout: a root <View> fills the window itself ($alone: the window's only
+     * page; among several, the pages' layout stretches it); anything else sits in a padded column.
+     */
+    private function pageBody(Page $page, string $guard, bool $alone): string
+    {
+        $root = $page->root;
+        $prefix = $guard === '' ? '' : "if $guard : ";
+        if ($root->namespace === null && $root->tag === 'View') {
+            if ($alone) {
+                $this->elements->markRoot($root); // like React Native's root: it fills the window
+            }
+            return $prefix . $this->elements->element($root, $page->scope, 'v');
+        }
+        $body = $this->elements->element($root, $page->scope, 'v');
+        return Code::block('VerticalLayout', ['padding: 16px;', 'alignment: ' . ($this->elements->flag($root, 'grow') ? 'stretch' : 'start') . ';'], $body, $prefix);
+    }
+
+    /**
+     * Every window's toasts ($this->toast() in PHP): Navigator::toastTexts() as a list, shown
      * bottom-right with the kit's Toast; a timer ticks (action -2) while any is shown, so PHP
      * drops the expired ones.
      */
-    private function toasts(ScreenModel $model): string
+    private function toasts(WindowModel $model): string
     {
         $kit = $this->kits->get($this->activeKit);
         if (!isset($kit->elements['Toast'])) {
             $kit = $this->kits->get('material');
         }
-        $spec = $kit->elements['Toast'] ?? throw new MissingKitElement($model->class->template, 'Toast');
+        $spec = $kit->elements['Toast'] ?? throw new MissingKitElement($model->pages[0]->class->template, 'Toast');
         $this->elements->useKit($kit, $spec->component);
-        $p = 'root.' . $model->bind('method', 'toastTexts', 'list')->slintName();
+        $p = 'root.' . $model->bind('method', 'toastTexts', 'list', 'window')->slintName();
         $text = $spec->props['text']->property ?? 'text';
         return Code::stub('toasts', ['list' => $p, 'toast' => $spec->component, 'text' => $text]);
     }

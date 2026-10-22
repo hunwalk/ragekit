@@ -57,7 +57,12 @@ final class ClassScannerTest extends TestCase
         self::assertSame([], $layout->handlers['toggleMaximize']);
         self::assertSame([], $layout->handlers['close']);
         self::assertSame([], $layout->handlers['search']);
+        // The navigator's back button: onClick="back", @if (canGoBack()).
+        self::assertSame([], $layout->handlers['back']);
+        self::assertSame('bool', $layout->computed['canGoBack']);
         self::assertArrayNotHasKey('attach', $layout->handlers);
+        self::assertArrayNotHasKey('follow', $layout->handlers);
+        self::assertArrayNotHasKey('useNavigator', $layout->handlers);
         self::assertTrue($layout->constructible);
     }
 

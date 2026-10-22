@@ -354,7 +354,7 @@ Point `extra.ragekit.kit` at the package's `kit.yml`, relative to the package ro
 }
 ```
 
-Require the RageKit minor version the kit was written for (`"ragekit/ragekit": "^0.1"`): the kit
+Require the RageKit minor version the kit was written for (`"ragekit/ragekit": "^0.2"`): the kit
 format and the core element contract may change between 0.x minor versions (see the CHANGELOG).
 
 After `composer require acme/ragekit-icons`, the app's next build sees the kit. RageKit reads the

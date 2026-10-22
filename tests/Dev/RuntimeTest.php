@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace RageKit\Tests\Dev;
 
 use PHPUnit\Framework\TestCase;
+use RageKit\App;
+use RageKit\Navigator;
 use RageKit\Slint\Dev\Bindings;
 use RageKit\Slint\Dev\Channel;
 use RageKit\Slint\Dev\Protocol;
@@ -36,6 +38,20 @@ final class DevOtherScreen extends \RageKit\Screen
 {
 }
 
+/** Pushed on top of DevFixtureScreen (same window). */
+final class DevDetailScreen extends \RageKit\Screen
+{
+    public int $zoom = 1;
+}
+
+/** Can't be re-created after a restart: its constructor needs an argument. */
+final class DevArgScreen extends \RageKit\Screen
+{
+    public function __construct(public string $id)
+    {
+    }
+}
+
 final class DevFramedScreen extends \RageKit\Screen
 {
     public string $refreshed = '';
@@ -64,28 +80,63 @@ final class DevFrameLayout extends \RageKit\Layout
 /** The dev runtime's PHP pieces (src/Slint/Dev), without the shell. */
 final class RuntimeTest extends TestCase
 {
-    private const JSON = '{"screens":[{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFixtureScreen","name":"DevFixtureScreen",'
-        . '"values":[{"id":1,"source":"property","name":"count","type":"int"},{"id":2,"source":"method","name":"label","type":"string"},{"id":3,"source":"property","name":"items","type":"list"}],'
-        . '"actions":[{"id":1,"kind":"set","target":"count","binding":1,"type":"int"},{"id":2,"kind":"call","target":"add","args":[["literal","5"],["arg","k"]],"params":["int","string"]}]}]}';
+    private const JSON = '{"windows":[{"name":"rk-screens","layout":null,"frameless":false,"values":[],"actions":[],"pages":['
+        . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFixtureScreen","name":"DevFixtureScreen","page":0,'
+        . '"values":[{"id":1,"owner":"screen","source":"property","name":"count","type":"int"},{"id":2,"owner":"screen","source":"method","name":"label","type":"string"},{"id":3,"owner":"screen","source":"property","name":"items","type":"list"}],'
+        . '"actions":[{"id":1,"owner":"screen","kind":"set","target":"count","binding":1,"type":"int"},{"id":2,"owner":"screen","kind":"call","target":"add","args":[["literal","5"],["arg","k"]],"params":["int","string"]}]},'
+        . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevDetailScreen","name":"DevDetailScreen","page":1,'
+        . '"values":[{"id":4,"owner":"screen","source":"property","name":"zoom","type":"int"}],'
+        . '"actions":[{"id":3,"owner":"screen","kind":"set","target":"zoom","binding":4,"type":"int"}]},'
+        . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevArgScreen","name":"DevArgScreen","page":2,"values":[],"actions":[]}]}]}';
+
+    private function nav(Bindings $b, \RageKit\Screen $root, ?\RageKit\Layout $layout = null): Navigator
+    {
+        $app = (new \ReflectionClass(App::class))->newInstanceWithoutConstructor();
+        return new Navigator($app, $root, $layout, fn(\RageKit\Screen $s): string => $b->window($s));
+    }
 
     public function testBindingsReadValuesAndDispatchLikeTheGeneratedBinder(): void
     {
         $b = Bindings::load(self::JSON);
         $s = new DevFixtureScreen();
         $s->items = [1, 2];
-        self::assertSame('DevFixtureScreen', $b->name($s));
-        self::assertSame(1, $b->dispatch($s, 1, '7'));
-        self::assertSame(0, $b->dispatch($s, 2, 'x'));
-        self::assertSame(0, $b->dispatch($s, 99, 'x'), 'unknown action');
-        self::assertSame([1 => 12, 2 => 'count 12 x', 3 => ['1', '2']], $b->values($s));
+        $n = $this->nav($b, $s);
+        self::assertSame('rk-screens', $b->window($s));
+        self::assertSame(0, $b->page($s));
+        self::assertSame(1, $b->dispatch($n, 1, '7'));
+        self::assertSame(0, $b->dispatch($n, 2, 'x'));
+        self::assertSame(0, $b->dispatch($n, 99, 'x'), 'unknown action');
+        self::assertSame([1 => 12, 2 => 'count 12 x', 3 => ['1', '2']], $b->values($n));
     }
 
-    private const FRAMED = '{"screens":[{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFramedScreen","name":"DevFramedScreen",'
-        . '"layout":"RageKit\\\\Tests\\\\Dev\\\\DevFrameLayout","frameless":true,'
-        . '"values":[{"id":1,"owner":"screen","source":"method","name":"title","type":"string"},{"id":2,"owner":"layout","source":"property","name":"query","type":"string"}],'
+    /** Review Focus 1 in dev: another page's action does nothing. */
+    public function testOtherPagesActionsAreIgnored(): void
+    {
+        $b = Bindings::load(self::JSON);
+        $root = new DevFixtureScreen();
+        $n = $this->nav($b, $root);
+        $detail = new DevDetailScreen();
+        $n->push($detail);
+        self::assertSame(1, $b->page($detail));
+        self::assertSame([4 => 1], $b->values($n));
+        self::assertSame(0, $b->dispatch($n, 1, '7'));
+        self::assertSame(0, $root->count);
+        self::assertSame(4, $b->dispatch($n, 3, '2'));
+        self::assertSame(2, $detail->zoom);
+    }
+
+    public function testPageZeroIsRkPage(): void
+    {
+        self::assertSame('rk-page', Session::property(0));
+        self::assertSame('p7', Session::property(7));
+    }
+
+    private const FRAMED = '{"windows":[{"name":"rk-screens-DevFrameLayout","layout":"RageKit\\\\Tests\\\\Dev\\\\DevFrameLayout","frameless":true,'
+        . '"values":[{"id":1,"owner":"context","source":"method","name":"title","type":"string"},{"id":2,"owner":"layout","source":"property","name":"query","type":"string"}],'
         . '"actions":[{"id":1,"owner":"layout","kind":"set","target":"query","binding":2,"type":"string"},'
         . '{"id":2,"owner":"layout","kind":"call","target":"search","args":[],"params":[]},'
-        . '{"id":3,"owner":"screen","kind":"call","target":"refresh","args":[["literal","bar"]],"params":["string"]}]}]}';
+        . '{"id":3,"owner":"context","kind":"call","target":"refresh","args":[["literal","bar"]],"params":["string"]}],'
+        . '"pages":[{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFramedScreen","name":"DevFramedScreen","page":0,"values":[],"actions":[]}]}]}';
 
     public function testLayoutValuesAndActionsFromScreensJson(): void
     {
@@ -94,13 +145,13 @@ final class RuntimeTest extends TestCase
         $l = $b->layout($s);
         self::assertInstanceOf(DevFrameLayout::class, $l);
         self::assertNull(Bindings::load(self::JSON)->layout(new DevFixtureScreen()));
-        $s->useLayout($l);
-        self::assertSame([1 => 'T', 2 => ''], $b->values($s));
-        self::assertSame(2, $b->dispatch($s, 1, 'abc'));
+        $n = $this->nav($b, $s, $l);
+        self::assertSame([1 => 'T', 2 => ''], $b->values($n));
+        self::assertSame(2, $b->dispatch($n, 1, 'abc'));
         self::assertSame('abc', $l->query);
-        $b->dispatch($s, 2, '');
+        $b->dispatch($n, 2, '');
         self::assertSame('searched', $l->query);
-        $b->dispatch($s, 3, '');
+        $b->dispatch($n, 3, '');
         self::assertSame('bar', $s->refreshed);
     }
 
@@ -129,10 +180,11 @@ final class RuntimeTest extends TestCase
 
     public function testExpressionArgumentsAreSplit(): void
     {
-        $json = '{"screens":[{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFixtureScreen","name":"DevFixtureScreen","values":[],'
-            . '"actions":[{"id":1,"kind":"call","target":"add","args":[["expr",0],["expr",1]],"params":["int","string"]}]}]}';
+        $json = '{"windows":[{"name":"rk-screens","layout":null,"frameless":false,"values":[],"actions":[],"pages":[{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFixtureScreen","name":"DevFixtureScreen","page":0,"values":[],'
+            . '"actions":[{"id":1,"owner":"screen","kind":"call","target":"add","args":[["expr",0],["expr",1]],"params":["int","string"]}]}]}]}';
         $s = new DevFixtureScreen();
-        Bindings::load($json)->dispatch($s, 1, "3\x1Fk");
+        $b = Bindings::load($json);
+        $b->dispatch($this->nav($b, $s), 1, "3\x1Fk");
         self::assertSame(3, $s->count);
         self::assertSame('k', $s->last);
     }
@@ -141,7 +193,7 @@ final class RuntimeTest extends TestCase
     {
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('No template for ' . DevOtherScreen::class);
-        Bindings::load(self::JSON)->name(new DevOtherScreen());
+        Bindings::load(self::JSON)->window(new DevOtherScreen());
     }
 
     public function testChannelQueuesEventsArrivingBeforeAReply(): void
@@ -180,6 +232,84 @@ final class RuntimeTest extends TestCase
         Session::restore($fresh);
         self::assertSame(4, $fresh->count);
         self::assertSame([], $fresh->items, 'a value of the wrong type is skipped');
+    }
+
+    public function testSnapshotKeepsTheStack(): void
+    {
+        $state = $this->tmp() . '/state.json';
+        Session::start($this->channel(), self::JSON, $state, restart: false);
+        $b = Bindings::load(self::JSON);
+        $root = new DevFixtureScreen();
+        $root->count = 2;
+        $n = $this->nav($b, $root);
+        $detail = new DevDetailScreen();
+        $detail->zoom = 3;
+        $n->push($detail);
+        Session::pending($root);
+        Session::opened(1, 'Main', 300, 200);
+        Session::markRunning();
+        Session::snapshot();
+        $saved = json_decode((string) file_get_contents($state), true)['windows'][0];
+        self::assertSame(DevFixtureScreen::class, $saved['class']);
+        self::assertSame(2, $saved['props']['count']);
+        self::assertSame([['class' => DevDetailScreen::class, 'props' => ['zoom' => 3]]], $saved['stack']);
+    }
+
+    /** After reset() (or replace() of the first screen) a restart brings back the new first screen, not the one the window opened with. */
+    public function testRestartAfterResetRestoresTheNewRoot(): void
+    {
+        $state = $this->tmp() . '/state.json';
+        Session::start($this->channel(), self::JSON, $state, restart: false);
+        $b = Bindings::load(self::JSON);
+        $opened = new DevFixtureScreen();
+        $n = $this->nav($b, $opened);
+        $detail = new DevDetailScreen();
+        $detail->zoom = 5;
+        $n->reset($detail);
+        Session::pending($opened);
+        Session::opened(1, 'Main', 300, 200);
+        Session::markRunning();
+        Session::snapshot();
+
+        Session::start($this->channel(), self::JSON, $state, restart: true);
+        $fresh = new DevFixtureScreen();       // main() opens the window with its first screen again
+        Session::restore($fresh);
+        $n2 = $this->nav($b, $fresh);
+        Session::restoreStack($n2);
+        self::assertSame(1, $n2->depth());
+        self::assertInstanceOf(DevDetailScreen::class, $n2->top());
+        self::assertSame(5, $n2->top()->zoom);
+    }
+
+    public function testRestoreRebuildsTheStack(): void
+    {
+        $state = $this->tmp() . '/state.json';
+        file_put_contents($state, json_encode(['windows' => [['window' => 1, 'class' => DevFixtureScreen::class, 'title' => 'M', 'width' => 1, 'height' => 1,
+            'props' => ['count' => 2], 'stack' => [['class' => DevDetailScreen::class, 'props' => ['zoom' => 3]]]]]]));
+        Session::start($this->channel(), self::JSON, $state, restart: true);
+        $root = new DevFixtureScreen();
+        Session::restore($root);
+        $n = $this->nav(Bindings::load(self::JSON), $root);
+        Session::restoreStack($n);
+        self::assertSame(2, $root->count);
+        self::assertSame(2, $n->depth());
+        self::assertInstanceOf(DevDetailScreen::class, $n->top());
+        self::assertSame(3, $n->top()->zoom);
+        Session::restoreStack($n);
+        self::assertSame(2, $n->depth(), 'only once');
+    }
+
+    public function testRestoreStopsAtAScreenNeedingArguments(): void
+    {
+        $state = $this->tmp() . '/state.json';
+        file_put_contents($state, json_encode(['windows' => [['window' => 1, 'class' => DevFixtureScreen::class, 'title' => 'M', 'width' => 1, 'height' => 1,
+            'props' => [], 'stack' => [['class' => DevArgScreen::class, 'props' => ['id' => 'x']], ['class' => DevDetailScreen::class, 'props' => []]]]]]));
+        Session::start($this->channel(), self::JSON, $state, restart: true);
+        $root = new DevFixtureScreen();
+        Session::restore($root);
+        $n = $this->nav(Bindings::load(self::JSON), $root);
+        Session::restoreStack($n);
+        self::assertSame(1, $n->depth(), 'DevArgScreen needs a constructor argument: the stack stops at the root');
     }
 
     public function testNoRestoreWithoutRestart(): void

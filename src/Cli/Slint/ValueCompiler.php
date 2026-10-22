@@ -170,7 +170,7 @@ final class ValueCompiler
             $member = $this->contextMember($method, $scope, $element);
             $params = $member['params'];
             $required = $member['required'];
-            $owner = 'screen';
+            $owner = 'context';
         } else {
             $params = $scope->class->handlers[$method]
                 ?? throw TemplateException::at($element, "'$method' is not a public method of {$scope->class->short}");
@@ -224,7 +224,7 @@ final class ValueCompiler
             $member = $this->contextMember($method, $scope, $element);
             $params = $member['params'];
             $required = $member['required'];
-            $owner = 'screen';
+            $owner = 'context';
         } else {
             throw TemplateException::at($element, "\"$raw\" must call a method, e.g. pick(\$item)");
         }
@@ -334,7 +334,7 @@ final class ValueCompiler
                 ? "'$member()' has no return type in $interface; give it one (string, int, float, bool or array) to show it in a template"
                 : "'$member()' returns $type; templates can show string, int, float, bool or array (a list of strings)");
         }
-        return new Ref($type, 'root.' . $scope->model->bind('method', $member, $type, 'screen')->slintName(), $type === 'list' ? 'string' : null);
+        return new Ref($type, 'root.' . $scope->model->bind('method', $member, $type, 'context')->slintName(), $type === 'list' ? 'string' : null);
     }
 
     /** @return array{return: string, params: list<string>, required: int} */

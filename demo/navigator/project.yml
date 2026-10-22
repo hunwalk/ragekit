@@ -1,0 +1,12 @@
+# Moving between screens inside one window (the Navigator): albums → photos → one photo, a back
+# button in the title bar (and Alt+Left):
+#   cd demo/navigator && ../../bin/ragekit run
+name: navigator
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  renderer: software
+  kit: shadcn

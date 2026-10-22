@@ -7,8 +7,8 @@ namespace RageKit\Cli\Slint;
 use RageKit\Cli\Stub;
 
 /**
- * views_glue.cc: one rk::Instance per screen (C++20, compiled into the bridge library), mapping
- * property ids to the setters slint-compiler generated in app.h.
+ * views_glue.cc: one rk::Instance per window component (C++20, compiled into the bridge library),
+ * mapping property ids to the setters slint-compiler generated in app.h; id 0 sets rk-page.
  */
 final class GlueEmitter
 {
@@ -20,17 +20,17 @@ final class GlueEmitter
         'list' => 'set_list(int id, std::vector<slint::SharedString> value)',
     ];
 
-    /** @param list<ScreenModel> $screens */
-    public static function emit(array $screens): string
+    /** @param list<WindowModel> $windows */
+    public static function emit(array $windows): string
     {
         $instances = [];
         $creators = [];
         $frameless = false;
-        foreach ($screens as $screen) {
-            $name = $screen->class->short;
-            $instances[] = self::instance($screen);
-            $creators[] = "if (screen == \"$name\") {\n    return std::make_unique<{$name}Instance>(window);\n}";
-            $frameless = $frameless || $screen->layout !== null;
+        foreach ($windows as $window) {
+            $class = self::cppName($window->name) . 'Instance';
+            $instances[] = self::instance($window);
+            $creators[] = "if (screen == \"{$window->name}\") {\n    return std::make_unique<$class>(window);\n}";
+            $frameless = $frameless || $window->layout !== null;
         }
         return self::stub('glue', [
             'instances' => implode("\n", $instances),
@@ -39,11 +39,24 @@ final class GlueEmitter
         ]);
     }
 
-    private static function instance(ScreenModel $screen): string
+    /** The C++ name slint-compiler gives a component: rk-screens-AppLayout → rk_screens_AppLayout. */
+    private static function cppName(string $component): string
+    {
+        return str_replace('-', '_', $component);
+    }
+
+    private static function instance(WindowModel $window): string
     {
         $cases = array_fill_keys(array_keys(self::SETTERS), []);
+        // Property id 0 picks the page: the screen on top of the window's navigator.
+        $cases['int'][] = 'case 0: handle_->set_rk_page(static_cast<int>(value)); break;';
+        $bindings = array_values($window->bindings);
+        foreach ($window->pages as $page) {
+            $bindings = [...$bindings, ...array_values($page->bindings)];
+        }
+        usort($bindings, fn(Binding $a, Binding $b) => $a->id <=> $b->id);
         // Slint's `int` is 32-bit and `float` is f32, so the bridge's int64/double narrow here.
-        foreach ($screen->bindings as $binding) {
+        foreach ($bindings as $binding) {
             $setter = 'handle_->set_' . $binding->slintName();
             $cases[$binding->type][] = "case {$binding->id}: " . match ($binding->type) {
                 'string' => "$setter(slint::SharedString(value));",
@@ -57,9 +70,9 @@ final class GlueEmitter
         foreach (self::SETTERS as $type => $signature) {
             $setters .= self::stub('glue-setter', ['signature' => $signature, 'cases' => implode("\n", $cases[$type])]);
         }
-        $framed = $screen->layout !== null;
+        $framed = $window->layout !== null;
         return self::stub('glue-instance', [
-            'name' => $screen->class->short,
+            'name' => self::cppName($window->name),
             'windowCommands' => $framed ? self::stub('glue-window-commands', []) : '',
             'frameless' => $framed ? self::stub('glue-frameless', []) : '',
             'setters' => $setters,

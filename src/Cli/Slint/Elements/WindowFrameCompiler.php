@@ -39,24 +39,32 @@ final class WindowFrameCompiler implements ElementCompiler
         };
     }
 
-    /** A layout's <Content />: the screen's template, padded as a window without a layout would be. */
+    /**
+     * A layout's <Content />: each screen of the window, padded as a window without a layout would
+     * be; with several screens, each one is shown while rk-page is its page.
+     */
     private function content(Element $element, Scope $scope, string $axis): string
     {
         $this->context->checkAttributes($element, []);
         if ($element->children !== []) {
             throw new NoChildrenAllowed($element);
         }
-        $root = $scope->screenRoot;
-        $screen = $scope->screen;
-        if ($root === null || $screen === null) {
+        if ($scope->pages === []) {
             throw TemplateException::at($element, "<Content /> is only allowed in a Layout's template");
         }
-        $body = $this->context->element($root, $screen, 'v');
-        return Code::block('VerticalLayout', [
-            'padding: 16px;',
-            'alignment: ' . ($this->context->flag($root, 'grow') ? 'stretch' : 'start') . ';',
-            ($axis === 'h' ? 'horizontal' : 'vertical') . '-stretch: 1;',
-        ], $body);
+        $out = '';
+        foreach ($scope->pages as $page) {
+            $guard = count($scope->pages) > 1 ? "root.rk-page == {$page->index}" : '';
+            $this->context->setPageGuard($guard);
+            $body = $this->context->element($page->root, $page->scope, 'v');
+            $this->context->setPageGuard('');
+            $out .= Code::block('VerticalLayout', [
+                'padding: 16px;',
+                'alignment: ' . ($this->context->flag($page->root, 'grow') ? 'stretch' : 'start') . ';',
+                ($axis === 'h' ? 'horizontal' : 'vertical') . '-stretch: 1;',
+            ], $body, $guard === '' ? '' : "if $guard : ");
+        }
+        return $out;
     }
 
     /** <WindowDrag>: an <HStack> whose background moves the window (a double-click, found natively, maximises). */

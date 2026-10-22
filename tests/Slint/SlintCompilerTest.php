@@ -82,7 +82,8 @@ final class SlintCompilerTest extends TestCase
         $slint = $out->slint;
 
         self::assertStringContainsString('import { RkWindow, RkLabel, RkButton, RkEntry, RkCheckbox, RkToast } from "', $slint);
-        self::assertStringContainsString('export component CounterScreen inherits RkWindow {', $slint);
+        // A screen without a layout is a page of the rk-screens window component.
+        self::assertStringContainsString('export component rk-screens inherits RkWindow {', $slint);
         self::assertStringContainsString("    in property <int> p1;\n", $slint);
         self::assertStringContainsString("    in-out property <string> p2;\n", $slint);
         self::assertStringContainsString("    in-out property <bool> p3;\n", $slint);
@@ -94,10 +95,11 @@ final class SlintCompilerTest extends TestCase
         self::assertStringContainsString('checked <=> root.p3;', $slint);
         self::assertStringContainsString('toggled(value) => { root.action(3, value ? "1" : "0"); }', $slint);
         self::assertStringContainsString('size: "title";', $slint);
-        self::assertStringContainsString("VerticalLayout {\n            spacing: 8px;\n            alignment: stretch;", $slint);
+        self::assertStringContainsString("VerticalLayout {\n                spacing: 8px;\n                alignment: stretch;", $slint);
         self::assertStringContainsString('vertical-stretch: 1;', $slint);
         self::assertSame(['material' => realpath(self::ROOT) . '/kits/material/library/material.slint'], $out->libraries);
-        self::assertSame(['count', 'name', 'show', 'greeting', 'toastTexts'], array_map(fn($b) => $b->name, array_values($out->screens[0]->bindings)));
+        self::assertSame(['count', 'name', 'show', 'greeting'], array_map(fn($b) => $b->name, array_values($out->screens[0]->bindings)));
+        self::assertSame(['toastTexts'], array_map(fn($b) => $b->name, array_values($out->screens[0]->window->bindings)));
     }
 
     public function testKeypadFromNestedConstantAndItemArgument(): void
@@ -162,7 +164,7 @@ final class SlintCompilerTest extends TestCase
         $slint = $out->slint;
 
         self::assertLessThan(strpos($slint, 'component Outer {'), strpos($slint, 'component Inner {'));
-        self::assertLessThan(strpos($slint, 'export component MainScreen'), strpos($slint, 'component Outer {'));
+        self::assertLessThan(strpos($slint, 'export component rk-screens'), strpos($slint, 'component Outer {'));
         self::assertStringContainsString("in property <[string]> rk-items;", $slint);
         self::assertStringContainsString('for entry in root.rk-items : RkLabel {', $slint);
         self::assertStringContainsString('if root.p1 : Outer {', $slint);

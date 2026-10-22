@@ -13,6 +13,7 @@ final class CompiledViews
      * @param list<string>          $imports   kit entry files app.slint imports
      * @param list<string>          $images    image files embedded via @image-url (absolute)
      * @param list<string>          $warnings  hints for the author, e.g. old template syntax
+     * @param list<WindowModel>     $windows   the window components; $screens are their pages
      */
     public function __construct(
         public readonly string $slint,
@@ -21,6 +22,7 @@ final class CompiledViews
         public readonly array $imports = [],
         public readonly array $images = [],
         public readonly array $warnings = [],
+        public readonly array $windows = [],
     ) {
     }
 }

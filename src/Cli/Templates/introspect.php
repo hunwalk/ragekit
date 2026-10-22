@@ -20,6 +20,7 @@ $map = [
     'RageKit\\Component' => "$root/src/Component.php",
     'RageKit\\Screen' => "$root/src/Screen.php",
     'RageKit\\Layout' => "$root/src/Layout.php",
+    'RageKit\\Navigator' => "$root/src/Navigator.php",
 ];
 foreach ($input['files'] as $file) {
     foreach (declaredClasses($file) as $class) {
@@ -97,8 +98,8 @@ function typeName(?ReflectionType $type): string
 function describe(ReflectionClass $class, string $projectDir): array
 {
     $base = ['RageKit\\Component', 'RageKit\\Screen', 'RageKit\\Layout'];
-    // What Layout itself offers templates: its maximised flag and window buttons.
-    $layoutMembers = ['maximized', 'minimize', 'toggleMaximize', 'close'];
+    // What Layout itself offers templates: its maximised flag, window buttons and back button.
+    $layoutMembers = ['maximized', 'minimize', 'toggleMaximize', 'close', 'back', 'canGoBack'];
     $inherited = fn(ReflectionProperty|ReflectionMethod $member): bool => in_array($member->getDeclaringClass()->getName(), $base, true)
         && !in_array($member->getName(), $layoutMembers, true);
     $props = [];

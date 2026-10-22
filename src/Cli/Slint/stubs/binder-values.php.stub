@@ -1,5 +1,5 @@
 /** @return array<int, mixed> */
-private static function values{{ short }}(\{{ class }} $s{{ layoutParam }}): array
+private static function values{{ short }}(Navigator $n, \{{ class }} $s{{ layoutParam }}): array
 {
     return [
         {{ entries }}

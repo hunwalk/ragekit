@@ -19,17 +19,22 @@ final class ScreensJsonTest extends TestCase
         $model->bind('method', 'label', 'string');
         $model->action('call', 'press', [['literal', 'go'], ['arg', 'key']]);
         $model->action('set', 'name', [], $name);
-        $json = json_decode(ScreensJson::emit([$model]), true);
+        $json = json_decode(ScreensJson::emit([$model->window]), true);
         self::assertSame([
-            'class' => 'Demo\\S', 'name' => 'S', 'layout' => null, 'frameless' => false,
-            'values' => [
-                ['id' => 1, 'owner' => 'screen', 'source' => 'property', 'name' => 'name', 'type' => 'string'],
-                ['id' => 2, 'owner' => 'screen', 'source' => 'method', 'name' => 'label', 'type' => 'string'],
-            ],
-            'actions' => [
-                ['id' => 1, 'owner' => 'screen', 'kind' => 'call', 'target' => 'press', 'args' => [['literal', 'go'], ['arg', 'key']], 'params' => ['string', 'int']],
-                ['id' => 2, 'owner' => 'screen', 'kind' => 'set', 'target' => 'name', 'binding' => 1, 'type' => 'string'],
-            ],
-        ], $json['screens'][0]);
+            'name' => 'rk-screens', 'layout' => null, 'frameless' => false,
+            'values' => [],
+            'actions' => [],
+            'pages' => [[
+                'class' => 'Demo\\S', 'name' => 'S', 'page' => 0,
+                'values' => [
+                    ['id' => 1, 'owner' => 'screen', 'source' => 'property', 'name' => 'name', 'type' => 'string'],
+                    ['id' => 2, 'owner' => 'screen', 'source' => 'method', 'name' => 'label', 'type' => 'string'],
+                ],
+                'actions' => [
+                    ['id' => 1, 'owner' => 'screen', 'kind' => 'call', 'target' => 'press', 'args' => [['literal', 'go'], ['arg', 'key']], 'params' => ['string', 'int']],
+                    ['id' => 2, 'owner' => 'screen', 'kind' => 'set', 'target' => 'name', 'binding' => 1, 'type' => 'string'],
+                ],
+            ]],
+        ], $json['windows'][0]);
     }
 }

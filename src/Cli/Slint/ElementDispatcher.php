@@ -108,6 +108,12 @@ final class ElementDispatcher
         return $this->context->takeOverlays();
     }
 
+    /** Dialogs compiled from now on show only while this page is (see CompileContext::pageGuard). */
+    public function setPageGuard(string $condition): void
+    {
+        $this->context->setPageGuard($condition);
+    }
+
     public function flag(Element $element, string $name): bool
     {
         return $this->context->flag($element, $name);

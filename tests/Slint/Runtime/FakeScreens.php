@@ -22,10 +22,53 @@ namespace RageKit\Tests\Slint\Runtime {
         {
             $this->app->open(new AboutScreen(), title: 'About', width: 300, height: 100);
         }
+
+        public function detail(): void
+        {
+            $this->navigator()->push(new DetailScreen($this->count));
+        }
     }
 
     final class AboutScreen extends Screen
     {
+    }
+
+    /** A screen pushed on top of CounterScreen (same window: no layout). */
+    final class DetailScreen extends Screen
+    {
+        public function __construct(public int $value = 0)
+        {
+        }
+
+        public function bump(): void
+        {
+            $this->value++;
+        }
+
+        public function close(): void
+        {
+            $this->navigator()->back();
+        }
+
+        public function more(): void
+        {
+            $this->navigator()->push(new DetailScreen(100));
+        }
+    }
+
+    /** Like dev mode after a restart: the first values() read puts the saved screens back on top. */
+    final class RestoringScreen extends Screen
+    {
+        public bool $restored = false;
+    }
+
+    /** A screen without a layout that tries to push one with a layout. */
+    final class WrongPushScreen extends Screen
+    {
+        public function go(): void
+        {
+            $this->navigator()->push(new FramedScreen());
+        }
     }
 
     interface Titled
@@ -68,21 +111,37 @@ namespace RageKit\Tests\Slint\Runtime {
 }
 
 namespace RageKit\Generated {
+    use RageKit\Layout;
+    use RageKit\Navigator;
     use RageKit\Screen;
     use RageKit\Tests\Slint\Runtime\AboutScreen;
-    use RageKit\Layout;
     use RageKit\Tests\Slint\Runtime\CounterScreen;
+    use RageKit\Tests\Slint\Runtime\DetailScreen;
     use RageKit\Tests\Slint\Runtime\FrameLayout;
     use RageKit\Tests\Slint\Runtime\FramedScreen;
+    use RageKit\Tests\Slint\Runtime\RestoringScreen;
+    use RageKit\Tests\Slint\Runtime\WrongPushScreen;
 
+    /**
+     * What ragekit would generate: window rk-screens = Counter (page 0), About (1), Detail (2),
+     * WrongPush (3); window rk-screens-FrameLayout = Framed (page 0). Ids are unique per window.
+     */
     final class Screens
     {
-        public static function name(Screen $screen): string
+        public static function window(Screen $screen): string
         {
-            if ($screen instanceof FramedScreen) {
-                return 'FramedScreen';
+            return $screen instanceof FramedScreen ? 'rk-screens-FrameLayout' : 'rk-screens';
+        }
+
+        public static function page(Screen $screen): int
+        {
+            if ($screen instanceof AboutScreen) {
+                return 1;
             }
-            return $screen instanceof CounterScreen ? 'CounterScreen' : 'AboutScreen';
+            if ($screen instanceof DetailScreen) {
+                return 2;
+            }
+            return $screen instanceof WrongPushScreen ? 3 : 0;
         }
 
         public static function layout(Screen $screen): ?Layout
@@ -90,40 +149,77 @@ namespace RageKit\Generated {
             return $screen instanceof FramedScreen ? new FrameLayout() : null;
         }
 
-        public static function values(Screen $screen): array
+        public static function values(Navigator $n): array
         {
-            if ($screen instanceof CounterScreen) {
-                return [1 => $screen->count, 2 => $screen->name, 3 => $screen->history];
+            $root = $n->stack()[0];
+            if ($root instanceof RestoringScreen && !$root->restored) {
+                $root->restored = true;
+                $n->push(new DetailScreen(7));
             }
-            if ($screen instanceof FramedScreen) {
-                $l = $screen->layoutObject();
+            $s = $n->top();
+            if ($s instanceof CounterScreen) {
+                return [1 => $s->count, 2 => $s->name, 3 => $s->history];
+            }
+            if ($s instanceof DetailScreen) {
+                return [4 => $s->value];
+            }
+            if ($s instanceof FramedScreen) {
+                $l = $n->layout();
                 if ($l instanceof FrameLayout) {
-                    return [1 => $screen->title(), 2 => $l->query, 3 => $l->maximized];
+                    return [1 => $s->title(), 2 => $l->query, 3 => $l->maximized];
                 }
                 return [];
             }
             return [];
         }
 
-        public static function dispatch(Screen $screen, int $action, string $arg): int
+        public static function dispatch(Navigator $n, int $action, string $arg): int
         {
-            if ($screen instanceof CounterScreen) {
+            $s = $n->top();
+            if ($s instanceof CounterScreen) {
                 switch ($action) {
                     case 1:
-                        $screen->increment();
+                        $s->increment();
                         return 0;
                     case 2:
-                        $screen->name = $arg;
+                        $s->name = $arg;
                         return 2;
                     case 3:
-                        $screen->about();
+                        $s->about();
+                        return 0;
+                    case 4:
+                        $s->detail();
                         return 0;
                     default:
                         return 0;
                 }
             }
-            if ($screen instanceof FramedScreen) {
-                $l = $screen->layoutObject();
+            if ($s instanceof DetailScreen) {
+                switch ($action) {
+                    case 5:
+                        $s->bump();
+                        return 0;
+                    case 6:
+                        $s->close();
+                        return 0;
+                    case 8:
+                        $s->more();
+                        return 0;
+                    default:
+                        return 0;
+                }
+            }
+            if ($s instanceof WrongPushScreen) {
+                switch ($action) {
+                    case 7:
+                        $s->go();
+                        return 0;
+                    default:
+                        return 0;
+                }
+            }
+            if ($s instanceof FramedScreen) {
+                $l = $n->layout();
                 if ($l instanceof FrameLayout) {
                     switch ($action) {
                         case 1:

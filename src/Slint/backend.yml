@@ -13,6 +13,7 @@ sources:
   - src/Component.php
   - src/Screen.php
   - src/Layout.php
+  - src/Navigator.php
   - src/Events.php
   - src/Modules.php
   - src/ModuleUnavailable.php

@@ -11,30 +11,58 @@ namespace RageKit\Cli\Slint;
  */
 final class ScreensJson
 {
-    /** @param list<ScreenModel> $screens */
-    public static function emit(array $screens): string
+    /** @param list<WindowModel> $windows */
+    public static function emit(array $windows): string
     {
         $out = [];
-        foreach ($screens as $screen) {
-            $values = [];
-            foreach ($screen->bindings as $binding) {
-                $values[] = ['id' => $binding->id, 'owner' => $binding->owner, 'source' => $binding->source, 'name' => $binding->name, 'type' => $binding->type];
-            }
-            $actions = [];
-            foreach ($screen->actions as $action) {
-                $actions[] = $action->kind === 'set'
-                    ? ['id' => $action->id, 'owner' => $action->owner, 'kind' => 'set', 'target' => $action->target, 'binding' => $action->binding->id, 'type' => $action->binding->type]
-                    : ['id' => $action->id, 'owner' => $action->owner, 'kind' => 'call', 'target' => $action->target, 'args' => $action->args, 'params' => $action->params ?? $screen->class->handlers[$action->target] ?? []];
+        foreach ($windows as $window) {
+            $pages = [];
+            foreach ($window->pages as $screen) {
+                $pages[] = [
+                    'class' => $screen->class->name,
+                    'name' => $screen->class->short,
+                    'page' => $screen->page,
+                    'values' => self::values($screen->bindings),
+                    'actions' => self::actions($screen->actions, $screen),
+                ];
             }
             $out[] = [
-                'class' => $screen->class->name,
-                'name' => $screen->class->short,
-                'layout' => $screen->layout?->name,
-                'frameless' => $screen->layout !== null,
-                'values' => $values,
-                'actions' => $actions,
+                'name' => $window->name,
+                'layout' => $window->layout?->name,
+                'frameless' => $window->layout !== null,
+                'values' => self::values($window->bindings),
+                'actions' => self::actions($window->actions, $window->pages[0] ?? null),
+                'pages' => $pages,
             ];
         }
-        return json_encode(['screens' => $out], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . "\n";
+        return json_encode(['windows' => $out], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) . "\n";
+    }
+
+    /**
+     * @param array<string, Binding> $bindings
+     * @return list<array<string, mixed>>
+     */
+    private static function values(array $bindings): array
+    {
+        $values = [];
+        foreach ($bindings as $binding) {
+            $values[] = ['id' => $binding->id, 'owner' => $binding->owner, 'source' => $binding->source, 'name' => $binding->name, 'type' => $binding->type];
+        }
+        return $values;
+    }
+
+    /**
+     * @param list<Action> $actions
+     * @return list<array<string, mixed>>
+     */
+    private static function actions(array $actions, ?ScreenModel $screen): array
+    {
+        $out = [];
+        foreach ($actions as $action) {
+            $out[] = $action->kind === 'set'
+                ? ['id' => $action->id, 'owner' => $action->owner, 'kind' => 'set', 'target' => $action->target, 'binding' => $action->binding->id, 'type' => $action->binding->type]
+                : ['id' => $action->id, 'owner' => $action->owner, 'kind' => 'call', 'target' => $action->target, 'args' => $action->args, 'params' => $action->params ?? $screen?->class->handlers[$action->target] ?? []];
+        }
+        return $out;
     }
 }

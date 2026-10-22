@@ -61,7 +61,7 @@ final class DialogCompiler implements ElementCompiler
         foreach ($element->children as $child) {
             $children .= $context->element($child, $scope, 'v');
         }
-        $context->setOverlay($slot, Code::block($spec->component, $lines, $children, "if $p : "));
+        $context->setOverlay($slot, Code::block($spec->component, $lines, $children, 'if ' . ($context->pageGuard() === '' ? '' : $context->pageGuard() . ' && ') . "$p : "));
         return '';
     }
 }

@@ -49,13 +49,13 @@ final class DevViews
         }
         $changed = GeneratedFile::write("$outDir/app.slint", $slint) || $changed;
 
+        // One entry per window component (the interpreter builds one component per file).
         $entries = [];
-        foreach ($compiled->screens as $screen) {
-            $short = $screen->class->short;
-            $entries[$short] = "$outDir/screens/$short.slint";
-            $changed = GeneratedFile::write($entries[$short], "export { $short } from " . TextAttribute::slintString("$outDir/app.slint") . ";\n") || $changed;
+        foreach ($compiled->windows as $window) {
+            $entries[$window->name] = "$outDir/screens/{$window->name}.slint";
+            $changed = GeneratedFile::write($entries[$window->name], "export { {$window->name} } from " . TextAttribute::slintString("$outDir/app.slint") . ";\n") || $changed;
         }
-        GeneratedFile::write("$outDir/screens.json", ScreensJson::emit($compiled->screens));
+        GeneratedFile::write("$outDir/screens.json", ScreensJson::emit($compiled->windows));
 
         foreach ($project->classes as $class) {
             $watch[] = $class->template;

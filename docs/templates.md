@@ -673,6 +673,13 @@ Wayland, where the title bar can't move the window. The corners stay square on L
 
 `demo/titlebar` is a complete example.
 
+## Moving between screens
+
+A window can hold a stack of screens: `$this->navigator()->push(new DetailsScreen($id))` shows the
+next one in the same window, `back()` returns to the previous one with its state kept. A layout's
+`onClick="back"` and `@if (canGoBack())` make a back button; Alt+Left goes back too. See
+[navigation.md](navigation.md).
+
 ## Elements from a kit
 
 Kits can add elements beyond the core set. Use them with an XML namespace whose value is the

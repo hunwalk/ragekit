@@ -1,5 +1,5 @@
-if ($screen instanceof {{ class }}) {
-    $l = $screen->layoutObject();
+if ($s instanceof {{ class }}) {
+    $l = $n->layout();
     if ($l instanceof {{ layout }}) {
         return self::{{ method }}({{ args }});
     }

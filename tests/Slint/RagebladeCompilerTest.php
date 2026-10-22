@@ -97,7 +97,7 @@ final class RagebladeCompilerTest extends TestCase
         self::assertSame([['expr', 0]], $pick->args);
         self::assertSame([['expr', 0], ['expr', 1], ['expr', 2]], $tag->args);
         self::assertStringContainsString('root.action(' . $tag->id . ', "\{item}\u{1f}\{(', $out->slint);
-        $php = BinderEmitter::emit($out->screens);
+        $php = BinderEmitter::emit($out->windows);
         self::assertStringContainsString('$s->move((int) self::part($arg, 0), 1);', $php);
         self::assertStringContainsString("\$s->tag(self::part(\$arg, 0), self::part(\$arg, 1) === '1', (float) self::part(\$arg, 2));", $php);
     }

@@ -6,6 +6,7 @@ namespace RageKit\Slint\Dev;
 
 use RageKit\App;
 use RageKit\Component;
+use RageKit\Navigator;
 use RageKit\Screen;
 
 /**
@@ -31,6 +32,8 @@ final class Session
     private static array $windows = [];
     /** @var list<array{window: int, class: string, title: string, width: int, height: int, props: array<string, mixed>, layoutProps?: array<string, mixed>, used?: bool}> */
     private static array $restore = [];
+    /** @var array<int, array{reset: bool, screens: list<array{class: string, props: array<string, mixed>}>}> saved stacks by the restored first screen (spl_object_id) */
+    private static array $stacks = [];
     /** The saved window restore() last gave to a screen: its layout gets that window's layout properties. */
     private static ?int $restored = null;
 
@@ -50,6 +53,7 @@ final class Session
         self::$windows = [];
         self::$restore = [];
         self::$restored = null;
+        self::$stacks = [];
         if ($restart && is_file($stateFile)) {
             self::$restore = json_decode((string) file_get_contents($stateFile), true)['windows'] ?? [];
         }
@@ -150,7 +154,7 @@ final class Session
         return self::$app;
     }
 
-    /** The screen a window is about to be opened for (Screens::name() runs just before slint_open()). */
+    /** The screen a window is about to be opened for (Screens::layout() runs just before slint_open()). */
     public static function pending(Screen $screen): void
     {
         self::$pending = $screen;
@@ -175,7 +179,16 @@ final class Session
         unset(self::$windows[$window]);
     }
 
-    /** Writes every open window's screen class, title, size and public properties. */
+    /** The Slint property behind a value id: 0 is the page (rk-page), others pN. */
+    public static function property(int $id): string
+    {
+        return $id === 0 ? 'rk-page' : "p$id";
+    }
+
+    /**
+     * Writes every open window's first screen (class, title, size, public properties), the screens
+     * pushed on top of it (class and properties, bottom first) and its layout's properties.
+     */
     public static function snapshot(): void
     {
         if (self::$stateFile === '' || self::$quitting || !self::$running) {
@@ -191,6 +204,20 @@ final class Session
                 'height' => $window['height'],
                 'props' => self::props($window['screen']),
             ];
+            // The screens above the one the window opened with; after reset() (or replace() of the
+            // first screen) the whole stack, marked 'reset': restoring replaces the reopened screen.
+            $screens = self::navigatorOf($window['screen'])?->stack() ?? [$window['screen']];
+            $reset = $screens[0] !== $window['screen'];
+            $stack = [];
+            foreach ($reset ? $screens : array_slice($screens, 1) as $screen) {
+                $stack[] = ['class' => get_class($screen), 'props' => self::props($screen)];
+            }
+            if ($stack !== []) {
+                $saved['stack'] = $stack;
+            }
+            if ($reset) {
+                $saved['reset'] = true;
+            }
             $layout = $window['screen']->layoutObject();
             if ($layout !== null) {
                 $saved['layoutProps'] = self::props($layout);
@@ -214,8 +241,45 @@ final class Session
             self::$restore[$i]['used'] = true;
             self::$restored = $i;
             self::assignAll($screen, $saved['props']);
+            if (($saved['stack'] ?? []) !== []) {
+                self::$stacks[spl_object_id($screen)] = ['reset' => $saved['reset'] ?? false, 'screens' => $saved['stack']];
+            }
             return;
         }
+    }
+
+    /**
+     * After a restart: pushes the screens that were on top of $n's first screen, each created
+     * without constructor arguments and given its saved properties. A screen that can't be created
+     * that way (it needs arguments, or its class is gone) ends the restore there. Runs once.
+     */
+    public static function restoreStack(Navigator $n): void
+    {
+        $id = spl_object_id($n->stack()[0]);
+        $stack = self::$stacks[$id] ?? ['reset' => false, 'screens' => []];
+        unset(self::$stacks[$id]);
+        foreach ($stack['screens'] as $i => $saved) {
+            $class = $saved['class'];
+            $constructor = class_exists($class) ? (new \ReflectionClass($class))->getConstructor() : null;
+            if (!class_exists($class) || ($constructor !== null && $constructor->getNumberOfRequiredParameters() > 0)) {
+                fwrite(STDERR, "ragekit dev: not restoring the screens from $class up (it can't be created without constructor arguments)\n");
+                return;
+            }
+            $screen = new $class();
+            self::assignAll($screen, $saved['props']);
+            if ($i === 0 && $stack['reset']) {
+                $n->reset($screen);
+            } else {
+                $n->push($screen);
+            }
+        }
+    }
+
+    /** The navigator of the window $screen is the first screen of (null before it's shown). */
+    private static function navigatorOf(Screen $screen): ?Navigator
+    {
+        $property = new \ReflectionProperty(Screen::class, 'navigator');
+        return $property->getValue($screen);
     }
 
     /** After a restart: gives the layout of the screen restore() just handled its saved properties. */

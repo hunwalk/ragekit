@@ -1,0 +1,7 @@
+<VStack>
+    <Text variant="h3">Albums</Text>
+    @foreach (self::ALBUMS as $album)
+        <Button text="{{ $album }}" variant="outline" onClick="show($album)" />
+    @endforeach
+    <Text variant="muted">Last opened: {{ $last }}</Text>
+</VStack>

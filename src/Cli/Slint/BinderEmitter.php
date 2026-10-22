@@ -7,34 +7,39 @@ namespace RageKit\Cli\Slint;
 use RageKit\Cli\Stub;
 
 /**
- * RageKit\Generated\Screens: statically typed PHP that reads each screen's shown values and runs
- * its actions — no dynamic property access, so TypePHP (and Nano) compile it directly.
+ * RageKit\Generated\Screens: statically typed PHP that reads the shown values of a window (its
+ * layout's, the top screen's) and runs its actions — no dynamic property access, so TypePHP (and
+ * Nano) compile it directly.
  */
 final class BinderEmitter
 {
-    /** @param list<ScreenModel> $screens */
-    public static function emit(array $screens): string
+    /** @param list<WindowModel> $windows */
+    public static function emit(array $windows): string
     {
-        $names = $layouts = $values = $dispatch = $helpers = [];
-        foreach ($screens as $screen) {
-            $class = '\\' . $screen->class->name;
-            $short = $screen->class->short;
-            $names[] = "if (\$screen instanceof $class) {\n    return '$short';\n}";
-            if ($screen->layout === null) {
-                $values[] = "if (\$screen instanceof $class) {\n    return self::values$short(\$screen);\n}";
-                $dispatch[] = "if (\$screen instanceof $class) {\n    return self::dispatch$short(\$screen, \$action, \$arg);\n}";
-            } else {
-                // A screen with a layout: its values and actions also reach the layout object.
-                $layout = '\\' . $screen->layout->name;
-                $layouts[] = "if (\$screen instanceof $class) {\n    return new $layout();\n}";
-                $values[] = rtrim(self::stub('binder-layout-call', ['class' => $class, 'layout' => $layout, 'method' => "values$short", 'args' => '$screen, $l', 'fallback' => '[]']), "\n");
-                $dispatch[] = rtrim(self::stub('binder-layout-call', ['class' => $class, 'layout' => $layout, 'method' => "dispatch$short", 'args' => '$screen, $l, $action, $arg', 'fallback' => '0']), "\n");
+        $names = $pages = $layouts = $values = $dispatch = $helpers = [];
+        foreach ($windows as $window) {
+            foreach ($window->pages as $screen) {
+                $class = '\\' . $screen->class->name;
+                $short = $screen->class->short;
+                $names[] = "if (\$screen instanceof $class) {\n    return '{$window->name}';\n}";
+                $pages[] = "if (\$screen instanceof $class) {\n    return {$screen->page};\n}";
+                if ($screen->layout === null) {
+                    $values[] = "if (\$s instanceof $class) {\n    return self::values$short(\$n, \$s);\n}";
+                    $dispatch[] = "if (\$s instanceof $class) {\n    return self::dispatch$short(\$n, \$s, \$action, \$arg);\n}";
+                } else {
+                    // A screen with a layout: its values and actions also reach the layout object.
+                    $layout = '\\' . $screen->layout->name;
+                    $layouts[] = "if (\$screen instanceof $class) {\n    return new $layout();\n}";
+                    $values[] = rtrim(self::stub('binder-layout-call', ['class' => $class, 'layout' => $layout, 'method' => "values$short", 'args' => '$n, $s, $l', 'fallback' => '[]']), "\n");
+                    $dispatch[] = rtrim(self::stub('binder-layout-call', ['class' => $class, 'layout' => $layout, 'method' => "dispatch$short", 'args' => '$n, $s, $l, $action, $arg', 'fallback' => '0']), "\n");
+                }
+                $helpers[] = self::valuesMethod($screen);
+                $helpers[] = self::dispatchMethod($screen);
             }
-            $helpers[] = self::valuesMethod($screen);
-            $helpers[] = self::dispatchMethod($screen);
         }
         return self::stub('binder', [
-            'names' => implode("\n", $names),
+            'windows' => implode("\n", $names),
+            'pages' => implode("\n", $pages),
             'layouts' => implode("\n", $layouts),
             'values' => implode("\n", $values),
             'dispatch' => implode("\n", $dispatch),
@@ -42,11 +47,18 @@ final class BinderEmitter
         ]);
     }
 
+    /** A page's values: the window's (layout, top screen, toasts) and its own, by id. */
     private static function valuesMethod(ScreenModel $screen): string
     {
+        $bindings = [...array_values($screen->window->bindings), ...array_values($screen->bindings)];
+        usort($bindings, fn(Binding $a, Binding $b) => $a->id <=> $b->id);
         $entries = [];
-        foreach ($screen->bindings as $binding) {
-            $object = $binding->owner === 'layout' ? '$l' : '$s';
+        foreach ($bindings as $binding) {
+            $object = match ($binding->owner) {
+                'layout' => '$l',
+                'window' => '$n',
+                default => '$s',
+            };
             $read = $binding->source === 'method' ? "$object->{$binding->name}()" : "$object->{$binding->name}";
             if ($binding->type === 'list') {
                 $read = "self::strings($read)";
@@ -61,10 +73,13 @@ final class BinderEmitter
         ]);
     }
 
+    /** A page's actions: the window's (layout, top screen) and its own; other pages' ids fall to default. */
     private static function dispatchMethod(ScreenModel $screen): string
     {
+        $actions = [...$screen->window->actions, ...$screen->actions];
+        usort($actions, fn(Action $a, Action $b) => $a->id <=> $b->id);
         $cases = [];
-        foreach ($screen->actions as $action) {
+        foreach ($actions as $action) {
             $object = $action->owner === 'layout' ? '$l' : '$s';
             if ($action->kind === 'set') {
                 $cases[] = "case {$action->id}:\n"

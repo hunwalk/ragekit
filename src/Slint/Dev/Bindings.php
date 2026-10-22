@@ -4,64 +4,96 @@ declare(strict_types=1);
 
 namespace RageKit\Slint\Dev;
 
+use RageKit\Navigator;
+
 /**
  * What RageKit\Generated\Screens does in release builds, read from screens.json instead of
- * generated code: a screen's shown values and what its actions run (same conversions as
- * cli/Slint/BinderEmitter.php).
+ * generated code: each window component's pages, the shown values of a window (its layout's,
+ * the screen on top's) and what its actions run (same conversions as Cli/Slint/BinderEmitter.php).
  */
 final class Bindings
 {
-    /** @param array<string, array> $screens by class name */
-    private function __construct(private readonly array $screens)
+    /**
+     * @param array<string, array> $pages by screen class: the page, plus 'window' (its window entry)
+     */
+    private function __construct(private readonly array $pages)
     {
     }
 
     public static function load(string $json): self
     {
-        $screens = [];
-        foreach (json_decode($json, true, flags: JSON_THROW_ON_ERROR)['screens'] as $screen) {
-            $actions = [];
-            foreach ($screen['actions'] as $action) {
-                $actions[$action['id']] = $action;
+        $pages = [];
+        foreach (json_decode($json, true, flags: JSON_THROW_ON_ERROR)['windows'] as $window) {
+            $window['actions'] = self::byId($window['actions']);
+            foreach ($window['pages'] as $page) {
+                $page['actions'] = self::byId($page['actions']);
+                $page['window'] = $window;
+                unset($page['window']['pages']);
+                $pages[$page['class']] = $page;
             }
-            $screen['actions'] = $actions;
-            $screens[$screen['class']] = $screen;
         }
-        return new self($screens);
+        return new self($pages);
     }
 
-    public function name(object $screen): string
+    /** @param list<array> $actions @return array<int, array> */
+    private static function byId(array $actions): array
     {
-        return $this->screen($screen)['name'];
+        $out = [];
+        foreach ($actions as $action) {
+            $out[$action['id']] = $action;
+        }
+        return $out;
+    }
+
+    public function window(object $screen): string
+    {
+        return $this->entry($screen)['window']['name'];
+    }
+
+    public function page(object $screen): int
+    {
+        return $this->entry($screen)['page'];
+    }
+
+    /** $screen's page entry of screens.json, with its window's under 'window'. */
+    private function entry(object $screen): array
+    {
+        return $this->pages[get_class($screen)] ?? throw new \RuntimeException('No template for ' . get_class($screen));
     }
 
     /** A new instance of the Layout framing $screen's window, or null. */
     public function layout(object $screen): ?object
     {
-        $class = $this->screen($screen)['layout'] ?? null;
+        $class = $this->entry($screen)['window']['layout'] ?? null;
         return $class === null ? null : new $class();
     }
 
-    /** @return array<int, mixed> property id => current value */
-    public function values(object $screen): array
+    /** @return array<int, mixed> property id => current value: the window's and the top screen's */
+    public function values(Navigator $n): array
     {
+        $page = $this->entry($n->top());
         $values = [];
-        foreach ($this->screen($screen)['values'] as $value) {
-            $object = self::owner($screen, $value);
+        foreach ([...$page['window']['values'], ...$page['values']] as $value) {
+            $object = self::owner($n, $value);
             if ($object === null) {
                 return [];
             }
             $read = $value['source'] === 'method' ? $object->{$value['name']}() : $object->{$value['name']};
             $values[$value['id']] = $value['type'] === 'list' ? array_map('strval', array_values((array) $read)) : $read;
         }
+        ksort($values);
         return $values;
     }
 
-    /** Runs an action; returns the id of a property the UI already shows (two-way input), else 0. */
-    public function dispatch(object $screen, int $action, string $arg): int
+    /**
+     * Runs an action of the window or of the screen on top (another page's action does nothing);
+     * returns the id of a property the UI already shows (two-way input), else 0.
+     */
+    public function dispatch(Navigator $n, int $action, string $arg): int
     {
-        $spec = $this->screen($screen)['actions'][$action] ?? null;
-        $object = $spec === null ? null : self::owner($screen, $spec);
+        $page = $this->entry($n->top());
+        $spec = $page['window']['actions'][$action] ?? $page['actions'][$action] ?? null;
+        $object = $spec === null ? null : self::owner($n, $spec);
         if ($spec === null || $object === null) {
             return 0;
         }
@@ -82,18 +114,14 @@ final class Bindings
         return 0;
     }
 
-    /** Whose value or action an entry is: the screen's, or its layout's (null before it has one). */
-    private static function owner(object $screen, array $entry): ?object
+    /** Whose value or action an entry is: the layout's, the window's (navigator), else the screen on top. */
+    private static function owner(Navigator $n, array $entry): ?object
     {
-        if (($entry['owner'] ?? 'screen') !== 'layout') {
-            return $screen;
-        }
-        return method_exists($screen, 'layoutObject') ? $screen->layoutObject() : null;
-    }
-
-    private function screen(object $screen): array
-    {
-        return $this->screens[get_class($screen)] ?? throw new \RuntimeException('No template for ' . get_class($screen));
+        return match ($entry['owner'] ?? 'screen') {
+            'layout' => $n->layout(),
+            'window' => $n,
+            default => $n->top(),
+        };
     }
 
     private static function convert(string $value, string $type): mixed

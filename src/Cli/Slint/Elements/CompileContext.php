@@ -51,6 +51,9 @@ final class CompileContext
     /** How many for/if (directives, each=, when=) the element being compiled is inside. */
     private int $guarded = 0;
 
+    /** While a window's page compiles: its condition (root.rk-page == N), '' when the window has one page. */
+    private string $pageGuard = '';
+
     /** @var list<string> dialogs of the screen being compiled, for the window's top level (takeOverlays) */
     private array $overlays = [];
 
@@ -226,6 +229,17 @@ final class CompileContext
     public function isGuarded(): bool
     {
         return $this->guarded > 0;
+    }
+
+    public function setPageGuard(string $condition): void
+    {
+        $this->pageGuard = $condition;
+    }
+
+    /** The condition of the page being compiled ('' outside pages or in one-page windows). */
+    public function pageGuard(): string
+    {
+        return $this->pageGuard;
     }
 
     /** Reserves the next place at the window's top level; fill it with setOverlay(). */

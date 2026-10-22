@@ -22,7 +22,8 @@ if ($mode === 'module') {
     fwrite($out, Protocol::encode('quit'));
     exit(0);
 }
-fwrite($out, Protocol::encode('open', match ($mode) { 'nope' => 'Nope', 'framed' => 'F', 'view' => 'V', default => 'S' }, 'Fake', '300', '200'));
+// S and V share the window component rk-screens (pages 0 and 1); F is rk-screens-L (layout L).
+fwrite($out, Protocol::encode('open', match ($mode) { 'nope' => 'Nope', 'framed' => 'rk-screens-L', default => 'rk-screens' }, 'Fake', '300', '200'));
 $reply = Protocol::decode((string) fgets($in));
 file_put_contents($log, implode(' ', $reply) . "\n", FILE_APPEND);
 if ($mode === 'open-exit3') {
@@ -40,7 +41,7 @@ if ($mode === 'framed') {
     exit(0);
 }
 fwrite($out, $mode === 'view'
-    ? Protocol::encode('set-list', $reply[1], 'p1', 'php', 'slint', 'desktop')
+    ? Protocol::encode('set-int', $reply[1], 'rk-page', '1') . Protocol::encode('set-list', $reply[1], 'p2', 'php', 'slint', 'desktop')
     : Protocol::encode('set-string', $reply[1], 'p1', "tab\there"));
 fwrite($out, Protocol::encode('run'));
 while (($line = fgets($in)) !== false) {

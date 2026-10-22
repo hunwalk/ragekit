@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace RageKit\Cli\Slint;
 
 /**
- * A PHP value (property or computed method) shown in a screen, i.e. Slint property p<id>. $owner
- * says whose: the screen's, or (in a window with a layout) the layout's.
+ * A PHP value (property or computed method) shown in a window, i.e. Slint property p<id>. $owner
+ * says whose: 'screen' (a page's screen), 'layout', 'context' (the screen on top, read through
+ * the layout's context interface) or 'window' (the window's own, e.g. its toasts).
  */
 final class Binding
 {

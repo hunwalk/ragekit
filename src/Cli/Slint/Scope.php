@@ -10,18 +10,20 @@ use RageKit\Cli\Templates\Element;
 /**
  * Where a template element is compiled: its class, its screen model (null in children), each
  * items, and whose template it is. In a layout's template ($owner 'layout', $class the layout),
- * $screen and $screenRoot are what <Content /> shows.
+ * $pages are what <Content /> shows: every screen of the window, one page each.
  */
 final class Scope
 {
-    /** @param array<string, Ref> $items */
+    /**
+     * @param array<string, Ref> $items
+     * @param list<Page> $pages
+     */
     public function __construct(
         public readonly ClassInfo $class,
         public readonly ?ScreenModel $model,
         private readonly array $items = [],
         public readonly string $owner = 'screen',
-        public readonly ?Scope $screen = null,
-        public readonly ?Element $screenRoot = null,
+        public readonly array $pages = [],
     ) {
     }
 
@@ -42,6 +44,6 @@ final class Scope
 
     public function with(string $name, Ref $ref): self
     {
-        return new self($this->class, $this->model, [$name => $ref] + $this->items, $this->owner, $this->screen, $this->screenRoot);
+        return new self($this->class, $this->model, [$name => $ref] + $this->items, $this->owner, $this->pages);
     }
 }

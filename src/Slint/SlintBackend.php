@@ -83,7 +83,7 @@ final class SlintBackend implements Backend
 
     /**
      * Every UI event: action 0 closes the window, -1 reports its maximised state (arg "1"/"0"),
-     * -2 is the toast timer's tick,
+     * -2 is the toast timer's tick, -3 is back (Alt+Left),
      * others run a handler; then all windows re-sync.
      */
     private function dispatch(int $window, int $action, string $arg): void
@@ -100,6 +100,8 @@ final class SlintBackend implements Backend
             $target->maximizedChanged($arg === '1');
         } elseif ($action === -2) {
             // A toast tick: no handler; the re-sync below drops expired toasts.
+        } elseif ($action === -3) {
+            $target->back();
         } else {
             $target->handle($action, $arg);
         }

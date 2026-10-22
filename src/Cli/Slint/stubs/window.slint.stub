@@ -1,10 +1,25 @@
 export component {{ name }} inherits {{ window }} {
     in property <string> rk-title;
     title: root.rk-title;
+    in property <int> rk-page;
     callback action(int, string);
     {{ dev }}
     {{ frameless }}
     {{ properties }}
-    {{ body }}
+    // Alt+Left goes back (action -3): key presses the focused element doesn't take arrive here. It
+    // takes the focus when the window opens and when the page changes (the old page's focused
+    // element is gone then), so the key works before anything was clicked.
+    changed rk-page => { back-keys.focus(); }
+    back-keys := FocusScope {
+        init => { self.focus(); }
+        key-pressed(event) => {
+            if (event.modifiers.alt && event.text == Key.LeftArrow) {
+                root.action(-3, "");
+                return accept;
+            }
+            return reject;
+        }
+        {{ body }}
+    }
     {{ overlays }}
 }

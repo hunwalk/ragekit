@@ -85,7 +85,8 @@ final class SlintRuntimeTest extends TestCase
         $this->app->open(new CounterScreen(), title: 'Counter', width: 360, height: 400);
 
         self::assertSame([
-            'open CounterScreen "Counter" 360x400',
+            'open rk-screens "Counter" 360x400',
+            'int 1 0 0',
             'int 1 1 0',
             'string 1 2 ',
             'list 1 3',
@@ -106,7 +107,7 @@ final class SlintRuntimeTest extends TestCase
         $this->app->open(new CounterScreen(), title: 'Counter');
         FakeHost::$calls = [];
         $this->app->backend()->resync();
-        self::assertSame(['int 1 1 0', 'string 1 2 ', 'list 1 3', 'list end'], FakeHost::$calls);
+        self::assertSame(['int 1 0 0', 'int 1 1 0', 'string 1 2 ', 'list 1 3', 'list end'], FakeHost::$calls);
     }
 
     public function testModuleEventsResyncWindows(): void
@@ -142,7 +143,7 @@ final class SlintRuntimeTest extends TestCase
         $this->app->open(new CounterScreen(), title: 'Counter');
         $this->event(1, 3);
 
-        self::assertSame(['open AboutScreen "About" 300x100'], FakeHost::$calls);
+        self::assertSame(['open rk-screens "About" 300x100', 'int 2 0 1'], FakeHost::$calls);
     }
 
     public function testClosingLastWindowQuits(): void
@@ -153,5 +154,77 @@ final class SlintRuntimeTest extends TestCase
         self::assertSame(['close 2'], FakeHost::$calls);
         $this->event(1, 0);
         self::assertSame(['close 1', 'quit'], FakeHost::$calls);
+    }
+
+    public function testPushSwitchesPageInTheSameWindow(): void
+    {
+        $this->app->open(new CounterScreen(), title: 'Counter');
+        $this->event(1, 4);
+        // No new window: property 0 (rk-page) of window 1 switches to the detail page, then its values.
+        self::assertSame(['int 1 0 2', 'int 1 4 0'], FakeHost::$calls);
+    }
+
+    public function testBackRestoresState(): void
+    {
+        $counter = new CounterScreen();
+        $this->app->open($counter, title: 'Counter');
+        $this->event(1, 1);
+        $this->event(1, 1);
+        $this->event(1, 4);
+        $this->event(1, 5);
+        self::assertSame(['int 1 4 3'], FakeHost::$calls);
+        $this->event(1, 6);
+        // Back on the counter page; its values were never changed, so only the page is sent.
+        self::assertSame(['int 1 0 0'], FakeHost::$calls);
+        self::assertSame(2, $counter->count);
+    }
+
+    /** Review Focus 1: a click from the page just left does nothing on the new one. */
+    public function testStaleActionIsIgnored(): void
+    {
+        $counter = new CounterScreen();
+        $this->app->open($counter, title: 'Counter');
+        $this->event(1, 4);
+        $this->event(1, 1);
+        self::assertSame([], FakeHost::$calls);
+        self::assertSame(0, $counter->count);
+    }
+
+    /** Review Focus 2: the same class twice keeps two states. */
+    public function testSameClassTwice(): void
+    {
+        $this->app->open(new CounterScreen(), title: 'Counter');
+        $this->event(1, 4);
+        $this->event(1, 5);
+        $this->event(1, 8);
+        // Same page (a DetailScreen again), its own value.
+        self::assertSame(['int 1 4 100'], FakeHost::$calls);
+        $this->event(1, -3);
+        self::assertSame(['int 1 4 1'], FakeHost::$calls);
+    }
+
+    public function testActionMinus3GoesBack(): void
+    {
+        $this->app->open(new CounterScreen(), title: 'Counter');
+        $this->event(1, 4);
+        $this->event(1, -3);
+        self::assertSame(['int 1 0 0'], FakeHost::$calls);
+        $this->event(1, -3);
+        self::assertSame([], FakeHost::$calls, 'back on the first screen does nothing');
+    }
+
+    public function testPushOtherLayoutThrows(): void
+    {
+        $this->app->open(new WrongPushScreen(), title: 'W');
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage("FramedScreen uses layout FrameLayout; this window's layout is no layout");
+        $this->event(1, 7);
+    }
+
+    /** The page is read after the values: reading them may change the stack (dev mode restoring it). */
+    public function testPageFollowsAStackChangedWhileReadingValues(): void
+    {
+        $this->app->open(new RestoringScreen(), title: 'R');
+        self::assertSame(['open rk-screens "R" 480x320', 'int 1 0 2', 'int 1 4 7'], FakeHost::$calls);
     }
 }

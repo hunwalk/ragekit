@@ -47,7 +47,7 @@ final class ShellTest extends TestCase
         fclose($this->stdin);
         self::assertSame(0, proc_close($proc));
         $shellLog = (string) file_get_contents("$this->dir/shell.log");
-        self::assertStringContainsString('adopted window 1 (S)', $shellLog);
+        self::assertStringContainsString('adopted window 1 (rk-screens)', $shellLog);
         self::assertStringContainsString('reloaded', $shellLog);
         self::assertStringNotContainsString('error', strtolower($shellLog));
     }
@@ -63,7 +63,7 @@ final class ShellTest extends TestCase
         fclose($this->stdin);
         self::assertSame(0, proc_close($proc));
         $shellLog = (string) file_get_contents("$this->dir/shell.log");
-        self::assertStringContainsString('opened window 1 (F)', $shellLog);
+        self::assertStringContainsString('opened window 1 (rk-screens-L)', $shellLog);
         self::assertStringContainsString('maximize 1 1', $shellLog);
         self::assertStringContainsString('minimize 1', $shellLog);
         self::assertStringNotContainsString('error', strtolower($shellLog));
@@ -79,7 +79,7 @@ final class ShellTest extends TestCase
         fclose($this->stdin);
         self::assertSame(0, proc_close($proc));
         $shellLog = (string) file_get_contents("$this->dir/shell.log");
-        self::assertStringContainsString('opened window 1 (V)', $shellLog);
+        self::assertStringContainsString('opened window 1 (rk-screens)', $shellLog);
         self::assertStringNotContainsString('error', strtolower($shellLog));
     }
 

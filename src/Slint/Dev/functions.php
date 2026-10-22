@@ -46,22 +46,22 @@ function slint_open(string $screen, string $title, int $width, int $height): int
 
 function slint_set_string(int $window, int $id, string $value): void
 {
-    Session::channel()->send('set-string', (string) $window, "p$id", $value);
+    Session::channel()->send('set-string', (string) $window, Session::property($id), $value);
 }
 
 function slint_set_int(int $window, int $id, int $value): void
 {
-    Session::channel()->send('set-int', (string) $window, "p$id", (string) $value);
+    Session::channel()->send('set-int', (string) $window, Session::property($id), (string) $value);
 }
 
 function slint_set_float(int $window, int $id, float $value): void
 {
-    Session::channel()->send('set-float', (string) $window, "p$id", sprintf('%.17g', $value));
+    Session::channel()->send('set-float', (string) $window, Session::property($id), sprintf('%.17g', $value));
 }
 
 function slint_set_bool(int $window, int $id, bool $value): void
 {
-    Session::channel()->send('set-bool', (string) $window, "p$id", $value ? '1' : '0');
+    Session::channel()->send('set-bool', (string) $window, Session::property($id), $value ? '1' : '0');
 }
 
 /** @var array{0: int, 1: int, 2: list<string>}|null the list being pushed: window, id, items */
@@ -81,7 +81,7 @@ function slint_list_end(): void
 {
     [$window, $id, $items] = $GLOBALS['__ragekit_dev_list'];
     $GLOBALS['__ragekit_dev_list'] = null;
-    Session::channel()->send('set-list', (string) $window, "p$id", ...$items);
+    Session::channel()->send('set-list', (string) $window, Session::property($id), ...$items);
 }
 
 function slint_close(int $window): void

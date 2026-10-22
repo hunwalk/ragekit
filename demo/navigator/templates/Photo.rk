@@ -1,0 +1,14 @@
+<VStack>
+    <Text variant="h3">{{ $name }}</Text>
+    <HStack>
+        <Button text="Rename…" variant="outline" onClick="rename" />
+        <Button text="All albums" variant="ghost" onClick="home" />
+    </HStack>
+    <Dialog open="{{ $renaming }}" title="Rename photo">
+        <Entry value="{{ $draft }}" />
+        <HStack>
+            <Button text="Cancel" variant="outline" onClick="cancel" />
+            <Button text="Save" onClick="save" />
+        </HStack>
+    </Dialog>
+</VStack>

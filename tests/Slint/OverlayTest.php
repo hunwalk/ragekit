@@ -101,7 +101,7 @@ final class OverlayTest extends TestCase
         $layout = $this->layout('<VStack padded="false"><WindowDrag><WindowControls /></WindowDrag><Content />'
             . '<Dialog open="{{ $about }}" title="About"><Button text="Close" onClick="close" /></Dialog></VStack>');
         $out = $this->compile([$layout, $this->screen('<Label text="Hi" />', 'Demo\L')], 'shadcn', slint: true);
-        self::assertSame('layout', $out->screens[0]->bindings['layout:property:about']->owner);
+        self::assertSame('layout', $out->screens[0]->window->bindings['layout:property:about']->owner);
         $dialog = strpos($out->slint, ': ShadDialog {');
         $grip = strpos($out->slint, 'root.rk-window("resize-');
         self::assertNotFalse($dialog);
@@ -185,7 +185,7 @@ final class OverlayTest extends TestCase
     {
         foreach (['shadcn', 'material'] as $kit) {
             $out = $this->compile([$this->screen('<VStack><Label text="x" /></VStack>')], $kit, slint: true);
-            $binding = $out->screens[0]->bindings['screen:method:toastTexts'];
+            $binding = $out->screens[0]->window->bindings['window:method:toastTexts'];
             $p = 'root.' . $binding->slintName();
             self::assertSame('list', $binding->type);
             self::assertStringContainsString("for text in $p : ", $out->slint);

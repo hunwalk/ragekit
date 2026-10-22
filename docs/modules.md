@@ -227,7 +227,7 @@ RageKit looks for modules in three places:
   ```
 
   The path is relative to the package's folder. Require the RageKit minor version the module was
-  written for (`"ragekit/ragekit": "^0.1"`): `module.yml` and the C functions a library implements
+  written for (`"ragekit/ragekit": "^0.2"`): `module.yml` and the C functions a library implements
   may change between 0.x minor versions (see the CHANGELOG).
 
 Two different folders declaring the same module name is a build error.
