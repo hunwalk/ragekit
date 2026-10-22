@@ -537,7 +537,7 @@ final class ElementCompiler
                 . "    $title: " . Expression::slintString($section->attributes['title'] ?? '') . ";\n"
                 . "    $open: $p == $i;\n"
                 . "    $toggled => {\n        $p = $p == $i ? -1 : $i;\n        root.action({$action?->id}, \"\\{" . $p . "}\");\n    }\n}\n"
-                . "if $p == $i : VerticalLayout {\n    padding-left: 12px;\n    padding-right: 12px;\n    padding-bottom: 8px;\n"
+                . "if $p == $i : VerticalLayout {\n    padding-top: 12px;\n    padding-left: 12px;\n    padding-right: 12px;\n    padding-bottom: 16px;\n"
                 . Code::indent($this->element($section->children[0], $scope, 'v'), 1) . "}\n";
         }
         return "VerticalLayout {\n    spacing: 0px;\n    alignment: start;\n    " . $this->stretch($element, $axis) . "\n"

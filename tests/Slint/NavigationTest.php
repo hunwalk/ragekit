@@ -95,6 +95,8 @@ final class NavigationTest extends TestCase
         self::assertSame(2, substr_count($out->slint, 'ShadAccordionHeader {'));
         self::assertStringContainsString("open: root.$p == 1;", $out->slint);
         self::assertStringContainsString("if root.$p == 0 : VerticalLayout {", $out->slint);
+        // Room between the header's line and the open section's content, and below it.
+        self::assertMatchesRegularExpression('/VerticalLayout \{\s+padding-top: 12px;\s+padding-left: 12px;\s+padding-right: 12px;\s+padding-bottom: 16px;/', $out->slint);
         self::assertStringContainsString("root.$p = root.$p == 1 ? -1 : 1;", $out->slint);
     }
 
