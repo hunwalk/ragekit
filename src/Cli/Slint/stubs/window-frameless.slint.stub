@@ -1,0 +1,5 @@
+no-frame: true;
+in property <bool> rk-maximized;
+callback rk-window(string);
+changed width => { root.rk-window("resized"); }
+changed height => { root.rk-window("resized"); }

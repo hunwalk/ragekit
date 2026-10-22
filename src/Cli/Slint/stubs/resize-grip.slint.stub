@@ -1,0 +1,18 @@
+TouchArea {
+    x: {{ x }};
+    y: {{ y }};
+    width: {{ width }};
+    height: {{ height }};
+    visible: !root.rk-maximized;
+    mouse-cursor: MouseCursor.{{ cursor }};
+    pointer-event(event) => {
+        if (event.kind == PointerEventKind.down && event.button == PointerEventButton.left) {
+            root.rk-window("resize-{{ edge }}");
+        }
+    }
+    moved => {
+        if (self.pressed) {
+            root.rk-window("resize-move");
+        }
+    }
+}

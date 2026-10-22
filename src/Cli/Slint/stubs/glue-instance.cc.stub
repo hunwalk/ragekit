@@ -1,0 +1,23 @@
+class {{ name }}Instance final : public rk::Instance {
+public:
+    explicit {{ name }}Instance(int64_t window) : handle_({{ name }}::create())
+    {
+        handle_->on_action([window](int action, slint::SharedString arg) {
+            rk::emit_action(window, action, std::string_view(arg));
+        });
+        handle_->window().on_close_requested([window] {
+            rk::emit_close(window);
+            return slint::CloseRequestResponse::KeepWindowShown;
+        });
+        {{ windowCommands }}
+    }
+    {{ frameless }}
+    slint::Window &window() override { return handle_->window(); }
+    void show() override { handle_->show(); }
+    void hide() override { handle_->hide(); }
+    void set_title(std::string_view value) override { handle_->set_rk_title(slint::SharedString(value)); }
+    {{ setters }}
+
+private:
+    slint::ComponentHandle<{{ name }}> handle_;
+};

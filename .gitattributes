@@ -1,3 +1,5 @@
 # Patches keep LF line endings on every OS: the files they patch have LF (see src/Cli/Setup/Installer.php).
 *.patch text eol=lf
 *.sh text eol=lf
+# Stubs are generated code templates; the renderer expects LF (it also converts CRLF itself).
+*.stub text eol=lf

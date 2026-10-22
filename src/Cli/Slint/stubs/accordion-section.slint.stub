@@ -1,0 +1,15 @@
+{{ header }} {
+    {{ title }}: {{ titleValue }};
+    {{ open }}: {{ selected }} == {{ index }};
+    {{ toggled }} => {
+        {{ selected }} = {{ selected }} == {{ index }} ? -1 : {{ index }};
+        root.action({{ action }}, "\{{{ selected }}}");
+    }
+}
+if {{ selected }} == {{ index }} : VerticalLayout {
+    padding-top: 12px;
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-bottom: 16px;
+    {{ body }}
+}

@@ -7,7 +7,7 @@ namespace RageKit\Tests\Kits;
 use PHPUnit\Framework\TestCase;
 use RageKit\Cli\Project\Paths;
 use RageKit\Cli\RageKitException;
-use RageKit\Cli\Slint\ElementCompiler;
+use RageKit\Cli\Slint\Elements\KitElementCompiler;
 use RageKit\Cli\Kits\KitRegistry;
 
 final class KitTest extends TestCase
@@ -50,7 +50,7 @@ final class KitTest extends TestCase
         $new = ['Switch', 'Textarea', 'RadioGroup', 'Toggle', 'Badge', 'Avatar', 'Alert', 'Skeleton', 'Spinner',
             'Sidebar', 'NavList', 'Breadcrumb', 'Pagination'];
         foreach ($new as $name) {
-            self::assertContains($name, ElementCompiler::CORE, "$name is a core element");
+            self::assertContains($name, KitElementCompiler::CORE, "$name is a core element");
         }
         $kits = KitRegistry::load([self::ROOT . '/kits/material/kit.yml', self::ROOT . '/kits/shadcn/kit.yml'], '/rk');
         $describe = function (string $kit, string $element) use ($kits): array {
@@ -67,7 +67,7 @@ final class KitTest extends TestCase
             ksort($values);
             return [$props, $events, $values, $spec->children];
         };
-        foreach ([...ElementCompiler::CORE, 'TabBar', 'WindowControls', 'AccordionHeader', 'Toast'] as $element) {
+        foreach ([...KitElementCompiler::CORE, 'TabBar', 'WindowControls', 'AccordionHeader', 'Toast'] as $element) {
             self::assertSame($describe('material', $element), $describe('shadcn', $element), "$element differs between kits");
         }
     }

@@ -1,0 +1,8 @@
+if (fn == "{{ function }}") {
+    if (count != {{ count }}) {
+        return fail(ok, "{{ function }} takes {{ count }} {{ arguments }}, got " + std::to_string(count));
+    }
+    {{ prepare }}
+    {{ result }}
+    return out.c_str();
+}

@@ -1,0 +1,8 @@
+component {{ name }} {
+    {{ properties }}
+    VerticalLayout {
+        padding: 0px;
+        spacing: 0px;
+        {{ body }}
+    }
+}

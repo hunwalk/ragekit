@@ -1,0 +1,10 @@
+export component {{ name }} inherits {{ window }} {
+    in property <string> rk-title;
+    title: root.rk-title;
+    callback action(int, string);
+    {{ dev }}
+    {{ frameless }}
+    {{ properties }}
+    {{ body }}
+    {{ overlays }}
+}

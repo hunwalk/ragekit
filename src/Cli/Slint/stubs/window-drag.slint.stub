@@ -1,0 +1,14 @@
+TouchArea {
+    pointer-event(event) => {
+        if (event.kind == PointerEventKind.down && event.button == PointerEventButton.left) {
+            root.rk-window("move-start");
+        }
+    }
+    moved => {
+        if (self.pressed) {
+            root.rk-window("move");
+        }
+    }
+    {{ stretch }}
+    {{ stack }}
+}

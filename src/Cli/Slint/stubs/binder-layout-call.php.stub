@@ -1,0 +1,7 @@
+if ($screen instanceof {{ class }}) {
+    $l = $screen->layoutObject();
+    if ($l instanceof {{ layout }}) {
+        return self::{{ method }}({{ args }});
+    }
+    return {{ fallback }};
+}

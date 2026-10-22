@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace RageKit\Tests\Slint;
 
 use PHPUnit\Framework\TestCase;
-use RageKit\Cli\Slint\CompiledViews;
-use RageKit\Cli\Slint\TextAttribute;
-use RageKit\Cli\Slint\SlintCompiler;
-use RageKit\Cli\Templates\ClassInfo;
 use RageKit\Cli\Kits\KitRegistry;
+use RageKit\Cli\Slint\CompiledViews;
+use RageKit\Cli\Slint\SlintCompiler;
+use RageKit\Cli\Slint\TextAttribute;
+use RageKit\Cli\Templates\ClassInfo;
+use RageKit\Cli\Templates\Errors\MisplacedElement;
+use RageKit\Cli\Templates\Errors\NoChildrenAllowed;
+use RageKit\Cli\Templates\Errors\OneChildRequired;
+use RageKit\Cli\Templates\Errors\UnexpectedChild;
+use RageKit\Cli\Templates\Errors\UnknownAttribute;
 use RageKit\Cli\Templates\TemplateException;
 use RageKit\Tests\Support\InstalledToolchain;
 
@@ -362,7 +367,7 @@ final class SlintCompilerTest extends TestCase
         yield 'two-way to method' => ['<Entry value="{greeting}" />', 'S.rk:1: value="{greeting}": two-way inputs must bind a property of the screen'];
         yield 'two-way in each' => ['<VStack><Entry each="x in list" value="{name}" /></VStack>', 'S.rk:1: value="{name}": two-way inputs can\'t be repeated with each= yet'];
         yield 'tab outside tabs' => ['<VStack><Tab title="x"><Label text="a" /></Tab></VStack>', 'S.rk:1: <Tab> is only allowed directly inside <Tabs>'];
-        yield 'tab with two children' => ['<Tabs selected="{tab}"><Tab title="x"><Label text="a" /><Label text="b" /></Tab></Tabs>', 'S.rk:1: <Tab> must contain exactly one element (wrap several in a <VStack>)'];
+        yield 'tab with two children' => ['<Tabs selected="{tab}"><Tab title="x"><Label text="a" /><Label text="b" /></Tab></Tabs>', 'S.rk:1: <Tab> must contain exactly one element; wrap several in a <View> or <VStack>'];
         yield 'tabs with other child' => ['<Tabs selected="{tab}"><Label text="a" /></Tabs>', 'S.rk:1: <Tabs> may only contain <Tab> elements'];
         yield 'tabs selected literal' => ['<Tabs selected="0"><Tab title="x"><Label text="a" /></Tab></Tabs>', 'S.rk:1: <Tabs selected="0">: selected must bind an int property, e.g. selected="{tab}"'];
         yield 'tabs selected wrong type' => ['<Tabs selected="{flag}"><Tab title="x"><Label text="a" /></Tab></Tabs>', 'S.rk:1: selected="{flag}": expected an int property, $flag is bool'];
@@ -386,6 +391,24 @@ final class SlintCompilerTest extends TestCase
             props: ['count' => 'int', 'flag' => 'bool', 'list' => 'list', 'name' => 'string', 'tab' => 'int'],
             computed: ['greeting' => 'string', 'untyped' => 'mixed', 'thing' => 'Demo\\Thing'],
             handlers: ['greeting' => [], 'untyped' => [], 'thing' => [], 'go' => ['string']])]);
+    }
+
+    /** @return iterable<string, array{0: string, 1: class-string}> */
+    public static function errorKinds(): iterable
+    {
+        yield 'unknown attribute' => ['<Button colour="red" />', UnknownAttribute::class];
+        yield 'children in a kit element' => ['<Button text="x"><Label text="a" /></Button>', NoChildrenAllowed::class];
+        yield 'tab outside tabs' => ['<VStack><Tab title="x"><Label text="a" /></Tab></VStack>', MisplacedElement::class];
+        yield 'other child in tabs' => ['<Tabs selected="{tab}"><Label text="a" /></Tabs>', UnexpectedChild::class];
+        yield 'two children in a tab' => ['<Tabs selected="{tab}"><Tab title="x"><Label text="a" /><Label text="b" /></Tab></Tabs>', OneChildRequired::class];
+    }
+
+    /** Repeated kinds of template error have their own classes, so they can be told apart by type. */
+    #[\PHPUnit\Framework\Attributes\DataProvider('errorKinds')]
+    public function testErrorKinds(string $rk, string $class): void
+    {
+        $this->expectException($class);
+        $this->compile([$this->screen('S', $rk, props: ['tab' => 'int'])]);
     }
 
     public function testMissingTemplateFileNamesTheDeclaredPath(): void

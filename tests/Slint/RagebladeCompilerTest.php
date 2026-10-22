@@ -112,8 +112,8 @@ final class RagebladeCompilerTest extends TestCase
     /** @return iterable<string, array{0: string, 1: string}> */
     public static function errors(): iterable
     {
-        yield 'two in foreach' => ["<VStack>\n@foreach (\$items as \$i)\n<Label />\n<Label />\n@endforeach\n</VStack>", 'S.rk:2: @foreach must contain one element; wrap several in a <View> or <VStack>'];
-        yield 'two in branch' => ["<VStack>\n@if (\$ok)\n<Label />\n<Label />\n@endif\n</VStack>", 'S.rk:2: each @if branch must contain one element; wrap several in a <View> or <VStack>'];
+        yield 'two in foreach' => ["<VStack>\n@foreach (\$items as \$i)\n<Label />\n<Label />\n@endforeach\n</VStack>", 'S.rk:2: @foreach must contain exactly one element; wrap several in a <View> or <VStack>'];
+        yield 'two in branch' => ["<VStack>\n@if (\$ok)\n<Label />\n<Label />\n@endif\n</VStack>", 'S.rk:2: each @if branch must contain exactly one element; wrap several in a <View> or <VStack>'];
         yield 'non-bool if' => ["<VStack>\n@if (\$count)\n<Label />\n@endif\n</VStack>", 'the condition $count is an int'];
         yield 'foreach over string' => ["<VStack>\n@foreach (\$name as \$c)\n<Label />\n@endforeach\n</VStack>", 'S.rk:2: @foreach needs a list; $name is a string'];
         yield 'literal arg type' => ["<VStack>\n<Button text=\"x\" onClick=\"move(\$count, 'abc')\" />\n</VStack>", "move(): argument 2 is the text 'abc', the parameter is an int"];

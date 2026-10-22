@@ -1,0 +1,13 @@
+if {{ list }}.length > 0 : VerticalLayout {
+    width: min(360px, root.width - 32px);
+    height: self.preferred-height;
+    x: root.width - self.width - 16px;
+    y: root.height - self.height - 16px;
+    spacing: 8px;
+    for text in {{ list }} : {{ toast }} { {{ text }}: text; }
+}
+Timer {
+    interval: 250ms;
+    running: {{ list }}.length > 0;
+    triggered => { root.action(-2, ""); }
+}

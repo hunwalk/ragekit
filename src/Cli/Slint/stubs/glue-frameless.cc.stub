@@ -1,0 +1,2 @@
+bool frameless() const override { return true; }
+void set_maximized(bool value) override { handle_->set_rk_maximized(value); }

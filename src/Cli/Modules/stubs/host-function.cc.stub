@@ -1,0 +1,8 @@
+{{ returns }} php_{{ function }}({{ params }})
+{
+    static auto fn = reinterpret_cast<decltype(&rkm_{{ function }})>(rkm_symbol("rkm_{{ function }}"));
+    if (fn == nullptr) {
+        {{ default }}
+    }
+    {{ body }}
+}

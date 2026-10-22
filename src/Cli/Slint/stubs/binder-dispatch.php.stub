@@ -1,0 +1,8 @@
+private static function dispatch{{ short }}(\{{ class }} $s{{ layoutParam }}, int $action, string $arg): int
+{
+    switch ($action) {
+        {{ cases }}
+        default:
+            return 0;
+    }
+}

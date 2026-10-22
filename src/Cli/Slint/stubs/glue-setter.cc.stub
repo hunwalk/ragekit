@@ -1,0 +1,7 @@
+void {{ signature }} override
+{
+    switch (id) {
+    {{ cases }}
+    default: break;
+    }
+}

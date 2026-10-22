@@ -66,8 +66,12 @@ src/Cli/
                          {{ expression }} parser
   Kits/                  kit.yml (the element contract: ElementSpec, PropSpec), finding kits,
                          ragekit eject
-  Slint/                 turning templates into Slint + the C++/PHP glue that connects them
-  Modules/               module.yml and the glue generated for modules
+  Slint/                 turning templates into Slint + the C++/PHP glue that connects them:
+                         ElementDispatcher hands each element to its compiler in Slint/Elements/
+                         (one class per construct, sharing a CompileContext); fixed shapes of
+                         generated Slint, C++ glue and PHP binder are stubs in Slint/stubs/
+                         (rendered by Cli/Stub)
+  Modules/               module.yml and the glue generated for modules (from Modules/stubs/)
   Fetch/                 downloading what kits and modules declare under fetch:
   Setup/                 ragekit setup (installing the pinned toolchain) and ragekit doctor
   Dev/                   ragekit dev: watching files, the dev shell, reloads
