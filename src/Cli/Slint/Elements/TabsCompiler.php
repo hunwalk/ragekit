@@ -54,7 +54,7 @@ final class TabsCompiler implements ElementCompiler
             $titles[] = TextAttribute::slintString($tab->attributes['title'] ?? '');
         }
         $this->context->useKit($kit, $spec->component);
-        $action = $scope->model?->action('set', $binding->name, [], $binding, $binding->owner);
+        $action = $scope->model?->action('set', $binding->name, [], $binding, $binding->owner, null, $scope->inWindow());
         $bar = Code::block($spec->component, [
             "{$titlesProp->property}: [" . implode(', ', $titles) . '];',
             "{$selected->property} <=> root.{$binding->slintName()};",

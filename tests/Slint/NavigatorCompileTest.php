@@ -24,21 +24,21 @@ final class NavigatorCompileTest extends TestCase
         mkdir($this->dir);
     }
 
-    private function screen(string $short, string $rk, string $layout = 'Demo\AppLayout'): ClassInfo
+    private function screen(string $short, string $rk, string $layout = 'Demo\AppWindow'): ClassInfo
     {
         file_put_contents("$this->dir/$short.rk", $rk);
         return new ClassInfo("Demo\\$short", $short, "$this->dir/$short.php", true, "$this->dir/$short.rk",
             props: ['count' => 'int', 'confirm' => 'bool'], computed: ['title' => 'string'],
             handlers: ['add' => []], requiredParams: ['add' => 0],
-            layout: $layout, interfaces: $layout === '' ? [] : ['Demo\Ctx']);
+            window: $layout, interfaces: $layout === '' ? [] : ['Demo\Ctx']);
     }
 
     private function layout(string $rk = '<VStack padded="false"><Label text="{{ $context->title() }}" /><Content /></VStack>'): ClassInfo
     {
-        file_put_contents("$this->dir/AppLayout.rk", $rk);
-        return new ClassInfo('Demo\AppLayout', 'AppLayout', "$this->dir/AppLayout.php", false, "$this->dir/AppLayout.rk",
+        file_put_contents("$this->dir/AppWindow.rk", $rk);
+        return new ClassInfo('Demo\AppWindow', 'AppWindow', "$this->dir/AppWindow.php", false, "$this->dir/AppWindow.rk",
             props: ['maximized' => 'bool'], handlers: ['back' => []], requiredParams: ['back' => 0],
-            isLayout: true, context: 'Demo\Ctx', contextMembers: self::CONTEXT);
+            isWindow: true, context: 'Demo\Ctx', contextMembers: self::CONTEXT);
     }
 
     /** @param list<ClassInfo> $classes */
@@ -81,11 +81,11 @@ final class NavigatorCompileTest extends TestCase
     public function testScreensWithOneLayoutShareAWindow(): void
     {
         $out = $this->compile($this->app());
-        self::assertSame(1, substr_count($out->slint, 'export component rk-screens-AppLayout inherits'));
+        self::assertSame(1, substr_count($out->slint, 'export component rk-screens-AppWindow inherits'));
         self::assertStringNotContainsString('export component Albums', $out->slint);
         self::assertStringNotContainsString('export component Photos', $out->slint);
         self::assertStringContainsString('in property <int> rk-page;', $out->slint);
-        $window = $this->window($out, 'rk-screens-AppLayout');
+        $window = $this->window($out, 'rk-screens-AppWindow');
         self::assertSame(['Albums', 'Photos'], array_map(fn($p) => $p->class->short, $window->pages));
         self::assertSame([0, 1], array_map(fn($p) => $p->page, $window->pages));
         self::assertStringContainsString('if root.rk-page == 0 : VerticalLayout {', $out->slint);
@@ -137,7 +137,7 @@ final class NavigatorCompileTest extends TestCase
 
     public function testContextBindingIsSharedOnce(): void
     {
-        $window = $this->window($this->compile($this->app()), 'rk-screens-AppLayout');
+        $window = $this->window($this->compile($this->app()), 'rk-screens-AppWindow');
         self::assertSame('context', $window->bindings['context:method:title']->owner);
         foreach ($window->pages as $page) {
             self::assertArrayNotHasKey('screen:method:title', $page->bindings);
@@ -151,14 +151,14 @@ final class NavigatorCompileTest extends TestCase
             $this->screen('Albums', '<Label text="A" />'),
             $this->screen('Photos', '<VStack><Dialog open="{{ $confirm }}" title="Sure?"><Label text="x" /></Dialog></VStack>'),
         ]);
-        $confirm = $this->window($out, 'rk-screens-AppLayout')->pages[1]->bindings['screen:property:confirm'];
+        $confirm = $this->window($out, 'rk-screens-AppWindow')->pages[1]->bindings['screen:property:confirm'];
         self::assertStringContainsString('if root.rk-page == 1 && root.' . $confirm->slintName() . ' : ShadDialog {', $out->slint);
     }
 
     public function testToastsOncePerWindow(): void
     {
         $out = $this->compile($this->app());
-        $window = $this->window($out, 'rk-screens-AppLayout');
+        $window = $this->window($out, 'rk-screens-AppWindow');
         self::assertSame('window', $window->bindings['window:method:toastTexts']->owner);
         self::assertSame(2, substr_count($out->slint, 'Timer {'), 'one toast timer per window component');
     }

@@ -67,7 +67,7 @@ write a minimal app.
 RageKit is a Composer package, `ragekit/ragekit`:
 
 ```sh
-composer require ragekit/ragekit:^0.2
+composer require ragekit/ragekit:^0.3
 ```
 
 Your classes need an autoloader entry in `composer.json`, for example:
@@ -106,6 +106,7 @@ you to run `setup` again. Details: [toolchain.md](toolchain.md).
 myapp/
   project.yml
   main.php
+  src/CounterApp.php
   src/CounterScreen.php
   templates/CounterScreen.rk
 ```
@@ -123,20 +124,52 @@ ragekit:
   renderer: software
 ```
 
-`main.php` defines `main()`, the program's entry point. It creates the app, opens the first
-window and runs the event loop until the last window closes:
+The app is a class that extends `RageKit\App`. It names the screen the main window starts with,
+and the main window's title and size:
 
 ```php
 <?php
 
-use Demo\CounterScreen;
+namespace Demo;
+
 use RageKit\App;
+use RageKit\Screen;
+
+final class CounterApp extends App
+{
+    protected function firstScreen(): Screen
+    {
+        return new CounterScreen();
+    }
+
+    protected function title(): string
+    {
+        return 'Counter';
+    }
+
+    protected function width(): int
+    {
+        return 360;
+    }
+
+    protected function height(): int
+    {
+        return 200;
+    }
+}
+```
+
+`main.php` defines `main()`, the program's entry point. It runs the app: the main window opens,
+and the event loop runs until the main window closes:
+
+```php
+<?php
+
+use Demo\CounterApp;
 
 function main(): void
 {
-    $app = new App();
-    $app->open(new CounterScreen(), title: 'Counter', width: 360, height: 200);
-    $app->run();
+    (new CounterApp())->run();
 }
 ```
 
@@ -177,7 +210,9 @@ method, and after every event the window shows the new values:
 ```
 
 More on templates, elements and child components: [templates.md](templates.md). For a custom title
-bar (a frameless window framed by your own layout), see [Layouts](templates.md#layouts-a-window-frame-and-a-custom-title-bar).
+bar (a frameless window drawn by your own `Window` subclass), see
+[Windows](templates.md#windows-a-frame-and-a-custom-title-bar); for state the whole app shares
+(who is signed in), [state.md](state.md).
 
 ## Build, run, develop
 

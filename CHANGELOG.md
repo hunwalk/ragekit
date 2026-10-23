@@ -7,9 +7,63 @@ to update. Patch versions (0.1.0 → 0.1.1) only fix things.
 "Breaking" covers more than the PHP API: the `.rk` template syntax, the core element contract
 (what every kit accepts), the `kit.yml` and `module.yml` formats, the C functions a module library
 implements, and `project.yml` options. Kits and modules distributed as Composer packages should
-require the RageKit minor version they were written for, e.g. `"ragekit/ragekit": "^0.2"`.
+require the RageKit minor version they were written for, e.g. `"ragekit/ragekit": "^0.3"`.
 
 ## [Unreleased]
+
+## [0.3.0] - 2026-10-23
+
+The app gets a shape: an app class you extend, a `Window` object per OS window, and app-wide state
+in stores. This release breaks 0.2 apps; "Upgrading from 0.2" below lists every change.
+
+### Added
+
+- **The app class.** Apps extend `RageKit\App`: `firstScreen()` names the main window's first
+  screen, `title()`, `width()` and `height()` its title and size, `createStore()` the app's state
+  and `start()` runs once the main window is open. `main()` becomes `(new MyApp())->run()`.
+  `$this->main()` is the main window.
+- **Stores** (docs/state.md): `RageKit\RootStore` holds the app's stores (`RageKit\Store`), each a
+  typed public property. PHP reads them typed as `AppStore::get()->session`; templates of screens
+  and windows read `{{ $store->session->userName }}` and `{{ $store->session->signedIn() }}`, call
+  `onClick="$store->session->signOut()"` (with arguments too) and bind inputs two-way to
+  `{{ $store->settings->darkMode }}`. Every window showing a store value follows it. Stores tell
+  the app what happened with events (`$this->emit('signedOut')`, `->on('signedOut', …)`), so the
+  app class turns them into navigation and stores never navigate. All of it is checked at build
+  time and compiles in Nano builds. `ragekit dev` keeps the stores across PHP restarts.
+- `demo/navigator` signs in: a sign-in screen, the user's name and Sign out in the title bar, and
+  the app class resetting the window on `signedIn` / `signedOut`.
+
+### Changed
+
+- **`Window` replaces `Layout`.** Every OS window is a `RageKit\Window`: the plain `Window` keeps
+  the OS's title bar, a subclass with a template draws its own (what a layout did). It owns the
+  window's navigator (`$window->navigator()`), its toasts, `close()`, `minimize()`,
+  `toggleMaximize()`, `$maximized`, and `back()` / `canGoBack()` for a back button.
+- **Closing the main window ends the app** and closes the other windows; closing another window
+  only closes it. (Before, the app ended when the last window closed.) Apps that should keep
+  running override `App::mainWindowClosed()`.
+- `App::open()` returns the new `Window` instead of an id.
+- The navigator is only the stack (`push`, `back`, `replace`, `reset`, `canGoBack`, `top`, `depth`,
+  `stack`); toasts moved to the window.
+- `ragekit dev` loads every file that declares a function (main.php) up front, also when it
+  declares the app's class too.
+
+### Upgrading from 0.2
+
+- **The app class.** Move what `main()` did into a class: `final class MyApp extends App` with
+  `firstScreen()` returning the screen you opened, and `title()`, `width()`, `height()` returning
+  what you passed to `open()`. `main()` becomes `(new MyApp())->run();`. `new App()` no longer works
+  (`App` is abstract).
+- **Layout → Window.** `extends Layout` → `extends Window`, `use RageKit\Layout` →
+  `use RageKit\Window`, and in screens `public static function layout(): string` →
+  `public static function window(): string`. A screen that returned `''` from `layout()` drops the
+  method (the default is `Window::class`). Templates stay as they are.
+- In a screen, `$this->layout` is gone: use `$this->currentWindow()`.
+- `App::open()` returns a `Window`; `App::close($id)` is gone: `$window->close()`.
+- A window that should outlive the main window can't anymore unless the app overrides
+  `mainWindowClosed()`; e.g. counter-slint's About closes with the main window now.
+- `$store` is reserved in templates: rename a screen property or a loop variable called `store`.
+- Kits, modules, `.rk` syntax and `project.yml` are unchanged.
 
 ## [0.2.0] - 2026-10-22
 

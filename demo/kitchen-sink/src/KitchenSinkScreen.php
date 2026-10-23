@@ -46,9 +46,9 @@ final class KitchenSinkScreen extends Screen
         return 'templates/KitchenSink.rk';
     }
 
-    public static function layout(): string
+    public static function window(): string
     {
-        return KitchenSinkLayout::class;
+        return KitchenSinkWindow::class;
     }
 
     public function preferences(): string

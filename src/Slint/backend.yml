@@ -12,8 +12,10 @@ sources:
   - src/Backend.php
   - src/Component.php
   - src/Screen.php
-  - src/Layout.php
+  - src/Window.php
   - src/Navigator.php
+  - src/Store.php
+  - src/RootStore.php
   - src/Events.php
   - src/Modules.php
   - src/ModuleUnavailable.php

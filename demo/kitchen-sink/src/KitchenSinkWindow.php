@@ -2,13 +2,13 @@
 
 namespace Demo;
 
-use RageKit\Layout;
+use RageKit\Window;
 
 /** The window's own title bar (frameless window): drag it, double-click it, use its buttons. */
-final class KitchenSinkLayout extends Layout
+final class KitchenSinkWindow extends Window
 {
     public static function template(): string
     {
-        return 'templates/KitchenSinkLayout.rk';
+        return 'templates/KitchenSinkWindow.rk';
     }
 }

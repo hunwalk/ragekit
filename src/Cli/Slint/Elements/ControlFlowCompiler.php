@@ -89,6 +89,9 @@ final class ControlFlowCompiler implements ElementCompiler
         }
         $as = $element->attributes['as'] ?? '';
         $index = $element->attributes['index'] ?? null;
+        if ($as === 'store' || $index === 'store') {
+            throw TemplateException::at($element, "\$store is reserved for the app's stores; name the loop variable something else");
+        }
         $inner = $scope->with($as, new Ref((string) $source->itemType, $as, $source->itemType === 'list' ? 'string' : null));
         if ($index !== null) {
             $inner = $inner->with($index, new Ref('int', $index));

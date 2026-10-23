@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace RageKit\Tests\Dev;
 
 use PHPUnit\Framework\TestCase;
-use RageKit\App;
 use RageKit\Navigator;
+use RageKit\RootStore;
 use RageKit\Slint\Dev\Bindings;
 use RageKit\Slint\Dev\Channel;
 use RageKit\Slint\Dev\Protocol;
 use RageKit\Slint\Dev\Session;
+use RageKit\Store;
+use RageKit\Tests\Core\RecordingApp;
+use RageKit\Window;
 
 foreach (['Protocol', 'Channel', 'Bindings', 'Session'] as $file) {
     require_once __DIR__ . "/../../src/Slint/Dev/$file.php";
@@ -67,7 +70,34 @@ final class DevFramedScreen extends \RageKit\Screen
     }
 }
 
-final class DevFrameLayout extends \RageKit\Layout
+final class DevSessionStore extends Store
+{
+    public string $userName = '';
+    public bool $dark = false;
+
+    public function signIn(string $name): void
+    {
+        $this->userName = $name;
+    }
+
+    public function signedIn(): bool
+    {
+        return $this->userName !== '';
+    }
+}
+
+final class DevStore extends RootStore
+{
+    public DevSessionStore $session;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->session = new DevSessionStore();
+    }
+}
+
+final class DevFrameWindow extends Window
 {
     public string $query = '';
 
@@ -80,7 +110,7 @@ final class DevFrameLayout extends \RageKit\Layout
 /** The dev runtime's PHP pieces (src/Slint/Dev), without the shell. */
 final class RuntimeTest extends TestCase
 {
-    private const JSON = '{"windows":[{"name":"rk-screens","layout":null,"frameless":false,"values":[],"actions":[],"pages":['
+    private const JSON = '{"windows":[{"name":"rk-screens","window":null,"frameless":false,"values":[],"actions":[],"pages":['
         . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFixtureScreen","name":"DevFixtureScreen","page":0,'
         . '"values":[{"id":1,"owner":"screen","source":"property","name":"count","type":"int"},{"id":2,"owner":"screen","source":"method","name":"label","type":"string"},{"id":3,"owner":"screen","source":"property","name":"items","type":"list"}],'
         . '"actions":[{"id":1,"owner":"screen","kind":"set","target":"count","binding":1,"type":"int"},{"id":2,"owner":"screen","kind":"call","target":"add","args":[["literal","5"],["arg","k"]],"params":["int","string"]}]},'
@@ -89,10 +119,11 @@ final class RuntimeTest extends TestCase
         . '"actions":[{"id":3,"owner":"screen","kind":"set","target":"zoom","binding":4,"type":"int"}]},'
         . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevArgScreen","name":"DevArgScreen","page":2,"values":[],"actions":[]}]}]}';
 
-    private function nav(Bindings $b, \RageKit\Screen $root, ?\RageKit\Layout $layout = null): Navigator
+    private function nav(Bindings $b, \RageKit\Screen $root, ?Window $window = null): Navigator
     {
-        $app = (new \ReflectionClass(App::class))->newInstanceWithoutConstructor();
-        return new Navigator($app, $root, $layout, fn(\RageKit\Screen $s): string => $b->window($s));
+        $window ??= $b->newWindow($root);
+        $window->attach(RecordingApp::make(), 1);
+        return new Navigator($window, $root, fn(\RageKit\Screen $s): string => $b->component($s));
     }
 
     public function testBindingsReadValuesAndDispatchLikeTheGeneratedBinder(): void
@@ -101,12 +132,12 @@ final class RuntimeTest extends TestCase
         $s = new DevFixtureScreen();
         $s->items = [1, 2];
         $n = $this->nav($b, $s);
-        self::assertSame('rk-screens', $b->window($s));
+        self::assertSame('rk-screens', $b->component($s));
         self::assertSame(0, $b->page($s));
-        self::assertSame(1, $b->dispatch($n, 1, '7'));
-        self::assertSame(0, $b->dispatch($n, 2, 'x'));
-        self::assertSame(0, $b->dispatch($n, 99, 'x'), 'unknown action');
-        self::assertSame([1 => 12, 2 => 'count 12 x', 3 => ['1', '2']], $b->values($n));
+        self::assertSame(1, $b->dispatch($n->window(), 1, '7'));
+        self::assertSame(0, $b->dispatch($n->window(), 2, 'x'));
+        self::assertSame(0, $b->dispatch($n->window(), 99, 'x'), 'unknown action');
+        self::assertSame([1 => 12, 2 => 'count 12 x', 3 => ['1', '2']], $b->values($n->window()));
     }
 
     /** Review Focus 1 in dev: another page's action does nothing. */
@@ -118,10 +149,10 @@ final class RuntimeTest extends TestCase
         $detail = new DevDetailScreen();
         $n->push($detail);
         self::assertSame(1, $b->page($detail));
-        self::assertSame([4 => 1], $b->values($n));
-        self::assertSame(0, $b->dispatch($n, 1, '7'));
+        self::assertSame([4 => 1], $b->values($n->window()));
+        self::assertSame(0, $b->dispatch($n->window(), 1, '7'));
         self::assertSame(0, $root->count);
-        self::assertSame(4, $b->dispatch($n, 3, '2'));
+        self::assertSame(4, $b->dispatch($n->window(), 3, '2'));
         self::assertSame(2, $detail->zoom);
     }
 
@@ -131,60 +162,150 @@ final class RuntimeTest extends TestCase
         self::assertSame('p7', Session::property(7));
     }
 
-    private const FRAMED = '{"windows":[{"name":"rk-screens-DevFrameLayout","layout":"RageKit\\\\Tests\\\\Dev\\\\DevFrameLayout","frameless":true,'
-        . '"values":[{"id":1,"owner":"context","source":"method","name":"title","type":"string"},{"id":2,"owner":"layout","source":"property","name":"query","type":"string"}],'
-        . '"actions":[{"id":1,"owner":"layout","kind":"set","target":"query","binding":2,"type":"string"},'
-        . '{"id":2,"owner":"layout","kind":"call","target":"search","args":[],"params":[]},'
+    private const FRAMED = '{"windows":[{"name":"rk-screens-DevFrameWindow","window":"RageKit\\\\Tests\\\\Dev\\\\DevFrameWindow","frameless":true,'
+        . '"values":[{"id":1,"owner":"context","source":"method","name":"title","type":"string"},{"id":2,"owner":"window","source":"property","name":"query","type":"string"}],'
+        . '"actions":[{"id":1,"owner":"window","kind":"set","target":"query","binding":2,"type":"string"},'
+        . '{"id":2,"owner":"window","kind":"call","target":"search","args":[],"params":[]},'
         . '{"id":3,"owner":"context","kind":"call","target":"refresh","args":[["literal","bar"]],"params":["string"]}],'
         . '"pages":[{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFramedScreen","name":"DevFramedScreen","page":0,"values":[],"actions":[]}]}]}';
 
-    public function testLayoutValuesAndActionsFromScreensJson(): void
+    public function testWindowValuesAndActionsFromScreensJson(): void
     {
         $b = Bindings::load(self::FRAMED);
         $s = new DevFramedScreen();
-        $l = $b->layout($s);
-        self::assertInstanceOf(DevFrameLayout::class, $l);
-        self::assertNull(Bindings::load(self::JSON)->layout(new DevFixtureScreen()));
+        $l = $b->newWindow($s);
+        self::assertInstanceOf(DevFrameWindow::class, $l);
+        self::assertSame(Window::class, get_class(Bindings::load(self::JSON)->newWindow(new DevFixtureScreen())));
         $n = $this->nav($b, $s, $l);
-        self::assertSame([1 => 'T', 2 => ''], $b->values($n));
-        self::assertSame(2, $b->dispatch($n, 1, 'abc'));
+        self::assertSame([1 => 'T', 2 => ''], $b->values($n->window()));
+        self::assertSame(2, $b->dispatch($n->window(), 1, 'abc'));
         self::assertSame('abc', $l->query);
-        $b->dispatch($n, 2, '');
+        $b->dispatch($n->window(), 2, '');
         self::assertSame('searched', $l->query);
-        $b->dispatch($n, 3, '');
+        $b->dispatch($n->window(), 3, '');
         self::assertSame('bar', $s->refreshed);
     }
 
-    public function testLayoutStateSurvivesRestart(): void
+    public function testWindowStateSurvivesRestart(): void
     {
         $state = $this->tmp() . '/state.json';
         Session::start($this->channel(), self::FRAMED, $state, restart: false);
         $s = new DevFramedScreen();
-        $l = new DevFrameLayout();
+        $l = new DevFrameWindow();
         $l->query = 'abc';
-        $s->useLayout($l);
+        $this->nav(Bindings::load(self::FRAMED), $s, $l);
         Session::pending($s);
         Session::opened(1, 'Main', 300, 200);
         Session::markRunning();
         Session::snapshot();
         $data = json_decode((string) file_get_contents($state), true);
-        self::assertSame(['query' => 'abc', 'maximized' => false], $data['windows'][0]['layoutProps']);
+        self::assertSame(['query' => 'abc', 'maximized' => false], $data['windows'][0]['windowProps'], 'not its id: the backend gives that');
 
         Session::start($this->channel(), self::FRAMED, $state, restart: true);
-        $fresh = new DevFramedScreen();
-        Session::restore($fresh);
-        $freshLayout = new DevFrameLayout();
-        Session::restoreLayout($freshLayout);
-        self::assertSame('abc', $freshLayout->query);
+        $fresh = Session::windowFor(new DevFramedScreen());
+        self::assertInstanceOf(DevFrameWindow::class, $fresh);
+        self::assertSame('abc', $fresh->query);
+    }
+
+    private const STORE = '{"windows":[{"name":"rk-screens","window":null,"frameless":false,'
+        . '"values":[{"id":1,"owner":"store","source":"property","name":"session.userName","type":"string"},{"id":2,"owner":"store","source":"method","name":"session.signedIn","type":"bool"},{"id":3,"owner":"store","source":"property","name":"session.dark","type":"bool"}],'
+        . '"actions":[{"id":1,"owner":"store","kind":"call","target":"session.signIn","args":[["expr",0]],"params":["string"]},'
+        . '{"id":2,"owner":"store","kind":"set","target":"session.dark","binding":3,"type":"bool"}],"pages":['
+        . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFixtureScreen","name":"DevFixtureScreen","page":0,"values":[],"actions":[]},'
+        . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevDetailScreen","name":"DevDetailScreen","page":1,"values":[],"actions":[]}]}]}';
+
+    public function testStoreValuesAndActionsInDev(): void
+    {
+        $store = new DevStore();
+        $b = Bindings::load(self::STORE);
+        $n = $this->nav($b, new DevFixtureScreen());
+        self::assertSame([1 => '', 2 => false, 3 => false], $b->values($n->window()));
+        self::assertSame(0, $b->dispatch($n->window(), 1, 'ann'));
+        self::assertSame(3, $b->dispatch($n->window(), 2, '1'));
+        self::assertSame('ann', $store->session->userName);
+        self::assertTrue($store->session->dark);
+        self::assertSame([1 => 'ann', 2 => true, 3 => true], $b->values($n->window()));
+    }
+
+    public function testSnapshotKeepsStores(): void
+    {
+        $state = $this->tmp() . '/state.json';
+        Session::start($this->channel(), self::STORE, $state, restart: false);
+        $store = new DevStore();
+        $store->session->userName = 'ann';
+        Session::pending(new DevFixtureScreen());
+        Session::opened(1, 'Main', 300, 200);
+        Session::markRunning();
+        Session::snapshot();
+        $data = json_decode((string) file_get_contents($state), true);
+        self::assertSame(['session' => ['userName' => 'ann', 'dark' => false]], $data['stores']);
+    }
+
+    /** Review Focus 5: a PHP restart while signed in and two screens deep: still signed in, same screen. */
+    public function testRestartRestoresStoresBeforeTheFirstSync(): void
+    {
+        $state = $this->tmp() . '/state.json';
+        Session::start($this->channel(), self::STORE, $state, restart: false);
+        $store = new DevStore();
+        $store->session->userName = 'ann';
+        $b = Bindings::load(self::STORE);
+        $root = new DevFixtureScreen();
+        $n = $this->nav($b, $root);
+        $n->push(new DevDetailScreen());
+        Session::pending($root);
+        Session::opened(1, 'Main', 300, 200);
+        Session::markRunning();
+        Session::snapshot();
+
+        Session::start($this->channel(), self::STORE, $state, restart: true);
+        new DevStore();                                 // the app's createStore(), fresh
+        $fresh = new DevFixtureScreen();
+        $window = Session::windowFor($fresh);           // just before the main window opens
+        self::assertSame('ann', DevStore::get()->session->userName);
+        $window->attach(RecordingApp::make(), 1);
+        $n2 = new Navigator($window, $fresh, fn(\RageKit\Screen $s): string => $b->component($s));
+        Session::restoreStack($n2);                     // the first values() read
+        self::assertSame(2, $n2->depth());
+        self::assertInstanceOf(DevDetailScreen::class, $n2->top());
+        self::assertSame([1 => 'ann', 2 => true, 3 => false], $b->values($window));
+    }
+
+    /** A store action of the sign-in page (as the compiler now places it) does nothing once another page shows. */
+    public function testPageStoreActionOfAnotherPageIsIgnored(): void
+    {
+        $json = '{"windows":[{"name":"rk-screens","window":null,"frameless":false,"values":[],"actions":[],"pages":['
+            . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFixtureScreen","name":"DevFixtureScreen","page":0,"values":[],'
+            . '"actions":[{"id":1,"owner":"store","kind":"call","target":"session.signIn","args":[["expr",0]],"params":["string"]}]},'
+            . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevDetailScreen","name":"DevDetailScreen","page":1,"values":[],"actions":[]}]}]}';
+        $store = new DevStore();
+        $b = Bindings::load($json);
+        $n = $this->nav($b, new DevFixtureScreen());
+        $b->dispatch($n->window(), 1, 'ann');
+        self::assertSame('ann', $store->session->userName);
+        $n->push(new DevDetailScreen());
+        $b->dispatch($n->window(), 1, 'bob');
+        self::assertSame('ann', $store->session->userName);
+    }
+
+    /** A store that is gone, or a property whose type changed, is skipped like a screen's. */
+    public function testStoreRestoreSkipsWhatChanged(): void
+    {
+        $state = $this->tmp() . '/state.json';
+        file_put_contents($state, json_encode(['windows' => [], 'stores' => ['session' => ['userName' => 5, 'dark' => true], 'gone' => ['x' => 1]]]));
+        Session::start($this->channel(), self::STORE, $state, restart: true);
+        new DevStore();
+        Session::windowFor(new DevFixtureScreen());
+        self::assertSame('', DevStore::get()->session->userName);
+        self::assertTrue(DevStore::get()->session->dark);
     }
 
     public function testExpressionArgumentsAreSplit(): void
     {
-        $json = '{"windows":[{"name":"rk-screens","layout":null,"frameless":false,"values":[],"actions":[],"pages":[{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFixtureScreen","name":"DevFixtureScreen","page":0,"values":[],'
+        $json = '{"windows":[{"name":"rk-screens","window":null,"frameless":false,"values":[],"actions":[],"pages":[{"class":"RageKit\\\\Tests\\\\Dev\\\\DevFixtureScreen","name":"DevFixtureScreen","page":0,"values":[],'
             . '"actions":[{"id":1,"owner":"screen","kind":"call","target":"add","args":[["expr",0],["expr",1]],"params":["int","string"]}]}]}]}';
         $s = new DevFixtureScreen();
         $b = Bindings::load($json);
-        $b->dispatch($this->nav($b, $s), 1, "3\x1Fk");
+        $b->dispatch($this->nav($b, $s)->window(), 1, "3\x1Fk");
         self::assertSame(3, $s->count);
         self::assertSame('k', $s->last);
     }
@@ -193,7 +314,7 @@ final class RuntimeTest extends TestCase
     {
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('No template for ' . DevOtherScreen::class);
-        Bindings::load(self::JSON)->window(new DevOtherScreen());
+        Bindings::load(self::JSON)->component(new DevOtherScreen());
     }
 
     public function testChannelQueuesEventsArrivingBeforeAReply(): void

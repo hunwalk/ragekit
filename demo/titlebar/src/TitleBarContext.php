@@ -2,7 +2,7 @@
 
 namespace Demo;
 
-/** What AppLayout needs from the screen it frames. */
+/** What AppWindow needs from the screen it frames. */
 interface TitleBarContext
 {
     /** Shown in the title bar. */

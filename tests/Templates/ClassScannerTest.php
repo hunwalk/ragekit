@@ -44,10 +44,10 @@ final class ClassScannerTest extends TestCase
         return ClassScanner::scan(SourceFiles::php(["$dir/src"]), (string) realpath(__DIR__ . '/../..'), $dir);
     }
 
-    public function testLayoutIsDescribed(): void
+    public function testWindowIsDescribed(): void
     {
-        $layout = $this->layouts()['Fix\AppLayout'];
-        self::assertTrue($layout->isLayout);
+        $layout = $this->layouts()['Fix\AppWindow'];
+        self::assertTrue($layout->isWindow);
         self::assertFalse($layout->isScreen);
         self::assertSame('Fix\TitleBarContext', $layout->context);
         self::assertSame(['return' => 'string', 'params' => [], 'required' => 0], $layout->contextMembers['title']);
@@ -63,23 +63,56 @@ final class ClassScannerTest extends TestCase
         self::assertArrayNotHasKey('attach', $layout->handlers);
         self::assertArrayNotHasKey('follow', $layout->handlers);
         self::assertArrayNotHasKey('useNavigator', $layout->handlers);
+        self::assertArrayNotHasKey('navigator', $layout->computed);
+        self::assertArrayNotHasKey('toastTexts', $layout->computed);
+        self::assertArrayNotHasKey('adopt', $layout->handlers);
+        self::assertArrayNotHasKey('id', $layout->props);
         self::assertTrue($layout->constructible);
     }
 
-    public function testScreenNamesItsLayout(): void
+    public function testScreenNamesItsWindow(): void
     {
         $screen = $this->layouts()['Fix\HomeScreen'];
         self::assertTrue($screen->isScreen);
-        self::assertSame('Fix\AppLayout', $screen->layout);
+        self::assertSame('Fix\AppWindow', $screen->window);
         self::assertContains('Fix\TitleBarContext', $screen->interfaces);
         self::assertSame(['count' => 'int'], $screen->props);
-        self::assertArrayNotHasKey('useLayout', $screen->handlers);
-        self::assertArrayNotHasKey('layoutObject', $screen->handlers);
+        self::assertArrayNotHasKey('useWindow', $screen->handlers);
+        self::assertArrayNotHasKey('currentWindow', $screen->handlers);
     }
 
-    public function testLayoutWithRequiredConstructorArgIsNotConstructible(): void
+    public function testStoresAreDescribed(): void
     {
-        self::assertFalse($this->layouts()['Fix\ConfiguredLayout']->constructible);
+        $classes = $this->layouts();
+        $root = $classes['Fix\AppStore'];
+        self::assertTrue($root->isRootStore);
+        self::assertFalse($root->isScreen);
+        self::assertSame(['session' => 'Fix\Session'], $root->props);
+        $session = $classes['Fix\Session'];
+        self::assertTrue($session->isStore);
+        self::assertSame(['userName' => 'string'], $session->props);
+        self::assertSame('bool', $session->computed['signedIn']);
+        self::assertSame(['string'], $session->handlers['signIn']);
+        self::assertArrayNotHasKey('on', $session->handlers);
+        self::assertArrayNotHasKey('emit', $session->handlers);
+        self::assertArrayNotHasKey('get', $root->computed);
+    }
+
+    /** A screen using Window itself: '' (the plain window, like no layout before). */
+    public function testPlainWindowIsEmpty(): void
+    {
+        $dir = (string) realpath(__DIR__ . '/../fixtures/app');
+        $classes = ClassScanner::scan(SourceFiles::php(["$dir/src"]), (string) realpath(__DIR__ . '/../..'), $dir);
+        foreach ($classes as $class) {
+            if ($class->isScreen) {
+                self::assertSame('', $class->window, $class->name);
+            }
+        }
+    }
+
+    public function testWindowWithRequiredConstructorArgIsNotConstructible(): void
+    {
+        self::assertFalse($this->layouts()['Fix\ConfiguredWindow']->constructible);
     }
 
     public function testBrokenClassReportsPhpError(): void

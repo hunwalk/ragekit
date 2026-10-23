@@ -19,9 +19,9 @@ final class PhotosScreen extends Screen implements GalleryContext
         return 'templates/Photos.rk';
     }
 
-    public static function layout(): string
+    public static function window(): string
     {
-        return AppLayout::class;
+        return AppWindow::class;
     }
 
     public function title(): string

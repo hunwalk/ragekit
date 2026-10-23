@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace RageKit\Tests\Core;
 
 use PHPUnit\Framework\TestCase;
-use RageKit\App;
-use RageKit\Layout;
 use RageKit\Navigator;
 use RageKit\Screen;
+use RageKit\Window;
 
 final class ToastScreen extends Screen
 {
@@ -19,8 +18,15 @@ final class ToastScreen extends Screen
     }
 }
 
-final class ToastLayout extends Layout
+final class ToastWindow extends Window
 {
+    public float $clock = 100.0;
+
+    protected function now(): float
+    {
+        return $this->clock;
+    }
+
     public function hello(): void
     {
         $this->toast('From the title bar');
@@ -29,38 +35,38 @@ final class ToastLayout extends Layout
 
 final class ToastTest extends TestCase
 {
-    private float $clock = 100.0;
+    private ToastWindow $window;
 
-    private function navigator(Screen $root, ?Layout $layout = null): Navigator
+    private function navigator(Screen $root): Navigator
     {
-        $app = (new \ReflectionClass(App::class))->newInstanceWithoutConstructor();
-        return new Navigator($app, $root, $layout, fn(Screen $s): string => 'rk-screens', fn(): float => $this->clock);
+        $this->window = new ToastWindow();
+        $this->window->attach(RecordingApp::make(), 1);
+        return new Navigator($this->window, $root, fn(Screen $s): string => 'rk-screens');
     }
 
     public function testToastsShowForThreeSeconds(): void
     {
         $screen = new ToastScreen();
         $nav = $this->navigator($screen);
-        self::assertSame([], $nav->toastTexts());
+        self::assertSame([], $this->window->toastTexts());
         $screen->save();
-        self::assertSame(['Saved', 'Synced'], $nav->toastTexts());
-        $this->clock += 2.9;
-        self::assertSame(['Saved', 'Synced'], $nav->toastTexts());
+        self::assertSame(['Saved', 'Synced'], $this->window->toastTexts());
+        $this->window->clock += 2.9;
+        self::assertSame(['Saved', 'Synced'], $this->window->toastTexts());
         $screen->toast('Later');
-        $this->clock += 0.2;
-        self::assertSame(['Later'], $nav->toastTexts());
-        $this->clock += 3.0;
-        self::assertSame([], $nav->toastTexts());
+        $this->window->clock += 0.2;
+        self::assertSame(['Later'], $this->window->toastTexts());
+        $this->window->clock += 3.0;
+        self::assertSame([], $this->window->toastTexts());
     }
 
-    public function testLayoutToastsShowToo(): void
+    public function testWindowToastsShowToo(): void
     {
         $screen = new ToastScreen();
-        $layout = new ToastLayout();
-        $nav = $this->navigator($screen, $layout);
-        $layout->hello();
+        $nav = $this->navigator($screen);
+        $this->window->hello();
         $screen->toast('Mine');
-        self::assertSame(['Mine', 'From the title bar'], $nav->toastTexts());
+        self::assertSame(['Mine', 'From the title bar'], $this->window->toastTexts());
     }
 
     /** Review Focus 4: a toast fired right before push() stays on the next screen. */
@@ -70,9 +76,9 @@ final class ToastTest extends TestCase
         $nav = $this->navigator($a);
         $a->toast('Saved');
         $nav->push(new ToastScreen());
-        self::assertSame(['Saved'], $nav->toastTexts());
-        $this->clock += 3.0;
-        self::assertSame([], $nav->toastTexts());
+        self::assertSame(['Saved'], $this->window->toastTexts());
+        $this->window->clock += 3.0;
+        self::assertSame([], $this->window->toastTexts());
     }
 
     /** A covered screen's toast still shows (e.g. fired from a handler the top screen called). */
@@ -82,7 +88,7 @@ final class ToastTest extends TestCase
         $nav = $this->navigator($a);
         $nav->push(new ToastScreen());
         $a->toast('Background');
-        self::assertSame(['Background'], $nav->toastTexts());
+        self::assertSame(['Background'], $this->window->toastTexts());
     }
 
     /** A toast fired by the screen that leaves the stack still shows (e.g. "Saved" then back()). */
@@ -101,6 +107,6 @@ final class ToastTest extends TestCase
         $nav->push($d);
         $d->toast('Welcome');
         $nav->reset(new ToastScreen());
-        self::assertSame(['Saved', 'Replaced', 'Welcome'], $nav->toastTexts());
+        self::assertSame(['Saved', 'Replaced', 'Welcome'], $this->window->toastTexts());
     }
 }

@@ -8,7 +8,7 @@ use RageKit\Cli\Templates\ClassInfo;
 
 /**
  * One screen of a window component (a page): its own bindings and actions (owner 'screen'). Other
- * owners (layout, context, window) are the window's (WindowModel), shared by all its pages.
+ * owners (window, context, store) are the window's (WindowModel), shared by all its pages.
  */
 final class ScreenModel
 {
@@ -26,11 +26,11 @@ final class ScreenModel
     /**
      * Adds itself as the next page of $window (by default a window of its own).
      *
-     * @param ClassInfo|null $layout the Layout framing this screen's window (null: none)
+     * @param ClassInfo|null $frame the Window subclass drawing this screen's window (null: Window itself)
      */
-    public function __construct(public readonly ClassInfo $class, public readonly ?ClassInfo $layout = null, ?WindowModel $window = null)
+    public function __construct(public readonly ClassInfo $class, public readonly ?ClassInfo $frame = null, ?WindowModel $window = null)
     {
-        $this->window = $window ?? new WindowModel(WindowModel::nameFor($layout), $layout);
+        $this->window = $window ?? new WindowModel(WindowModel::nameFor($frame), $frame);
         $this->page = count($this->window->pages);
         $this->window->pages[] = $this;
     }
@@ -44,12 +44,16 @@ final class ScreenModel
     }
 
     /**
+     * The window's actions (owners window, context) are window-level; a store action is the
+     * window's only when written in the window's template ($inWindowTemplate), else it's this
+     * page's, so a click sent from a page that has gone does nothing.
+     *
      * @param list<array{0: 'literal'|'arg', 1: string}> $args
      * @param list<string>|null $params
      */
-    public function action(string $kind, string $target, array $args, ?Binding $binding = null, string $owner = 'screen', ?array $params = null): Action
+    public function action(string $kind, string $target, array $args, ?Binding $binding = null, string $owner = 'screen', ?array $params = null, bool $inWindowTemplate = false): Action
     {
-        if ($owner !== 'screen') {
+        if ($owner === 'window' || $owner === 'context' || ($owner === 'store' && $inWindowTemplate)) {
             return $this->window->action($kind, $target, $args, $binding, $owner, $params);
         }
         $action = new Action($this->window->nextActionId(), $kind, $target, $args, $binding, $owner, $params);

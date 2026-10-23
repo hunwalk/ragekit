@@ -30,7 +30,7 @@ final class GlueEmitter
             $class = self::cppName($window->name) . 'Instance';
             $instances[] = self::instance($window);
             $creators[] = "if (screen == \"{$window->name}\") {\n    return std::make_unique<$class>(window);\n}";
-            $frameless = $frameless || $window->layout !== null;
+            $frameless = $frameless || $window->frame !== null;
         }
         return self::stub('glue', [
             'instances' => implode("\n", $instances),
@@ -39,7 +39,7 @@ final class GlueEmitter
         ]);
     }
 
-    /** The C++ name slint-compiler gives a component: rk-screens-AppLayout → rk_screens_AppLayout. */
+    /** The C++ name slint-compiler gives a component: rk-screens-AppWindow → rk_screens_AppWindow. */
     private static function cppName(string $component): string
     {
         return str_replace('-', '_', $component);
@@ -70,7 +70,7 @@ final class GlueEmitter
         foreach (self::SETTERS as $type => $signature) {
             $setters .= self::stub('glue-setter', ['signature' => $signature, 'cases' => implode("\n", $cases[$type])]);
         }
-        $framed = $window->layout !== null;
+        $framed = $window->frame !== null;
         return self::stub('glue-instance', [
             'name' => self::cppName($window->name),
             'windowCommands' => $framed ? self::stub('glue-window-commands', []) : '',

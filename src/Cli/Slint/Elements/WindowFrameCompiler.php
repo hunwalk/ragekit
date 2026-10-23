@@ -12,7 +12,7 @@ use RageKit\Cli\Templates\Errors\MissingKitElement;
 use RageKit\Cli\Templates\Errors\NoChildrenAllowed;
 use RageKit\Cli\Templates\TemplateException;
 
-/** A Layout's frame pieces: <Content /> (where the screen goes), <WindowDrag>, <WindowControls />. */
+/** A Window subclass's frame pieces: <Content /> (where the screen goes), <WindowDrag>, <WindowControls />. */
 final class WindowFrameCompiler implements ElementCompiler
 {
     public function __construct(private readonly CompileContext $context, private readonly StackCompiler $stack)
@@ -26,11 +26,11 @@ final class WindowFrameCompiler implements ElementCompiler
 
     public function compile(Element $element, Scope $scope, string $axis): string
     {
-        if (!$scope->inLayout() || $scope->hasItems() && $element->tag === 'Content') {
+        if (!$scope->inWindow() || $scope->hasItems() && $element->tag === 'Content') {
             $name = $element->tag === 'Content' ? '<Content />' : "<{$element->tag}>";
-            throw TemplateException::at($element, $scope->inLayout()
+            throw TemplateException::at($element, $scope->inWindow()
                 ? "$name can't be repeated with each="
-                : "$name is only allowed in a Layout's template");
+                : "$name is only allowed in a Window's template");
         }
         return match ($element->tag) {
             'Content' => $this->content($element, $scope, $axis),
@@ -40,7 +40,7 @@ final class WindowFrameCompiler implements ElementCompiler
     }
 
     /**
-     * A layout's <Content />: each screen of the window, padded as a window without a layout would
+     * A window template's <Content />: each screen of the window, padded as a plain window would
      * be; with several screens, each one is shown while rk-page is its page.
      */
     private function content(Element $element, Scope $scope, string $axis): string
@@ -50,7 +50,7 @@ final class WindowFrameCompiler implements ElementCompiler
             throw new NoChildrenAllowed($element);
         }
         if ($scope->pages === []) {
-            throw TemplateException::at($element, "<Content /> is only allowed in a Layout's template");
+            throw TemplateException::at($element, "<Content /> is only allowed in a Window's template");
         }
         $out = '';
         foreach ($scope->pages as $page) {

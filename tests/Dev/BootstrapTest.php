@@ -27,4 +27,21 @@ final class BootstrapTest extends TestCase
         file_put_contents("$dir/A.php", "<?php\nnamespace X\\Y;\nfinal class A { public function f() { return static::class; } }\ntrait T {}\n");
         self::assertSame(['X\\Y\\A' => "$dir/A.php", 'X\\Y\\T' => "$dir/A.php"], Bootstrap::classes(["$dir/A.php"]));
     }
+
+    /**
+     * Files required up front: those declaring functions (main.php), also when they declare the
+     * app's class too; class-only files are left to the autoloader.
+     */
+    public function testEagerFilesAreTheOnesDeclaringFunctions(): void
+    {
+        $dir = sys_get_temp_dir() . '/rk-boot-' . uniqid();
+        mkdir($dir);
+        file_put_contents("$dir/main.php", "<?php\nfinal class MyApp extends Base { public function f(): \\Closure { return function () {}; } }\nfunction main(): void { echo (new MyApp())->hi(); }\n");
+        file_put_contents("$dir/Base.php", "<?php\nabstract class Base { public function hi(): string { return 'hi'; } public static function make(): static { return new static(); } }\n");
+        file_put_contents("$dir/helpers.php", "<?php\nfunction helper(): int { return 1; }\n");
+        $files = ["$dir/Base.php", "$dir/main.php", "$dir/helpers.php"];
+        self::assertSame(["$dir/main.php", "$dir/helpers.php"], Bootstrap::eagerFiles($files));
+        Bootstrap::write("$dir/boot.php", $files, Bootstrap::eagerFiles($files));
+        self::assertSame('hi', shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg("$dir/boot.php")));
+    }
 }

@@ -1,0 +1,6 @@
+<VStack>
+    <Text variant="h3">Welcome</Text>
+    <Text variant="muted">Your name</Text>
+    <Entry value="{{ $name }}" />
+    <Button text="Sign in" onClick="$store->session->signIn($name)" />
+</VStack>

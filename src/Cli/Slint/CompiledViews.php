@@ -14,6 +14,7 @@ final class CompiledViews
      * @param list<string>          $images    image files embedded via @image-url (absolute)
      * @param list<string>          $warnings  hints for the author, e.g. old template syntax
      * @param list<WindowModel>     $windows   the window components; $screens are their pages
+     * @param string|null           $rootStore the app's RootStore subclass (null: it has none)
      */
     public function __construct(
         public readonly string $slint,
@@ -23,6 +24,7 @@ final class CompiledViews
         public readonly array $images = [],
         public readonly array $warnings = [],
         public readonly array $windows = [],
+        public readonly ?string $rootStore = null,
     ) {
     }
 }

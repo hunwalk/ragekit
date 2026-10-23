@@ -204,14 +204,14 @@ final class ShellTest extends TestCase
         $context = new BuildContext(Project::load($project), BackendModule::find($root, 'slint', InstalledToolchain::dir()), InstalledToolchain::toolchain(), new NullOutput());
         $shell = ShellBuilder::ensure($context, "$project/build/dev")['path'];
         $class = new ClassInfo('Demo\\S', 'S', "$project/S.php", true, "$project/S.rk", ['name' => 'string']);
-        $framed = new ClassInfo('Demo\\F', 'F', "$project/F.php", true, "$project/F.rk", layout: 'Demo\\L');
-        $layout = new ClassInfo('Demo\\L', 'L', "$project/L.php", false, "$project/L.rk", isLayout: true);
+        $framed = new ClassInfo('Demo\\F', 'F', "$project/F.php", true, "$project/F.rk", window: 'Demo\\L');
+        $frame = new ClassInfo('Demo\\L', 'L', "$project/L.php", false, "$project/L.rk", isWindow: true);
         $kits = KitRegistry::load(["$root/kits/material/kit.yml"], $root);
         $view = new ClassInfo('Demo\\V', 'V', "$project/V.php", true, "$project/V.rk", ['tags' => 'list'], constants: ['STYLES' => [
             'box' => ['flexDirection' => 'row', 'flexWrap' => 'wrap', 'gap' => 4, 'backgroundColor' => '#111111', 'padding' => 8],
             'corner' => ['position' => 'absolute', 'top' => 0, 'right' => 0],
         ]]);
-        $classes = ['Demo\\S' => $class, 'Demo\\F' => $framed, 'Demo\\L' => $layout, 'Demo\\V' => $view];
+        $classes = ['Demo\\S' => $class, 'Demo\\F' => $framed, 'Demo\\L' => $frame, 'Demo\\V' => $view];
         $out = DevViews::write(new ViewProject($classes, $kits, 'material', "$project/build/dev", $project), "$project/build/dev");
         return self::$built = [$shell, $out->entries];
     }

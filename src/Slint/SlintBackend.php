@@ -5,6 +5,7 @@ namespace RageKit\Slint;
 use RageKit\App;
 use RageKit\Backend;
 use RageKit\Screen;
+use RageKit\Window;
 
 /**
  * Slint UI compiled ahead of time: `ragekit build` turns every Screen's .rk template into a Slint
@@ -28,21 +29,20 @@ final class SlintBackend implements Backend
         });
     }
 
-    public function open(App $app, Screen $screen, string $title, int $width, int $height): int
+    public function open(App $app, Screen $screen, string $title, int $width, int $height): Window
     {
-        $screen->mount($app);
         $window = new SlintWindow($app, $screen, $title, $width, $height);
         $this->windows[$window->id] = $window;
-        return $window->id;
+        return $window->window;
     }
 
-    public function close(int $window): void
+    public function close(Window $window): void
     {
-        if (!isset($this->windows[$window])) {
+        if (!isset($this->windows[$window->id])) {
             return;
         }
-        unset($this->windows[$window]);
-        \slint_close($window);
+        unset($this->windows[$window->id]);
+        \slint_close($window->id);
         if (count($this->windows) === 0) {
             \slint_quit();
         }
@@ -60,6 +60,10 @@ final class SlintBackend implements Backend
 
     public function quit(): void
     {
+        foreach ($this->windows as $id => $open) {
+            unset($this->windows[$id]);
+            \slint_close($id);
+        }
         \slint_quit();
     }
 
@@ -82,21 +86,19 @@ final class SlintBackend implements Backend
     }
 
     /**
-     * Every UI event: action 0 closes the window, -1 reports its maximised state (arg "1"/"0"),
-     * -2 is the toast timer's tick, -3 is back (Alt+Left),
-     * others run a handler; then all windows re-sync.
+     * Every UI event: action 0 is the OS closing the window (the App decides: the main window
+     * ends the app), -1 reports its maximised state (arg "1"/"0"), -2 is the toast timer's tick,
+     * -3 is back (Alt+Left), others run a handler; then all windows re-sync.
      */
     private function dispatch(int $window, int $action, string $arg): void
     {
-        if ($action === 0) {
-            $this->close($window);
-            return;
-        }
         $target = $this->windows[$window] ?? null;
         if ($target === null) {
             return;
         }
-        if ($action === -1) {
+        if ($action === 0) {
+            $target->closeRequested();
+        } elseif ($action === -1) {
             $target->maximizedChanged($arg === '1');
         } elseif ($action === -2) {
             // A toast tick: no handler; the re-sync below drops expired toasts.

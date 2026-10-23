@@ -4,6 +4,12 @@
             <Button text="←" variant="ghost" onClick="back" />
         @endif
         <Label text="  {{ $context->title() }}" grow="true" />
+        @if ($store->session->signedIn())
+            <HStack>
+                <Label text="{{ $store->session->userName }}" />
+                <Button text="Sign out" variant="ghost" onClick="$store->session->signOut()" />
+            </HStack>
+        @endif
         <WindowControls />
     </WindowDrag>
     <Separator />

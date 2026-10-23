@@ -1,6 +1,5 @@
 if ($s instanceof {{ class }}) {
-    $l = $n->layout();
-    if ($l instanceof {{ layout }}) {
+    if ($w instanceof {{ window }}) {
         return self::{{ method }}({{ args }});
     }
     return {{ fallback }};

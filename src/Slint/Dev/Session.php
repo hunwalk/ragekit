@@ -7,11 +7,14 @@ namespace RageKit\Slint\Dev;
 use RageKit\App;
 use RageKit\Component;
 use RageKit\Navigator;
+use RageKit\RootStore;
 use RageKit\Screen;
+use RageKit\Store;
+use RageKit\Window;
 
 /**
  * The dev runtime's state: the channel, the bindings, the open windows and their screens, and
- * the snapshot that carries public screen properties across a PHP restart.
+ * the snapshot that carries public properties of screens, windows and stores across a PHP restart.
  */
 final class Session
 {
@@ -30,11 +33,13 @@ final class Session
     private static bool $running = false;
     /** @var array<int, array{screen: Screen, title: string, width: int, height: int}> by window id, in open order */
     private static array $windows = [];
-    /** @var list<array{window: int, class: string, title: string, width: int, height: int, props: array<string, mixed>, layoutProps?: array<string, mixed>, used?: bool}> */
+    /** @var list<array{window: int, class: string, title: string, width: int, height: int, props: array<string, mixed>, windowProps?: array<string, mixed>, used?: bool}> */
     private static array $restore = [];
+    /** @var array<string, array<string, mixed>> saved stores' public properties, by store name (until restored) */
+    private static array $restoreStores = [];
     /** @var array<int, array{reset: bool, screens: list<array{class: string, props: array<string, mixed>}>}> saved stacks by the restored first screen (spl_object_id) */
     private static array $stacks = [];
-    /** The saved window restore() last gave to a screen: its layout gets that window's layout properties. */
+    /** The saved window restore() last gave to a screen: its Window gets that window's properties. */
     private static ?int $restored = null;
 
     /** Starts over (also used by tests). $screensJson is the file's contents; $restart restores the snapshot. */
@@ -54,8 +59,11 @@ final class Session
         self::$restore = [];
         self::$restored = null;
         self::$stacks = [];
+        self::$restoreStores = [];
         if ($restart && is_file($stateFile)) {
-            self::$restore = json_decode((string) file_get_contents($stateFile), true)['windows'] ?? [];
+            $saved = json_decode((string) file_get_contents($stateFile), true);
+            self::$restore = $saved['windows'] ?? [];
+            self::$restoreStores = $saved['stores'] ?? [];
         }
     }
 
@@ -154,14 +162,36 @@ final class Session
         return self::$app;
     }
 
-    /** The screen a window is about to be opened for (Screens::layout() runs just before slint_open()). */
+    /** The screen a window is about to be opened for (Screens::newWindow() runs just before slint_open()). */
     public static function pending(Screen $screen): void
     {
         self::$pending = $screen;
+    }
+
+    /**
+     * The Window for a window about to open with $screen. After a restart: $screen gets its saved
+     * properties, the stores theirs (once: the app's createStore() has run by now, and no window has
+     * synced yet), and the Window its saved state.
+     */
+    public static function windowFor(Screen $screen): Window
+    {
+        self::pending($screen);
+        self::restore($screen);
+        self::restoreStores();
+        $window = self::bindings()->newWindow($screen);
+        if (self::$restored !== null) {
+            self::assignAll($window, self::$restore[self::$restored]['windowProps'] ?? []);
+        }
+        return $window;
+    }
+
+    /** A window synced: remembers the app it belongs to (to reopen windows and resync after a reload). */
+    public static function adopt(Window $window): void
+    {
         if (self::$app === null) {
             $app = new \ReflectionProperty(Component::class, 'app');
-            if ($app->isInitialized($screen)) {
-                self::$app = $app->getValue($screen);
+            if ($app->isInitialized($window)) {
+                self::$app = $app->getValue($window);
             }
         }
     }
@@ -187,7 +217,8 @@ final class Session
 
     /**
      * Writes every open window's first screen (class, title, size, public properties), the screens
-     * pushed on top of it (class and properties, bottom first) and its layout's properties.
+     * pushed on top of it (class and properties, bottom first) and its Window's properties, then
+     * every store's public properties.
      */
     public static function snapshot(): void
     {
@@ -206,7 +237,8 @@ final class Session
             ];
             // The screens above the one the window opened with; after reset() (or replace() of the
             // first screen) the whole stack, marked 'reset': restoring replaces the reopened screen.
-            $screens = self::navigatorOf($window['screen'])?->stack() ?? [$window['screen']];
+            $host = self::windowOf($window['screen']);
+            $screens = $host === null ? [$window['screen']] : $host->navigator()->stack();
             $reset = $screens[0] !== $window['screen'];
             $stack = [];
             foreach ($reset ? $screens : array_slice($screens, 1) as $screen) {
@@ -218,15 +250,23 @@ final class Session
             if ($reset) {
                 $saved['reset'] = true;
             }
-            $layout = $window['screen']->layoutObject();
-            if ($layout !== null) {
-                $saved['layoutProps'] = self::props($layout);
+            if ($host !== null) {
+                $props = self::props($host);
+                unset($props['id']); // the backend's, given again when it reopens
+                $saved['windowProps'] = $props;
             }
             $windows[] = $saved;
         }
+        $stores = [];
+        $root = RootStore::current();
+        foreach ($root === null ? [] : get_object_vars($root) as $name => $store) {
+            if ($store instanceof Store) {
+                $stores[$name] = self::props($store);
+            }
+        }
         // Written next to it and renamed: a restart (SIGTERM) mid-write must not leave half a file.
         $temp = self::$stateFile . '.tmp';
-        file_put_contents($temp, json_encode(['windows' => $windows], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
+        file_put_contents($temp, json_encode(['windows' => $windows] + ($stores === [] ? [] : ['stores' => $stores]), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
         rename($temp, self::$stateFile);
     }
 
@@ -275,19 +315,34 @@ final class Session
         }
     }
 
-    /** The navigator of the window $screen is the first screen of (null before it's shown). */
-    private static function navigatorOf(Screen $screen): ?Navigator
+    /** The window showing $screen (null before it's shown in one). */
+    private static function windowOf(Screen $screen): ?Window
     {
-        $property = new \ReflectionProperty(Screen::class, 'navigator');
-        return $property->getValue($screen);
+        $host = (new \ReflectionProperty(Screen::class, 'host'))->getValue($screen);
+        return $host instanceof Window && self::hasNavigator($host) ? $host : null;
     }
 
-    /** After a restart: gives the layout of the screen restore() just handled its saved properties. */
-    public static function restoreLayout(object $layout): void
+    private static function hasNavigator(Window $window): bool
     {
-        if (self::$restored !== null) {
-            self::assignAll($layout, self::$restore[self::$restored]['layoutProps'] ?? []);
+        return (new \ReflectionProperty(Window::class, 'navigator'))->getValue($window) !== null;
+    }
+
+    /** After a restart: gives the app's stores their saved properties (a store that is gone is skipped). Runs once. */
+    private static function restoreStores(): void
+    {
+        $root = RootStore::current();
+        if ($root === null || self::$restoreStores === []) {
+            return;
         }
+        foreach (self::$restoreStores as $name => $props) {
+            $store = property_exists($root, $name) ? $root->{$name} : null;
+            if ($store instanceof Store) {
+                self::assignAll($store, $props);
+            } else {
+                fwrite(STDERR, "ragekit dev: not restoring the store \$$name (" . get_class($root) . " no longer has it)\n");
+            }
+        }
+        self::$restoreStores = [];
     }
 
     /** @param array<string, mixed> $props */

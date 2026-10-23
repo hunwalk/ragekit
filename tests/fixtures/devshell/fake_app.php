@@ -1,7 +1,7 @@
 <?php
 // Fake app for ShellTest: speaks the dev protocol on fds 3/4 like src/Slint/Dev does and
 // logs every reply/message it receives to $argv[1]. Modes ($argv[2]): normal, nope, exit3,
-// open-exit3 (opens a window, closes it, exits 3), module, framed (a layout's window: maximize, minimize).
+// open-exit3 (opens a window, closes it, exits 3), module, framed (a Window subclass's window: maximize, minimize).
 require dirname(__DIR__, 3) . '/src/Slint/Dev/Protocol.php';
 
 use RageKit\Slint\Dev\Protocol;
@@ -22,7 +22,7 @@ if ($mode === 'module') {
     fwrite($out, Protocol::encode('quit'));
     exit(0);
 }
-// S and V share the window component rk-screens (pages 0 and 1); F is rk-screens-L (layout L).
+// S and V share the window component rk-screens (pages 0 and 1); F is rk-screens-L (Window subclass L).
 fwrite($out, Protocol::encode('open', match ($mode) { 'nope' => 'Nope', 'framed' => 'rk-screens-L', default => 'rk-screens' }, 'Fake', '300', '200'));
 $reply = Protocol::decode((string) fgets($in));
 file_put_contents($log, implode(' ', $reply) . "\n", FILE_APPEND);
@@ -31,7 +31,7 @@ if ($mode === 'open-exit3') {
     exit(3);
 }
 if ($mode === 'framed') {
-    // A layout's window controls from PHP (Layout::toggleMaximize(), minimize()).
+    // A framed window's controls from PHP (Window::toggleMaximize(), minimize()).
     fwrite($out, Protocol::encode('maximize', $reply[1], '1'));
     fwrite($out, Protocol::encode('minimize', $reply[1]));
     fwrite($out, Protocol::encode('run'));

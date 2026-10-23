@@ -3,16 +3,31 @@
 namespace RageKit;
 
 /**
- *     $app = new App();
- *     $app->open(new CounterScreen(), title: 'Counter');
- *     $app->run(); // returns when the last window closes
+ * The app itself: extend it, name the first screen, and run it.
  *
- * Screens and components reach it as $this->app, so any of them can open more windows. The actual UI
- * toolkit is the backend selected in the app's project.yml (`ragekit: { backend: … }`).
+ *     final class GalleryApp extends App
+ *     {
+ *         protected function firstScreen(): Screen
+ *         {
+ *             return new AlbumsScreen();
+ *         }
+ *     }
+ *
+ *     function main(): void
+ *     {
+ *         (new GalleryApp())->run();
+ *     }
+ *
+ * run() creates the root store (createStore()), opens the main window with firstScreen(), calls
+ * start() — the place to wire store events to navigation — and runs until the main window
+ * closes. Screens and components reach the app as $this->app. The UI toolkit is the backend
+ * selected in the app's project.yml (`ragekit: { backend: … }`).
  */
-final class App
+abstract class App
 {
     private Backend $backend;
+
+    private ?Window $main = null;
 
     /** The app's folder, from the first App's backend (see resolve()). */
     private static string $base = '';
@@ -38,28 +53,82 @@ final class App
         return $base . '/' . $path;
     }
 
-    /** Opens a window showing $screen; returns its window id. */
-    public function open(Screen $screen, string $title = 'RageKit', int $width = 480, int $height = 320): int
+    /** The screen the main window starts with. */
+    abstract protected function firstScreen(): Screen;
+
+    /** The app's root store, e.g. `return new AppStore();` (default: an empty one). */
+    protected function createStore(): RootStore
+    {
+        return new RootStore();
+    }
+
+    /** Runs once the main window is open: wire store events to navigation here. */
+    protected function start(): void
+    {
+    }
+
+    /** The main window's title. */
+    protected function title(): string
+    {
+        return 'RageKit';
+    }
+
+    /** The main window's width. */
+    protected function width(): int
+    {
+        return 480;
+    }
+
+    /** The main window's height. */
+    protected function height(): int
+    {
+        return 320;
+    }
+
+    /**
+     * The main window was closed. By default the app ends (every other window closes too); an app
+     * that keeps running in the background would override it.
+     */
+    protected function mainWindowClosed(): void
+    {
+        $this->quit();
+    }
+
+    /** Creates the store, opens the main window, calls start(), then runs until quit(). */
+    public function run(): void
+    {
+        RootStore::register($this->createStore());
+        $this->main = $this->open($this->firstScreen(), $this->title(), $this->width(), $this->height());
+        $this->start();
+        $this->backend->run();
+    }
+
+    /** The main window (the one firstScreen() opened in). */
+    public function main(): Window
+    {
+        return $this->main ?? throw new \LogicException('no main window yet: it opens in run()');
+    }
+
+    /** Opens another window showing $screen. */
+    public function open(Screen $screen, string $title = 'RageKit', int $width = 480, int $height = 320): Window
     {
         return $this->backend->open($this, $screen, $title, $width, $height);
     }
 
-    /** Closes a window. Closing the last one ends run(). */
-    public function close(int $window): void
-    {
-        $this->backend->close($window);
-    }
-
-    /** Ends run() even if windows are still open. */
+    /** Closes every window and ends run(). */
     public function quit(): void
     {
         $this->backend->quit();
     }
 
-    /** Runs the event loop until the last window closes (or quit()). */
-    public function run(): void
+    /** @internal A window is being closed (by the OS or its close()): the main window ends the app. */
+    public function closeRequested(Window $window): void
     {
-        $this->backend->run();
+        if ($window === $this->main) {
+            $this->mainWindowClosed();
+            return;
+        }
+        $this->backend->close($window);
     }
 
     /** The active backend, for backend-specific APIs. */

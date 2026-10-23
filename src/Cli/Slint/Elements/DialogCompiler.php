@@ -15,7 +15,7 @@ use RageKit\Cli\Templates\TemplateException;
 /**
  * <Dialog open="{{ $confirm }}" title="…">…</Dialog>: the kit's Dialog (a scrim over the whole
  * window with a centred panel) shown while the two-way bool `open` is true. It's placed at the
- * window's top level, wherever it's written, so it covers everything (also a layout's title
+ * window's top level, wherever it's written, so it covers everything (also a window template's title
  * bar); an outside click or Esc sets `open` back to false. Leaves nothing where it's written.
  */
 final class DialogCompiler implements ElementCompiler
@@ -34,7 +34,7 @@ final class DialogCompiler implements ElementCompiler
         $context = $this->context;
         $context->checkAttributes($element, ['open', 'title']);
         if ($scope->model === null) {
-            throw TemplateException::at($element, "<Dialog> can't be in a child component's template; put it in the screen's (or layout's) template");
+            throw TemplateException::at($element, "<Dialog> can't be in a child component's template; put it in the screen's (or window's) template");
         }
         if ($context->isGuarded()) {
             throw TemplateException::at($element, "<Dialog> can't be inside @if, @foreach, each= or when=; use open=\"{{ \$prop }}\" to show it");
@@ -45,7 +45,7 @@ final class DialogCompiler implements ElementCompiler
         if ($binding === null || $binding->type !== 'bool') {
             throw TemplateException::at($element, "<Dialog open=\"$raw\">: open must bind a bool property, e.g. open=\"{{ \$confirmDelete }}\"");
         }
-        $action = $scope->model->action('set', $binding->name, [], $binding, $binding->owner);
+        $action = $scope->model->action('set', $binding->name, [], $binding, $binding->owner, null, $scope->inWindow());
         $dismissed = $spec->events['onDismiss'] ?? throw new IncompleteKitElement($element, $kit, 'Dialog', 'onDismiss event');
         $context->useKit($kit, $spec->component);
         $p = 'root.' . $binding->slintName();

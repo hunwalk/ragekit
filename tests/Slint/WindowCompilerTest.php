@@ -14,7 +14,7 @@ use RageKit\Cli\Templates\ClassInfo;
 use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\TemplateException;
 
-final class LayoutCompilerTest extends TestCase
+final class WindowCompilerTest extends TestCase
 {
     private const ROOT = __DIR__ . '/../..';
     private const CONTEXT = [
@@ -26,26 +26,26 @@ final class LayoutCompilerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->dir = sys_get_temp_dir() . '/rk-layout-' . uniqid();
+        $this->dir = sys_get_temp_dir() . '/rk-window-' . uniqid();
         mkdir($this->dir);
     }
 
-    private function layout(string $rk, string $context = 'Fix\TitleBarContext', array $props = ['query' => 'string', 'maximized' => 'bool'], bool $constructible = true): ClassInfo
+    private function frame(string $rk, string $context = 'Fix\TitleBarContext', array $props = ['query' => 'string', 'maximized' => 'bool'], bool $constructible = true): ClassInfo
     {
-        file_put_contents("$this->dir/AppLayout.rk", $rk);
-        return new ClassInfo('Fix\AppLayout', 'AppLayout', "$this->dir/AppLayout.php", false, "$this->dir/AppLayout.rk",
+        file_put_contents("$this->dir/AppWindow.rk", $rk);
+        return new ClassInfo('Fix\AppWindow', 'AppWindow', "$this->dir/AppWindow.php", false, "$this->dir/AppWindow.rk",
             props: $props,
             computed: ['minimize' => 'void', 'toggleMaximize' => 'void', 'close' => 'void'],
             handlers: ['minimize' => [], 'toggleMaximize' => [], 'close' => [], 'search' => []],
-            isLayout: true, context: $context, contextMembers: $context === '' ? [] : self::CONTEXT, constructible: $constructible);
+            isWindow: true, context: $context, contextMembers: $context === '' ? [] : self::CONTEXT, constructible: $constructible);
     }
 
-    private function screen(string $rk, string $layout = 'Fix\AppLayout', array $interfaces = ['Fix\TitleBarContext'], string $short = 'HomeScreen'): ClassInfo
+    private function screen(string $rk, string $window = 'Fix\AppWindow', array $interfaces = ['Fix\TitleBarContext'], string $short = 'HomeScreen'): ClassInfo
     {
         file_put_contents("$this->dir/$short.rk", $rk);
         return new ClassInfo("Fix\\$short", $short, "$this->dir/$short.php", true, "$this->dir/$short.rk",
             props: ['count' => 'int'], computed: ['title' => 'string'], handlers: ['refresh' => ['string']],
-            requiredParams: ['refresh' => 0], layout: $layout, interfaces: $interfaces);
+            requiredParams: ['refresh' => 0], window: $window, interfaces: $interfaces);
     }
 
     /** @param list<ClassInfo> $classes */
@@ -61,9 +61,9 @@ final class LayoutCompilerTest extends TestCase
 
     private const BAR = '<VStack padded="false"><WindowDrag><Label text="{context.title}" /><WindowControls /></WindowDrag><Content /></VStack>';
 
-    public function testLayoutWrapsScreen(): void
+    public function testWindowFramesScreen(): void
     {
-        $out = $this->compile([$this->layout(self::BAR), $this->screen('<Label text="Hi" />')]);
+        $out = $this->compile([$this->frame(self::BAR), $this->screen('<Label text="Hi" />')]);
         self::assertStringContainsString('no-frame: true;', $out->slint);
         self::assertStringContainsString('callback rk-window(string);', $out->slint);
         self::assertStringContainsString('in property <bool> rk-maximized;', $out->slint);
@@ -81,36 +81,36 @@ final class LayoutCompilerTest extends TestCase
         // {context.title}: the screen on top's title(), a window-level binding.
         $title = $out->screens[0]->window->bindings['context:method:title'];
         self::assertSame('context', $title->owner);
-        self::assertSame($this->layoutClass()->name, $out->screens[0]->layout?->name);
+        self::assertSame($this->frameClass()->name, $out->screens[0]->frame?->name);
     }
 
-    private function layoutClass(): ClassInfo
+    private function frameClass(): ClassInfo
     {
-        return $this->layout(self::BAR);
+        return $this->frame(self::BAR);
     }
 
-    public function testLayoutOwnPropertyAndHandler(): void
+    public function testWindowOwnPropertyAndHandler(): void
     {
         $out = $this->compile([
-            $this->layout('<VStack><Entry value="{query}" /><Button text="x" onClick="close" /><Content /></VStack>'),
+            $this->frame('<VStack><Entry value="{query}" /><Button text="x" onClick="close" /><Content /></VStack>'),
             $this->screen('<Label text="{count}" />'),
         ]);
         $model = $out->screens[0];
         $window = $model->window;
-        $query = $window->bindings['layout:property:query'];
+        $query = $window->bindings['window:property:query'];
         self::assertTrue($query->twoWay);
-        self::assertSame('layout', $query->owner);
+        self::assertSame('window', $query->owner);
         self::assertSame('screen', $model->bindings['screen:property:count']->owner);
         $close = array_values(array_filter($window->actions, fn($a) => $a->target === 'close'))[0];
-        self::assertSame('layout', $close->owner);
+        self::assertSame('window', $close->owner);
         $set = array_values(array_filter($window->actions, fn($a) => $a->kind === 'set'))[0];
-        self::assertSame('layout', $set->owner);
+        self::assertSame('window', $set->owner);
     }
 
     public function testContextHandler(): void
     {
         $out = $this->compile([
-            $this->layout('<VStack><Button text="r" onClick="context.refresh(\'bar\')" /><Content /></VStack>'),
+            $this->frame('<VStack><Button text="r" onClick="context.refresh(\'bar\')" /><Content /></VStack>'),
             $this->screen('<Label text="x" />'),
         ]);
         $action = $out->screens[0]->window->actions[0];
@@ -122,7 +122,7 @@ final class LayoutCompilerTest extends TestCase
     public function testRagebladeContextCalls(): void
     {
         $out = $this->compile([
-            $this->layout('<VStack><Label text="{{ $context->title() }}!" /><Button text="r" onClick="$context->refresh(\'bar\')" /><Content /></VStack>'),
+            $this->frame('<VStack><Label text="{{ $context->title() }}!" /><Button text="r" onClick="$context->refresh(\'bar\')" /><Content /></VStack>'),
             $this->screen('<Label text="x" />'),
         ]);
         $window = $out->screens[0]->window;
@@ -131,80 +131,121 @@ final class LayoutCompilerTest extends TestCase
         self::assertSame(['context', 'refresh', [['literal', 'bar']]], [$action->owner, $action->target, $action->args]);
     }
 
-    public function testScreenWithoutLayoutUnchanged(): void
+    public function testPlainWindowUnchanged(): void
     {
         file_put_contents("$this->dir/Plain.rk", '<Label text="{count}" />');
         $plain = new ClassInfo('Fix\Plain', 'Plain', "$this->dir/Plain.php", true, "$this->dir/Plain.rk", props: ['count' => 'int']);
         $out = $this->compile([$plain]);
         self::assertStringNotContainsString('no-frame', $out->slint);
         self::assertStringNotContainsString('rk-window', $out->slint);
-        self::assertNull($out->screens[0]->layout);
+        self::assertNull($out->screens[0]->frame);
     }
 
-    /** @return iterable<string, array{0: string, 1: string, 2: string}> layout rk, screen rk, message */
+    /** @return iterable<string, array{0: string, 1: string, 2: string}> window rk, screen rk, message */
     public static function errors(): iterable
     {
         yield 'no content' => ['<VStack><Label text="x" /></VStack>', '<Label text="y" />', 'needs exactly one <Content />'];
         yield 'two contents' => ['<VStack><Content /><Content /></VStack>', '<Label text="y" />', 'needs exactly one <Content />'];
-        yield 'content in screen' => [self::BAR, '<VStack><Content /></VStack>', "<Content /> is only allowed in a Layout's template"];
-        yield 'drag in screen' => [self::BAR, '<WindowDrag><Label text="y" /></WindowDrag>', "<WindowDrag> is only allowed in a Layout's template"];
-        yield 'controls in screen' => [self::BAR, '<WindowControls />', "<WindowControls> is only allowed in a Layout's template"];
+        yield 'content in screen' => [self::BAR, '<VStack><Content /></VStack>', "<Content /> is only allowed in a Window's template"];
+        yield 'drag in screen' => [self::BAR, '<WindowDrag><Label text="y" /></WindowDrag>', "<WindowDrag> is only allowed in a Window's template"];
+        yield 'controls in screen' => [self::BAR, '<WindowControls />', "<WindowControls> is only allowed in a Window's template"];
         yield 'undeclared context member' => ['<VStack><Label text="{context.nope}" /><Content /></VStack>', '<Label text="y" />', "'nope' is not declared by Fix\\TitleBarContext"];
         yield 'unshowable context member' => ['<VStack><Label text="{context.avatar}" /><Content /></VStack>', '<Label text="y" />', "'avatar()' returns object"];
-        yield 'two-way context' => ['<VStack><Entry value="{context.title}" /><Content /></VStack>', '<Label text="y" />', "two-way inputs in a layout must bind the layout's own properties"];
+        yield 'two-way context' => ['<VStack><Entry value="{context.title}" /><Content /></VStack>', '<Label text="y" />', "two-way inputs in a window's template must bind the window's own properties"];
         yield 'content with when' => ['<VStack><Content when="maximized" /></VStack>', '<Label text="y" />', "<Content /> can't have each= or when="];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('errors')]
-    public function testErrors(string $layout, string $screen, string $message): void
+    public function testErrors(string $frame, string $screen, string $message): void
     {
         $this->expectException(TemplateException::class);
         $this->expectExceptionMessage($message);
-        $this->compile([$this->layout($layout), $this->screen($screen)]);
+        $this->compile([$this->frame($frame), $this->screen($screen)]);
     }
 
     public function testScreenMustImplementContext(): void
     {
         $this->expectException(TemplateException::class);
-        $this->expectExceptionMessage('HomeScreen uses AppLayout, which needs Fix\TitleBarContext; implement it');
-        $this->compile([$this->layout(self::BAR), $this->screen('<Label text="y" />', interfaces: [])]);
+        $this->expectExceptionMessage('HomeScreen uses AppWindow, which needs Fix\TitleBarContext; implement it');
+        $this->compile([$this->frame(self::BAR), $this->screen('<Label text="y" />', interfaces: [])]);
     }
 
     public function testContextNeedsContextDeclared(): void
     {
         $this->expectException(TemplateException::class);
-        $this->expectExceptionMessage('AppLayout has no context()');
-        $this->compile([$this->layout(self::BAR, context: ''), $this->screen('<Label text="y" />')]);
+        $this->expectExceptionMessage('AppWindow has no context()');
+        $this->compile([$this->frame(self::BAR, context: ''), $this->screen('<Label text="y" />')]);
     }
 
-    public function testLayoutMustBeConstructible(): void
+    public function testWindowWithoutTemplateIsAnError(): void
+    {
+        $bare = new ClassInfo('Fix\AppWindow', 'AppWindow', "$this->dir/AppWindow.php", false, '', isWindow: true);
+        $this->expectException(TemplateException::class);
+        $this->expectExceptionMessage('AppWindow extends Window: give it a template, or use Window itself for the OS title bar');
+        $this->compile([$bare, $this->screen('<Label text="y" />')]);
+    }
+
+    public function testScreenNamingANonWindowClassIsAnError(): void
+    {
+        file_put_contents("$this->dir/Card.rk", '<Label text="c" />');
+        $child = new ClassInfo('Fix\Card', 'Card', "$this->dir/Card.php", false, "$this->dir/Card.rk");
+        $this->expectException(TemplateException::class);
+        $this->expectExceptionMessage("HomeScreen::window() names Fix\\Card, which isn't a Window of this app");
+        $this->compile([$child, $this->screen('<Label text="y" />', window: 'Fix\Card')]);
+    }
+
+    /** Screens using Window itself (the default) share the plain rk-screens component. */
+    public function testPlainWindowScreensShareRkScreens(): void
+    {
+        file_put_contents("$this->dir/A.rk", '<Label text="a" />');
+        file_put_contents("$this->dir/B.rk", '<Label text="b" />');
+        $out = $this->compile([
+            new ClassInfo('Fix\A', 'A', "$this->dir/A.php", true, "$this->dir/A.rk"),
+            new ClassInfo('Fix\B', 'B', "$this->dir/B.php", true, "$this->dir/B.rk"),
+        ]);
+        self::assertCount(1, $out->windows);
+        self::assertSame('rk-screens', $out->windows[0]->name);
+        self::assertNull($out->windows[0]->frame);
+        $php = BinderEmitter::emit($out->windows);
+        self::assertStringContainsString("if (\$screen instanceof \\Fix\\B) {\n            return 'rk-screens';", $php);
+    }
+
+    /** Toasts are the window's: owner window, read from Window::toastTexts(). */
+    public function testToastsAreAWindowBinding(): void
+    {
+        $out = $this->compile([$this->frame(self::BAR), $this->screen('<Label text="y" />')]);
+        $toasts = $out->windows[0]->bindings['window:method:toastTexts'];
+        self::assertSame('window', $toasts->owner);
+        self::assertStringContainsString("{$toasts->id} => self::strings(\$w->toastTexts()),", BinderEmitter::emit($out->windows));
+    }
+
+    public function testWindowMustBeConstructible(): void
     {
         $this->expectException(TemplateException::class);
-        $this->expectExceptionMessage('AppLayout must be constructible without arguments');
-        $this->compile([$this->layout(self::BAR, constructible: false), $this->screen('<Label text="y" />')]);
+        $this->expectExceptionMessage('AppWindow must be constructible without arguments');
+        $this->compile([$this->frame(self::BAR, constructible: false), $this->screen('<Label text="y" />')]);
     }
 
-    public function testUnknownLayoutClass(): void
+    public function testUnknownWindowClass(): void
     {
         $this->expectException(TemplateException::class);
-        $this->expectExceptionMessage("HomeScreen::layout() names Fix\\Missing, which isn't a Layout of this app");
-        $this->compile([$this->screen('<Label text="y" />', layout: 'Fix\Missing')]);
+        $this->expectExceptionMessage("HomeScreen::window() names Fix\\Missing, which isn't a Window of this app");
+        $this->compile([$this->screen('<Label text="y" />', window: 'Fix\Missing')]);
     }
 
-    public function testEmittersForLayoutScreen(): void
+    public function testEmittersForFramedScreen(): void
     {
         $out = $this->compile([
-            $this->layout('<VStack><WindowDrag><Label text="{context.title}" /><Entry value="{query}" /><Button text="s" onClick="search" /></WindowDrag><Content /></VStack>'),
+            $this->frame('<VStack><WindowDrag><Label text="{context.title}" /><Entry value="{query}" /><Button text="s" onClick="search" /></WindowDrag><Content /></VStack>'),
             $this->screen('<Label text="{count}" />'),
         ]);
         $php = BinderEmitter::emit($out->windows);
-        self::assertStringContainsString('public static function layout(Screen $screen): ?Layout', $php);
-        self::assertStringContainsString('return new \Fix\AppLayout();', $php);
-        self::assertStringContainsString('$l = $n->layout();', $php);
-        self::assertStringContainsString('if ($l instanceof \Fix\AppLayout) {', $php);
-        self::assertStringContainsString('$l->query', $php);
+        self::assertStringContainsString('public static function newWindow(Screen $screen): Window', $php);
+        self::assertStringContainsString('return new \Fix\AppWindow();', $php);
+        self::assertStringContainsString('if ($w instanceof \Fix\AppWindow) {', $php);
+        self::assertStringContainsString('$w->query', $php);
         self::assertStringContainsString('$s->title()', $php);
-        self::assertStringContainsString('$l->search();', $php);
+        self::assertStringContainsString('$w->search();', $php);
         self::assertStringContainsString('$s->count', $php);
         $lint = sys_get_temp_dir() . '/rk-binder-' . uniqid() . '.php';
         file_put_contents($lint, $php);
@@ -221,21 +262,21 @@ final class LayoutCompilerTest extends TestCase
 
         $json = json_decode(ScreensJson::emit($out->windows), true);
         $window = $json['windows'][0];
-        self::assertSame('Fix\AppLayout', $window['layout']);
+        self::assertSame('Fix\AppWindow', $window['window']);
         self::assertTrue($window['frameless']);
-        self::assertContains('layout', array_column($window['values'], 'owner'));
+        self::assertContains('window', array_column($window['values'], 'owner'));
         self::assertContains('context', array_column($window['values'], 'owner'));
         self::assertContains('screen', array_column($window['pages'][0]['values'], 'owner'));
-        self::assertSame('layout', $window['actions'][0]['owner']);
+        self::assertSame('window', $window['actions'][0]['owner']);
     }
 
-    public function testGlueWithoutLayoutsIsNotFrameless(): void
+    public function testGlueWithoutFramesIsNotFrameless(): void
     {
         file_put_contents("$this->dir/Plain.rk", '<Label text="x" />');
         $out = $this->compile([new ClassInfo('Fix\Plain', 'Plain', "$this->dir/Plain.php", true, "$this->dir/Plain.rk")]);
         $glue = GlueEmitter::emit($out->windows);
         self::assertStringContainsString('bool rk::any_frameless()' . "\n{\n    return false;\n}", $glue);
         self::assertStringNotContainsString('on_rk_window', $glue);
-        self::assertStringContainsString('return null;', BinderEmitter::emit($out->windows));
+        self::assertStringContainsString('return new \RageKit\Window();', BinderEmitter::emit($out->windows));
     }
 }

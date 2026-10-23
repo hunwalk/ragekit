@@ -21,7 +21,7 @@ final class ScreensJsonTest extends TestCase
         $model->action('set', 'name', [], $name);
         $json = json_decode(ScreensJson::emit([$model->window]), true);
         self::assertSame([
-            'name' => 'rk-screens', 'layout' => null, 'frameless' => false,
+            'name' => 'rk-screens', 'window' => null, 'frameless' => false,
             'values' => [],
             'actions' => [],
             'pages' => [[

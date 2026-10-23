@@ -30,7 +30,7 @@ abstract class Component
 
     /**
      * Shows a short message in the window's bottom-right corner for about 3 seconds, e.g.
-     * `$this->toast('Saved');`. Several stack up. Works in screens and layouts.
+     * `$this->toast('Saved');`. Several stack up. Works in screens and windows.
      */
     public function toast(string $text): void
     {

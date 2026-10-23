@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace RageKit\Tests\Core;
 
 use PHPUnit\Framework\TestCase;
-use RageKit\App;
-use RageKit\Layout;
 use RageKit\Navigator;
 use RageKit\Screen;
+use RageKit\Window;
 
 /** A screen that writes its hooks to a shared log. */
 class LoggedScreen extends Screen
@@ -37,13 +36,18 @@ class LoggedScreen extends Screen
     {
         return $this->navigator();
     }
+
+    public function win(): Window
+    {
+        return $this->currentWindow();
+    }
 }
 
-final class OtherLayoutScreen extends LoggedScreen
+final class OtherWindowScreen extends LoggedScreen
 {
 }
 
-final class NavLayout extends Layout
+final class NavWindow extends Window
 {
     public function current(): Screen
     {
@@ -58,11 +62,12 @@ final class NavigatorTest extends TestCase
         LoggedScreen::$log = [];
     }
 
-    private function navigator(Screen $root, ?Layout $layout = null): Navigator
+    private function navigator(Screen $root, ?Window $window = null): Navigator
     {
-        $app = (new \ReflectionClass(App::class))->newInstanceWithoutConstructor();
-        $windowOf = fn(Screen $s): string => $s instanceof OtherLayoutScreen ? 'rk-screens-OtherLayout' : 'rk-screens';
-        return new Navigator($app, $root, $layout, $windowOf);
+        $window ??= new Window();
+        $window->attach(RecordingApp::make(), 1);
+        $windowOf = fn(Screen $s): string => $s instanceof OtherWindowScreen ? 'rk-screens-OtherWindow' : 'rk-screens';
+        return new Navigator($window, $root, $windowOf);
     }
 
     public function testPushShowsNewTopAndKeepsTheOld(): void
@@ -113,12 +118,12 @@ final class NavigatorTest extends TestCase
         self::assertSame(['A shown', 'A hidden', 'B shown', 'B hidden', 'A shown'], LoggedScreen::$log);
     }
 
-    public function testOtherLayoutIsRefused(): void
+    public function testOtherWindowIsRefused(): void
     {
         $nav = $this->navigator(new LoggedScreen('A'));
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage("OtherLayoutScreen uses layout OtherLayout; this window's layout is no layout");
-        $nav->push(new OtherLayoutScreen('X'));
+        $this->expectExceptionMessage('OtherWindowScreen uses window OtherWindow; this window is Window');
+        $nav->push(new OtherWindowScreen('X'));
     }
 
     public function testSameClassTwice(): void
@@ -135,19 +140,20 @@ final class NavigatorTest extends TestCase
         self::assertSame(1, $nav->top()->value);
     }
 
-    public function testLayoutFollowsTop(): void
+    public function testWindowFollowsTop(): void
     {
-        $layout = new NavLayout();
+        $window = new NavWindow();
         $a = new LoggedScreen('A');
-        $nav = $this->navigator($a, $layout);
-        self::assertSame($a, $layout->current());
+        $nav = $this->navigator($a, $window);
+        self::assertSame($a, $window->current());
         $b = new LoggedScreen('B');
         $nav->push($b);
-        self::assertSame($b, $layout->current());
-        self::assertTrue($layout->canGoBack());
-        $layout->back();
-        self::assertSame($a, $layout->current());
-        self::assertSame($layout, $nav->layout());
+        self::assertSame($b, $window->current());
+        self::assertTrue($window->canGoBack());
+        $window->back();
+        self::assertSame($a, $window->current());
+        self::assertSame($window, $nav->window());
+        self::assertSame($nav, $window->navigator());
     }
 
     public function testPushedScreensCanNavigateToo(): void
@@ -161,7 +167,7 @@ final class NavigatorTest extends TestCase
     public function testNavigatorBeforeWindowIsAClearError(): void
     {
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('LoggedScreen: no navigator yet; it exists once the screen is shown in a window');
+        $this->expectExceptionMessage('LoggedScreen: no window yet; it exists once the screen is shown in one');
         (new LoggedScreen('A'))->nav();
     }
 }

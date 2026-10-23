@@ -4,7 +4,7 @@ namespace Demo;
 
 use RageKit\Screen;
 
-/** A second window in the same layout: its own bar state, its own maximise state. */
+/** A second window of the same window class: its own bar state, its own maximise state. */
 final class SettingsScreen extends Screen implements TitleBarContext
 {
     public bool $compact = false;
@@ -14,9 +14,9 @@ final class SettingsScreen extends Screen implements TitleBarContext
         return 'templates/SettingsScreen.rk';
     }
 
-    public static function layout(): string
+    public static function window(): string
     {
-        return AppLayout::class;
+        return AppWindow::class;
     }
 
     public function title(): string

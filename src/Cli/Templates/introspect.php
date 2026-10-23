@@ -19,8 +19,10 @@ $map = [
     'RageKit\\Backend' => "$root/src/Backend.php",
     'RageKit\\Component' => "$root/src/Component.php",
     'RageKit\\Screen' => "$root/src/Screen.php",
-    'RageKit\\Layout' => "$root/src/Layout.php",
+    'RageKit\\Window' => "$root/src/Window.php",
     'RageKit\\Navigator' => "$root/src/Navigator.php",
+    'RageKit\\Store' => "$root/src/Store.php",
+    'RageKit\\RootStore' => "$root/src/RootStore.php",
 ];
 foreach ($input['files'] as $file) {
     foreach (declaredClasses($file) as $class) {
@@ -39,7 +41,8 @@ foreach (array_keys($map) as $class) {
         continue;
     }
     $reflection = new ReflectionClass($class);
-    if ($reflection->isAbstract() || !$reflection->isSubclassOf('RageKit\\Component')) {
+    $state = $reflection->isSubclassOf('RageKit\\RootStore') || $reflection->isSubclassOf('RageKit\\Store');
+    if ($reflection->isAbstract() || (!$reflection->isSubclassOf('RageKit\\Component') && !$state)) {
         continue;
     }
     $out[] = describe($reflection, $projectDir);
@@ -97,11 +100,12 @@ function typeName(?ReflectionType $type): string
 /** @return array<string, mixed> */
 function describe(ReflectionClass $class, string $projectDir): array
 {
-    $base = ['RageKit\\Component', 'RageKit\\Screen', 'RageKit\\Layout'];
-    // What Layout itself offers templates: its maximised flag, window buttons and back button.
-    $layoutMembers = ['maximized', 'minimize', 'toggleMaximize', 'close', 'back', 'canGoBack'];
+    $base = ['RageKit\\Component', 'RageKit\\Screen', 'RageKit\\Window', 'RageKit\\Store', 'RageKit\\RootStore'];
+    $state = $class->isSubclassOf('RageKit\\RootStore') || $class->isSubclassOf('RageKit\\Store');
+    // What Window itself offers templates: its maximised flag, window buttons and back button.
+    $windowMembers = ['maximized', 'minimize', 'toggleMaximize', 'close', 'back', 'canGoBack'];
     $inherited = fn(ReflectionProperty|ReflectionMethod $member): bool => in_array($member->getDeclaringClass()->getName(), $base, true)
-        && !in_array($member->getName(), $layoutMembers, true);
+        && !in_array($member->getName(), $windowMembers, true);
     $props = [];
     foreach ($class->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
         if (!$property->isStatic() && !$inherited($property)) {
@@ -128,11 +132,13 @@ function describe(ReflectionClass $class, string $projectDir): array
         }
     }
     // template() is relative to the project root unless absolute; '' = not declared.
-    $declared = (string) $class->getName()::template();
+    $declared = $state ? '' : (string) $class->getName()::template();
     $absolute = preg_match('~^([A-Za-z]:[\\\\/]|[\\\\/])~', $declared) === 1;
     $template = $declared === '' ? '' : ($absolute ? $declared : rtrim($projectDir, '/\\') . '/' . $declared);
-    $isLayout = $class->isSubclassOf('RageKit\\Layout');
-    $context = $isLayout ? (string) $class->getName()::context() : '';
+    $isWindow = $class->isSubclassOf('RageKit\\Window');
+    $context = $isWindow ? (string) $class->getName()::context() : '';
+    // A screen's window class; '' = Window itself (the OS's title bar).
+    $window = $class->isSubclassOf('RageKit\\Screen') ? ltrim((string) $class->getName()::window(), '\\') : '';
     $members = [];
     if ($context !== '' && interface_exists($context)) {
         foreach ((new ReflectionClass($context))->getMethods() as $method) {
@@ -156,8 +162,10 @@ function describe(ReflectionClass $class, string $projectDir): array
         'handlers' => (object) $handlers,
         'constants' => (object) $constants,
         'requiredParams' => (object) $required,
-        'isLayout' => $isLayout,
-        'layout' => $class->isSubclassOf('RageKit\\Screen') ? (string) $class->getName()::layout() : '',
+        'isWindow' => $isWindow,
+        'isRootStore' => $class->isSubclassOf('RageKit\\RootStore'),
+        'isStore' => $class->isSubclassOf('RageKit\\Store'),
+        'window' => $window === 'RageKit\\Window' ? '' : $window,
         'context' => $context,
         'contextMembers' => (object) $members,
         'interfaces' => $class->getInterfaceNames(),

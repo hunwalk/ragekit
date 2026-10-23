@@ -14,9 +14,9 @@ final class HomeScreen extends Screen implements TitleBarContext
         return 'templates/HomeScreen.rk';
     }
 
-    public static function layout(): string
+    public static function window(): string
     {
-        return AppLayout::class;
+        return AppWindow::class;
     }
 
     public function title(): string

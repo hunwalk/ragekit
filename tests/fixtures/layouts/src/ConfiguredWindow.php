@@ -2,9 +2,9 @@
 
 namespace Fix;
 
-use RageKit\Layout;
+use RageKit\Window;
 
-final class ConfiguredLayout extends Layout
+final class ConfiguredWindow extends Window
 {
     public function __construct(public string $name)
     {
@@ -12,6 +12,6 @@ final class ConfiguredLayout extends Layout
 
     public static function template(): string
     {
-        return 'templates/AppLayout.rk';
+        return 'templates/AppWindow.rk';
     }
 }

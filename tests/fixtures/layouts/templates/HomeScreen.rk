@@ -1,1 +1,11 @@
-<Label text="Count: {count}" />
+<VStack>
+    <Label text="Count: {count}" />
+    @if ($store->session->signedIn())
+        <HStack>
+            <Label text="{{ $store->session->userName }}" />
+            <Button text="Sign out" onClick="$store->session->signOut()" />
+        </HStack>
+    @else
+        <Button text="Sign in" onClick="$store->session->signIn('ann')" />
+    @endif
+</VStack>

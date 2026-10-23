@@ -35,6 +35,53 @@ final class Bootstrap
     }
 
     /**
+     * The files to require up front: those declaring a function outside any class (main.php, also
+     * when it holds the app's class too) or declaring no class at all.
+     *
+     * @param list<string> $files
+     * @return list<string>
+     */
+    public static function eagerFiles(array $files): array
+    {
+        $classes = self::classes($files);
+        $eager = [];
+        foreach ($files as $file) {
+            if (!in_array($file, $classes, true) || self::declaresFunction($file)) {
+                $eager[] = $file;
+            }
+        }
+        return $eager;
+    }
+
+    /** Whether $file declares a named function outside class bodies. */
+    private static function declaresFunction(string $file): bool
+    {
+        $tokens = token_get_all((string) file_get_contents($file));
+        $braces = []; // per open brace: whether it opened a class-like body
+        $classPending = false;
+        $count = count($tokens);
+        for ($i = 0; $i < $count; $i++) {
+            $token = $tokens[$i];
+            $id = is_array($token) ? $token[0] : $token;
+            if (in_array($id, [T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM], true)) {
+                $classPending = true;
+            } elseif ($id === '{' || $id === T_CURLY_OPEN || $id === T_DOLLAR_OPEN_CURLY_BRACES) {
+                $braces[] = $classPending;
+                $classPending = false;
+            } elseif ($id === '}') {
+                array_pop($braces);
+            } elseif ($id === T_FUNCTION && !in_array(true, $braces, true)) {
+                for ($j = $i + 1; $j < $count && (is_array($tokens[$j]) && $tokens[$j][0] === T_WHITESPACE || $tokens[$j] === '&'); $j++) {
+                }
+                if ($j < $count && is_array($tokens[$j]) && $tokens[$j][0] === T_STRING) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * @param list<string> $files
      * @return array<string, string> class, interface, trait or enum => file declaring it
      */

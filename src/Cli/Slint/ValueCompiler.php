@@ -6,6 +6,7 @@ namespace RageKit\Cli\Slint;
 
 use RageKit\Cli\Rageblade\Node;
 use RageKit\Cli\Rageblade\Parser;
+use RageKit\Cli\Templates\ClassInfo;
 use RageKit\Cli\Templates\Element;
 use RageKit\Cli\Kits\PropSpec;
 use RageKit\Cli\Templates\TemplateException;
@@ -24,9 +25,84 @@ final class ValueCompiler
 
     private ?ExpressionCompiler $expressions = null;
 
+    /** The app's RootStore subclass (null: none). */
+    private ?ClassInfo $root = null;
+
+    /** @var array<string, ClassInfo> store name ($store->name) => its Store class */
+    private array $stores = [];
+
     /** @param string $projectRoot what image paths in templates are relative to */
     public function __construct(private readonly string $projectRoot = '')
     {
+    }
+
+    /**
+     * The app's root store and its stores, for $store->x->y.
+     *
+     * @param array<string, ClassInfo> $stores Store classes by class name
+     */
+    public function useStores(?ClassInfo $root, array $stores): void
+    {
+        $this->root = $root;
+        $this->stores = [];
+        foreach ($root === null ? [] : $root->props as $name => $type) {
+            $class = $stores[ltrim($type, '?')] ?? null;
+            if ($class !== null) {
+                $this->stores[$name] = $class;
+            }
+        }
+    }
+
+    /**
+     * $store->$store->$member shown in a template: a window-level binding (owner 'store', name
+     * "session.userName"), so every window showing it follows a change made anywhere.
+     */
+    public function storeValue(string $store, string $member, bool $call, Scope $scope, Element $at): Ref
+    {
+        $class = $this->store($store, $scope, $at);
+        $path = "\$store->$store->$member";
+        $isMethod = isset($class->handlers[$member]);
+        if ($call && !$isMethod && isset($class->props[$member])) {
+            throw TemplateException::at($at, "$path is a property: write $path");
+        }
+        if (!$call && $isMethod) {
+            throw TemplateException::at($at, "$path is a method: write $path()");
+        }
+        if (!$call && isset($class->props[$member])) {
+            $type = $this->valueType($class->props[$member], $at, $path);
+            return new Ref($type, 'root.' . $scope->model->bind('property', "$store.$member", $type, 'store')->slintName(), $type === 'list' ? 'string' : null);
+        }
+        if (!$isMethod) {
+            throw TemplateException::at($at, "$path: '$member' is not a property or method of {$class->short} (it has: " . self::members($class) . ')');
+        }
+        $type = $class->computed[$member] ?? null;
+        if ($type === null) {
+            throw TemplateException::at($at, "$path() takes arguments; templates can only show methods without required parameters");
+        }
+        if (!isset(self::TYPES[$type])) {
+            throw TemplateException::at($at, $type === 'mixed'
+                ? "$path() has no return type; give it one (string, int, float, bool or array) to show it in a template"
+                : "$path() returns $type; templates can show string, int, float, bool or array (a list of strings)");
+        }
+        return new Ref($type, 'root.' . $scope->model->bind('method', "$store.$member", $type, 'store')->slintName(), $type === 'list' ? 'string' : null);
+    }
+
+    /** The Store class behind $store->$name, checked: templates of screens and windows only, the root and the store exist. */
+    private function store(string $name, Scope $scope, Element $at): ClassInfo
+    {
+        if ($scope->model === null) {
+            throw TemplateException::at($at, "child components can't read \$store yet; pass the value as a property: <{$scope->class->short} name=\"{{ \$store->… }}\" />");
+        }
+        if ($this->root === null) {
+            throw TemplateException::at($at, "\$store needs the app's RootStore: declare a class that extends RageKit\\RootStore with your stores as typed public properties");
+        }
+        return $this->stores[$name]
+            ?? throw TemplateException::at($at, "\$store->$name: {$this->root->short} has no store '$name' (its stores: " . implode(', ', array_keys($this->stores)) . ')');
+    }
+
+    private static function members(ClassInfo $class): string
+    {
+        return implode(', ', [...array_keys($class->props), ...array_map(fn(string $m) => "$m()", array_keys($class->handlers))]);
     }
 
     /** @return list<string> */
@@ -43,6 +119,9 @@ final class ValueCompiler
         if (str_contains($raw, '{{')) {
             // value="{{ $name }}" is the Rageblade spelling of value="{name}"; any other expression
             // is shown one-way (the input displays it; edits don't reach PHP).
+            if (preg_match('/^\s*\{\{\s*\$store->([A-Za-z_]\w*)->([A-Za-z_]\w*)\s*\}\}\s*$/', $raw, $m) === 1) {
+                return $this->twoWayStore($m[1], $m[2], $prop, $scope, $element, $attribute, $raw);
+            }
             if (preg_match('/^\s*\{\{\s*\$([A-Za-z_]\w*)\s*\}\}\s*$/', $raw, $m) !== 1) {
                 return null;
             }
@@ -54,16 +133,35 @@ final class ValueCompiler
         $parts = TextAttribute::parts($raw);
         $name = $parts[0][1];
         if (str_starts_with($name, 'context.')) {
-            throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs in a layout must bind the layout's own properties; pass values to the screen from a handler through \$this->context");
+            throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs in a window's template must bind the window's own properties; pass values to the screen from a handler through \$this->context");
         }
         if (count($parts) !== 1 || $scope->model === null || $scope->item($name) !== null || !isset($scope->class->props[$name])) {
-            throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs must bind a property of the " . ($scope->inLayout() ? 'layout' : 'screen'));
+            throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs must bind a property of the " . ($scope->inWindow() ? 'window' : 'screen'));
         }
         $type = $this->valueType($scope->class->props[$name], $element, "property \$$name");
         if ($type !== $prop->type) {
             throw TemplateException::at($element, "$attribute=\"$raw\": expected " . (in_array($prop->type[0], ['a', 'e', 'i', 'o', 'u'], true) ? 'an' : 'a') . " {$prop->type} property, \$$name is $type");
         }
         $binding = $scope->model->bind('property', $name, $type, $scope->owner);
+        $binding->twoWay = true;
+        return $binding;
+    }
+
+    /** checked="{{ $store->settings->darkMode }}": an input editing a store property directly. */
+    private function twoWayStore(string $store, string $member, PropSpec $prop, Scope $scope, Element $element, string $attribute, string $raw): Binding
+    {
+        if ($scope->hasItems()) {
+            throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs can't be repeated with each= yet");
+        }
+        $class = $this->store($store, $scope, $element);
+        if (!isset($class->props[$member])) {
+            throw TemplateException::at($element, "$attribute=\"$raw\": two-way inputs must bind a property; '$member' is not a property of {$class->short} (it has: " . self::members($class) . ')');
+        }
+        $type = $this->valueType($class->props[$member], $element, "\$store->$store->$member");
+        if ($type !== $prop->type) {
+            throw TemplateException::at($element, "$attribute=\"$raw\": expected " . (in_array($prop->type[0], ['a', 'e', 'i', 'o', 'u'], true) ? 'an' : 'a') . " {$prop->type} property, \$store->$store->$member is $type");
+        }
+        $binding = $scope->model->bind('property', "$store.$member", $type, 'store');
         $binding->twoWay = true;
         return $binding;
     }
@@ -225,6 +323,13 @@ final class ValueCompiler
             $params = $member['params'];
             $required = $member['required'];
             $owner = 'context';
+        } elseif ($node->kind === 'store' && $node->value[2]) {
+            [$store, $method] = $node->value;
+            $class = $this->store($store, $scope, $element);
+            $params = $class->handlers[$method]
+                ?? throw TemplateException::at($element, "'$method' is not a public method of {$class->short}");
+            $required = $class->requiredParams[$method] ?? count($params);
+            $owner = 'store';
         } else {
             throw TemplateException::at($element, "\"$raw\" must call a method, e.g. pick(\$item)");
         }
@@ -254,7 +359,8 @@ final class ValueCompiler
             $args[] = ['expr', count($pieces)];
             $pieces[] = $ref->type === 'bool' ? '\{(' . $ref->slint . ' ? "1" : "0")}' : '\{' . $ref->slint . '}';
         }
-        $action = $scope->model->action('call', $method, $args, null, $owner, $params);
+        $target = $owner === 'store' ? "{$node->value[0]}.$method" : $method;
+        $action = $scope->model->action('call', $target, $args, null, $owner, $params, $scope->inWindow());
         return "root.action({$action->id}, \"" . implode('\u{1f}', $pieces) . '");';
     }
 
@@ -320,7 +426,7 @@ final class ValueCompiler
         throw TemplateException::at($at, "'$name' is not a property, method or constant of {$class->short}");
     }
 
-    /** {context.x} in a layout's template: method x() of the screen, declared by the layout's context() interface. */
+    /** {context.x} in a window's template: method x() of the screen, declared by the window's context() interface. */
     private function context(string $member, Scope $scope, Element $at): Ref
     {
         $info = $this->contextMember($member, $scope, $at);
@@ -340,15 +446,15 @@ final class ValueCompiler
     /** @return array{return: string, params: list<string>, required: int} */
     private function contextMember(string $member, Scope $scope, Element $at): array
     {
-        if (!$scope->inLayout() || $scope->model === null) {
-            throw TemplateException::at($at, "context.$member only works in a Layout's template");
+        if (!$scope->inWindow() || $scope->model === null) {
+            throw TemplateException::at($at, "context.$member only works in a Window's template");
         }
-        $layout = $scope->class;
-        if ($layout->context === '') {
-            throw TemplateException::at($at, "{$layout->short} has no context(); return the interface its screens implement from context() to use context.$member");
+        $window = $scope->class;
+        if ($window->context === '') {
+            throw TemplateException::at($at, "{$window->short} has no context(); return the interface its screens implement from context() to use context.$member");
         }
-        return $layout->contextMembers[$member]
-            ?? throw TemplateException::at($at, "'$member' is not declared by {$layout->context}");
+        return $window->contextMembers[$member]
+            ?? throw TemplateException::at($at, "'$member' is not declared by {$window->context}");
     }
 
     private function constant(mixed $value, string $name, Element $at): Ref

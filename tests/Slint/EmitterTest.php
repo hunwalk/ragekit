@@ -84,19 +84,19 @@ final class EmitterTest extends TestCase
         self::assertStringContainsString('case 0: handle_->set_rk_page(static_cast<int>(value)); break;', $cc);
     }
 
-    /** Two screens of one layout: a window with two pages, window-level bindings and actions. */
-    private function layoutWindow(): WindowModel
+    /** Two screens of one window class: a window with two pages, window-level bindings and actions. */
+    private function framedWindow(): WindowModel
     {
-        $layout = new ClassInfo('Demo\\AppLayout', 'AppLayout', '/L.php', false, '/L.rk', props: ['query' => 'string'], handlers: ['close' => []], isLayout: true);
-        $window = new WindowModel('rk-screens-AppLayout', $layout);
+        $layout = new ClassInfo('Demo\\AppWindow', 'AppWindow', '/L.php', false, '/L.rk', props: ['query' => 'string'], handlers: ['close' => []], isWindow: true);
+        $window = new WindowModel('rk-screens-AppWindow', $layout);
         $a = new ScreenModel(new ClassInfo('Demo\\Albums', 'Albums', '/A.php', true, '/A.rk', props: ['count' => 'int'], handlers: ['add' => []]), $layout, $window);
         $b = new ScreenModel(new ClassInfo('Demo\\Photos', 'Photos', '/P.php', true, '/P.rk', props: ['zoom' => 'float'], handlers: ['zoomIn' => []]), $layout, $window);
-        $a->bind('property', 'query', 'string', 'layout');     // p1
+        $a->bind('property', 'query', 'string', 'window');     // p1
         $a->bind('method', 'title', 'string', 'context');      // p2
         $a->bind('method', 'toastTexts', 'list', 'window');    // p3
         $a->bind('property', 'count', 'int');                  // p4
         $b->bind('property', 'zoom', 'float');                 // p5
-        $a->action('call', 'close', [], null, 'layout');       // 1
+        $a->action('call', 'close', [], null, 'window');       // 1
         $a->action('call', 'add', []);                         // 2
         $b->action('call', 'zoomIn', []);                      // 3
         return $window;
@@ -104,28 +104,29 @@ final class EmitterTest extends TestCase
 
     public function testBinderKnowsWindowsAndPages(): void
     {
-        $php = BinderEmitter::emit([$this->layoutWindow()]);
-        self::assertStringContainsString("if (\$screen instanceof \\Demo\\Photos) {\n            return 'rk-screens-AppLayout';", $php);
+        $php = BinderEmitter::emit([$this->framedWindow()]);
+        self::assertStringContainsString("if (\$screen instanceof \\Demo\\Photos) {\n            return 'rk-screens-AppWindow';", $php);
         self::assertStringContainsString("if (\$screen instanceof \\Demo\\Photos) {\n            return 1;", $php);
-        self::assertStringContainsString('public static function values(Navigator $n): array', $php);
-        self::assertStringContainsString('public static function dispatch(Navigator $n, int $action, string $arg): int', $php);
-        // Every page reads the window-level values too: the layout's, the top screen's (context), the toasts.
-        self::assertStringContainsString("            1 => \$l->query,\n            2 => \$s->title(),\n            3 => self::strings(\$n->toastTexts()),\n            4 => \$s->count,\n", $php);
-        self::assertStringContainsString("            1 => \$l->query,\n            2 => \$s->title(),\n            3 => self::strings(\$n->toastTexts()),\n            5 => \$s->zoom,\n", $php);
+        self::assertStringContainsString('public static function values(Window $w): array', $php);
+        self::assertStringContainsString('public static function dispatch(Window $w, int $action, string $arg): int', $php);
+        self::assertStringContainsString('public static function component(Screen $screen): string', $php);
+        // Every page reads the window-level values too: the window's, the top screen's (context), the toasts.
+        self::assertStringContainsString("            1 => \$w->query,\n            2 => \$s->title(),\n            3 => self::strings(\$w->toastTexts()),\n            4 => \$s->count,\n", $php);
+        self::assertStringContainsString("            1 => \$w->query,\n            2 => \$s->title(),\n            3 => self::strings(\$w->toastTexts()),\n            5 => \$s->zoom,\n", $php);
     }
 
     /** Review Focus 1: a click from the page just left (another page's action id) does nothing. */
     public function testBinderDispatchIgnoresOtherPages(): void
     {
-        $php = BinderEmitter::emit([$this->layoutWindow()]);
+        $php = BinderEmitter::emit([$this->framedWindow()]);
         $albums = substr($php, strpos($php, 'private static function dispatchAlbums'));
         $albums = substr($albums, 0, strpos($albums, "\n    }\n") + 7);
         $photos = substr($php, strpos($php, 'private static function dispatchPhotos'));
         $photos = substr($photos, 0, strpos($photos, "\n    }\n") + 7);
-        self::assertStringContainsString("case 1:\n                \$l->close();", $albums);
+        self::assertStringContainsString("case 1:\n                \$w->close();", $albums);
         self::assertStringContainsString("case 2:\n                \$s->add();", $albums);
         self::assertStringNotContainsString('case 3:', $albums);
-        self::assertStringContainsString("case 1:\n                \$l->close();", $photos);
+        self::assertStringContainsString("case 1:\n                \$w->close();", $photos);
         self::assertStringContainsString("case 3:\n                \$s->zoomIn();", $photos);
         self::assertStringNotContainsString('case 2:', $photos);
         $file = sys_get_temp_dir() . '/rk-binder-' . uniqid() . '.php';
@@ -136,10 +137,10 @@ final class EmitterTest extends TestCase
 
     public function testGlueHasOneInstancePerWindow(): void
     {
-        $cc = GlueEmitter::emit([$this->layoutWindow(), $this->model()->window]);
-        self::assertSame(1, substr_count($cc, 'class rk_screens_AppLayoutInstance final : public rk::Instance'));
+        $cc = GlueEmitter::emit([$this->framedWindow(), $this->model()->window]);
+        self::assertSame(1, substr_count($cc, 'class rk_screens_AppWindowInstance final : public rk::Instance'));
         self::assertSame(1, substr_count($cc, 'class rk_screensInstance final : public rk::Instance'));
-        self::assertStringContainsString("if (screen == \"rk-screens-AppLayout\") {\n        return std::make_unique<rk_screens_AppLayoutInstance>(window);", $cc);
+        self::assertStringContainsString("if (screen == \"rk-screens-AppWindow\") {\n        return std::make_unique<rk_screens_AppWindowInstance>(window);", $cc);
         // Both pages' properties are set on the one window component.
         self::assertStringContainsString('case 4: handle_->set_p4(static_cast<int>(value)); break;', $cc);
         self::assertStringContainsString('case 5: handle_->set_p5(static_cast<float>(value)); break;', $cc);

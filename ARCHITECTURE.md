@@ -38,7 +38,9 @@ vendor/     Composer dependencies (not in git)
 
 ```
 src/
-  App.php, Backend.php, Component.php, Screen.php     the app model every backend implements
+  App.php, Backend.php, Component.php, Screen.php,     the app model every backend implements: the
+  Window.php, Navigator.php, Store.php, RootStore.php  app class, windows and their stacks of
+                                                       screens, app-wide state
   Events.php, Modules.php, ModuleUnavailable.php       module events and availability
   Slint/
     backend.yml          what the Slint backend adds to an app's build (sources, libraries,
@@ -150,7 +152,7 @@ UI thread (`RageKit\Events`), and the windows refresh afterwards, like after a c
 ```
 myapp/
   project.yml            TypePHP settings + ragekit: { backend, kit, modules, assets, nano, … }
-  main.php               main(): creates App, opens the first Screen, runs
+  main.php               main(): runs the app class (src/…App.php: first screen, store, start())
   src/                   Screens and components (PHP)
   templates/             their .rk templates (each component says where in template())
   assets/                files read at runtime (copied next to the executable with `assets:`)

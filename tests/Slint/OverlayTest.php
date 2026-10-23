@@ -31,7 +31,7 @@ final class OverlayTest extends TestCase
             props: ['confirm' => 'bool', 'other' => 'bool', 'name' => 'string', 'tab' => 'int', 'items' => 'list'],
             handlers: ['cancel' => [], 'remove' => [], 'both' => ['string', 'string'], 'pick' => ['int']],
             requiredParams: ['cancel' => 0, 'remove' => 0, 'both' => 2, 'pick' => 1],
-            layout: $layout, interfaces: $layout === '' ? [] : ['Demo\Ctx']);
+            window: $layout, interfaces: $layout === '' ? [] : ['Demo\Ctx']);
     }
 
     private function layout(string $rk): ClassInfo
@@ -39,7 +39,7 @@ final class OverlayTest extends TestCase
         file_put_contents("$this->dir/L.rk", $rk);
         return new ClassInfo('Demo\L', 'L', "$this->dir/L.php", false, "$this->dir/L.rk",
             props: ['about' => 'bool', 'maximized' => 'bool'], handlers: ['close' => []], requiredParams: ['close' => 0],
-            isLayout: true, context: 'Demo\Ctx');
+            isWindow: true, context: 'Demo\Ctx');
     }
 
     /** @param list<ClassInfo> $classes */
@@ -101,7 +101,7 @@ final class OverlayTest extends TestCase
         $layout = $this->layout('<VStack padded="false"><WindowDrag><WindowControls /></WindowDrag><Content />'
             . '<Dialog open="{{ $about }}" title="About"><Button text="Close" onClick="close" /></Dialog></VStack>');
         $out = $this->compile([$layout, $this->screen('<Label text="Hi" />', 'Demo\L')], 'shadcn', slint: true);
-        self::assertSame('layout', $out->screens[0]->window->bindings['layout:property:about']->owner);
+        self::assertSame('window', $out->screens[0]->window->bindings['window:property:about']->owner);
         $dialog = strpos($out->slint, ': ShadDialog {');
         $grip = strpos($out->slint, 'root.rk-window("resize-');
         self::assertNotFalse($dialog);

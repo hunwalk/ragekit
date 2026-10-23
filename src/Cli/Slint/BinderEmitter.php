@@ -8,58 +8,54 @@ use RageKit\Cli\Stub;
 
 /**
  * RageKit\Generated\Screens: statically typed PHP that reads the shown values of a window (its
- * layout's, the top screen's) and runs its actions — no dynamic property access, so TypePHP (and
+ * own, the top screen's) and runs its actions — no dynamic property access, so TypePHP (and
  * Nano) compile it directly.
  */
 final class BinderEmitter
 {
-    /** @param list<WindowModel> $windows */
-    public static function emit(array $windows): string
+    /**
+     * @param list<WindowModel> $windows
+     * @param string|null $rootStore the app's RootStore subclass, which $store bindings read through get()
+     */
+    public static function emit(array $windows, ?string $rootStore = null): string
     {
-        $names = $pages = $layouts = $values = $dispatch = $helpers = [];
+        $components = $pages = $news = $values = $dispatch = $helpers = [];
         foreach ($windows as $window) {
+            $frame = '\\' . ($window->frame?->name ?? 'RageKit\\Window');
             foreach ($window->pages as $screen) {
                 $class = '\\' . $screen->class->name;
                 $short = $screen->class->short;
-                $names[] = "if (\$screen instanceof $class) {\n    return '{$window->name}';\n}";
+                $components[] = "if (\$screen instanceof $class) {\n    return '{$window->name}';\n}";
                 $pages[] = "if (\$screen instanceof $class) {\n    return {$screen->page};\n}";
-                if ($screen->layout === null) {
-                    $values[] = "if (\$s instanceof $class) {\n    return self::values$short(\$n, \$s);\n}";
-                    $dispatch[] = "if (\$s instanceof $class) {\n    return self::dispatch$short(\$n, \$s, \$action, \$arg);\n}";
-                } else {
-                    // A screen with a layout: its values and actions also reach the layout object.
-                    $layout = '\\' . $screen->layout->name;
-                    $layouts[] = "if (\$screen instanceof $class) {\n    return new $layout();\n}";
-                    $values[] = rtrim(self::stub('binder-layout-call', ['class' => $class, 'layout' => $layout, 'method' => "values$short", 'args' => '$n, $s, $l', 'fallback' => '[]']), "\n");
-                    $dispatch[] = rtrim(self::stub('binder-layout-call', ['class' => $class, 'layout' => $layout, 'method' => "dispatch$short", 'args' => '$n, $s, $l, $action, $arg', 'fallback' => '0']), "\n");
-                }
-                $helpers[] = self::valuesMethod($screen);
-                $helpers[] = self::dispatchMethod($screen);
+                $news[] = "if (\$screen instanceof $class) {\n    return new $frame();\n}";
+                // Its values and actions also reach the window object, typed as its class.
+                $values[] = rtrim(self::stub('binder-window-call', ['class' => $class, 'window' => $frame, 'method' => "values$short", 'args' => '$w, $s', 'fallback' => '[]']), "\n");
+                $dispatch[] = rtrim(self::stub('binder-window-call', ['class' => $class, 'window' => $frame, 'method' => "dispatch$short", 'args' => '$w, $s, $action, $arg', 'fallback' => '0']), "\n");
+                $helpers[] = self::valuesMethod($screen, $frame, $rootStore);
+                $helpers[] = self::dispatchMethod($screen, $frame, $rootStore);
             }
         }
         return self::stub('binder', [
-            'windows' => implode("\n", $names),
+            'components' => implode("\n", $components),
             'pages' => implode("\n", $pages),
-            'layouts' => implode("\n", $layouts),
+            'windows' => implode("\n", $news),
             'values' => implode("\n", $values),
             'dispatch' => implode("\n", $dispatch),
             'helpers' => implode("\n", $helpers),
         ]);
     }
 
-    /** A page's values: the window's (layout, top screen, toasts) and its own, by id. */
-    private static function valuesMethod(ScreenModel $screen): string
+    /** A page's values: the window's (its own, top screen, toasts) and the page's, by id. */
+    private static function valuesMethod(ScreenModel $screen, string $frame, ?string $rootStore): string
     {
         $bindings = [...array_values($screen->window->bindings), ...array_values($screen->bindings)];
         usort($bindings, fn(Binding $a, Binding $b) => $a->id <=> $b->id);
         $entries = [];
+        $owners = [];
         foreach ($bindings as $binding) {
-            $object = match ($binding->owner) {
-                'layout' => '$l',
-                'window' => '$n',
-                default => '$s',
-            };
-            $read = $binding->source === 'method' ? "$object->{$binding->name}()" : "$object->{$binding->name}";
+            $owners[] = $binding->owner;
+            $member = self::member($binding->owner, $binding->name);
+            $read = $binding->source === 'method' ? "$member()" : $member;
             if ($binding->type === 'list') {
                 $read = "self::strings($read)";
             }
@@ -68,22 +64,25 @@ final class BinderEmitter
         return self::stub('binder-values', [
             'short' => $screen->class->short,
             'class' => $screen->class->name,
-            'layoutParam' => self::layoutParam($screen),
+            'window' => ltrim($frame, '\\'),
+            'root' => self::root($owners, $rootStore),
             'entries' => implode("\n", $entries),
         ]);
     }
 
-    /** A page's actions: the window's (layout, top screen) and its own; other pages' ids fall to default. */
-    private static function dispatchMethod(ScreenModel $screen): string
+    /** A page's actions: the window's (its own, top screen) and the page's; other pages' ids fall to default. */
+    private static function dispatchMethod(ScreenModel $screen, string $frame, ?string $rootStore): string
     {
         $actions = [...$screen->window->actions, ...$screen->actions];
         usort($actions, fn(Action $a, Action $b) => $a->id <=> $b->id);
         $cases = [];
+        $owners = [];
         foreach ($actions as $action) {
-            $object = $action->owner === 'layout' ? '$l' : '$s';
+            $owners[] = $action->owner;
+            $member = self::member($action->owner, $action->target);
             if ($action->kind === 'set') {
                 $cases[] = "case {$action->id}:\n"
-                    . "    $object->{$action->target} = " . self::convert('$arg', $action->binding->type) . ";\n"
+                    . "    $member = " . self::convert('$arg', $action->binding->type) . ";\n"
                     . "    return {$action->binding->id};";
                 continue;
             }
@@ -97,26 +96,48 @@ final class BinderEmitter
                 };
             }
             $cases[] = "case {$action->id}:\n"
-                . "    $object->{$action->target}(" . implode(', ', $args) . ");\n"
+                . "    $member(" . implode(', ', $args) . ");\n"
                 . '    return 0;';
         }
         return self::stub('binder-dispatch', [
             'short' => $screen->class->short,
             'class' => $screen->class->name,
-            'layoutParam' => self::layoutParam($screen),
+            'window' => ltrim($frame, '\\'),
+            'root' => self::root($owners, $rootStore),
             'cases' => implode("\n", $cases),
         ]);
+    }
+
+    /** A binding's or action's member: the window's ($w), the app's stores ($r, "session.userName"), else the screen's ($s). */
+    private static function member(string $owner, string $name): string
+    {
+        return match ($owner) {
+            'window' => "\$w->$name",
+            'store' => '$r->' . str_replace('.', '->', $name),
+            default => "\$s->$name",
+        };
+    }
+
+    /**
+     * `$r = \App\AppStore::get();` when one of $owners is the store, else nothing.
+     *
+     * @param list<string> $owners
+     */
+    private static function root(array $owners, ?string $rootStore): string
+    {
+        if (!in_array('store', $owners, true)) {
+            return '';
+        }
+        if ($rootStore === null) {
+            throw new \LogicException('$store bindings need the app\'s RootStore class');
+        }
+        return "\$r = \\$rootStore::get();";
     }
 
     /** @param array<string, string> $values */
     private static function stub(string $name, array $values): string
     {
         return Stub::render(__DIR__ . "/stubs/$name.php.stub", $values);
-    }
-
-    private static function layoutParam(ScreenModel $screen): string
-    {
-        return $screen->layout === null ? '' : ", \\{$screen->layout->name} \$l";
     }
 
     /** A template's quoted literal as a PHP literal of the parameter's type, converted at build time. */

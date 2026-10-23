@@ -22,6 +22,7 @@ final class ParserTest extends TestCase
             'const' => 'self::' . $n->value,
             'call' => $n->value . '(' . implode(', ', array_map(self::show(...), $n->children)) . ')',
             'context' => '$context->' . $n->value . '(' . implode(', ', array_map(self::show(...), $n->children)) . ')',
+            'store' => '$store->' . $n->value[0] . '->' . $n->value[1] . ($n->value[2] ? '(' . implode(', ', array_map(self::show(...), $n->children)) . ')' : ''),
             'not' => '!' . self::show($n->children[0]),
             'neg' => '-' . self::show($n->children[0]),
             'binary' => '(' . self::show($n->children[0]) . ' ' . $n->value . ' ' . self::show($n->children[1]) . ')',
@@ -63,6 +64,14 @@ final class ParserTest extends TestCase
         self::assertSame("'it's'", self::p("'it\\'s'"));
     }
 
+    public function testStorePaths(): void
+    {
+        self::assertSame('$store->session->userName', self::p('$store->session->userName'));
+        self::assertSame('$store->session->signedIn()', self::p('$store->session->signedIn()'));
+        self::assertSame("\$store->session->signIn(\$name, 'x')", self::p("\$store->session->signIn(\$name, 'x')"));
+        self::assertSame('(!$store->session->signedIn() && $open)', self::p('!$store->session->signedIn() && $open'));
+    }
+
     public function testArrayLiteral(): void
     {
         self::assertSame("['row', 'selected' => (\$item === \$sel)]", self::p("['row', 'selected' => \$item === \$sel]"));
@@ -77,6 +86,8 @@ final class ParserTest extends TestCase
         yield 'trailing' => ['$a $b', 'T.rk:3: unexpected "$b" in $a $b'];
         yield 'bare name' => ['LIMIT', 'T.rk:3: LIMIT: write constants as self::LIMIT and methods with ()'];
         yield 'empty' => ['', 'T.rk:3: empty expression'];
+        yield 'store alone' => ['$store', 'T.rk:3: $store on its own isn\'t supported; read a store\'s member: $store->session->userName'];
+        yield 'store only' => ['$store->session', 'T.rk:3: $store->session: read one of its members, e.g. $store->session->userName'];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('errors')]

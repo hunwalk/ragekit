@@ -37,35 +37,58 @@ final class SlintCompiler
     public function compile(array $classes): CompiledViews
     {
         $owners = [];
+        $root = null;
+        $stores = [];
+        foreach ($classes as $name => $class) {
+            if ($class->isRootStore) {
+                if ($root !== null) {
+                    throw new TemplateException($class->file, 0, "two classes extend RageKit\\RootStore ({$root->name} and {$class->name}); an app has one root store");
+                }
+                $root = $class;
+                unset($classes[$name]);
+                continue;
+            }
+            if ($class->isStore) {
+                $stores[$class->name] = $class;
+                unset($classes[$name]);
+            }
+        }
         foreach ($classes as $class) {
+            if (isset($class->props['store'])) {
+                throw new TemplateException($class->file, 0, "{$class->short} has a property named \$store, which templates reserve for the app's stores; rename it");
+            }
             if (isset($owners[$class->short])) {
                 throw new TemplateException($class->file, 0, "two components are named {$class->short} ({$owners[$class->short]} and {$class->name}); component class names must be unique");
             }
             $owners[$class->short] = $class->name;
+            if ($class->isWindow && $class->template === '') {
+                throw new TemplateException($class->file, 0, "{$class->short} extends Window: give it a template, or use Window itself for the OS title bar");
+            }
             if ($class->template === '') {
                 throw new TemplateException($class->file, 0, "{$class->name} doesn't declare template()");
             }
             if (!is_file($class->template)) {
                 throw new TemplateException($class->file, 0, "{$class->short}::template() points to {$class->templateDeclared}, which doesn't exist ({$class->template})");
             }
-            if (!$class->isScreen && !$class->isLayout) {
+            if (!$class->isScreen && !$class->isWindow) {
                 $this->children[$class->short] = $class;
             }
         }
 
         $this->values = new ValueCompiler($this->projectRoot);
+        $this->values->useStores($root, $stores);
         $this->elements = new ElementDispatcher($this->kits, $this->activeKit, $this->children, $this->values);
         $window = $this->windowComponent();
         $definitions = [];
         foreach ($this->childOrder() as $child) {
             $definitions[] = $this->childComponent($child);
         }
-        // Screens sharing a layout (or sharing none) are one window component, a page each.
+        // Screens sharing a window class are one window component, a page each.
         $groups = [];
         foreach ($classes as $class) {
             if ($class->isScreen) {
-                $layout = $this->layoutOf($class, $classes);
-                $groups[WindowModel::nameFor($layout)][] = [$class, $layout];
+                $frame = $this->windowOf($class, $classes);
+                $groups[WindowModel::nameFor($frame)][] = [$class, $frame];
             }
         }
         ksort($groups);
@@ -74,8 +97,8 @@ final class SlintCompiler
         foreach ($groups as $name => $members) {
             usort($members, fn(array $a, array $b) => strcmp($a[0]->name, $b[0]->name));
             $model = new WindowModel($name, $members[0][1]);
-            foreach ($members as [$class, $layout]) {
-                $screens[] = new ScreenModel($class, $layout, $model);
+            foreach ($members as [$class, $frame]) {
+                $screens[] = new ScreenModel($class, $frame, $model);
             }
             $definitions[] = $this->windowComponentFor($model, $window);
             $windows[] = $model;
@@ -93,6 +116,7 @@ final class SlintCompiler
             $this->values->images(),
             $this->elements->warnings(),
             $windows,
+            $root?->name,
         );
     }
 
@@ -161,44 +185,44 @@ final class SlintCompiler
     }
 
     /**
-     * The Layout a screen's layout() names, checked: it exists, can be created by the runtime, and
-     * the screen implements its context() interface.
+     * The Window subclass a screen's window() names (null: Window itself), checked: it exists, can
+     * be created by the runtime, and the screen implements its context() interface.
      *
      * @param array<string, ClassInfo> $classes
      */
-    private function layoutOf(ClassInfo $screen, array $classes): ?ClassInfo
+    private function windowOf(ClassInfo $screen, array $classes): ?ClassInfo
     {
-        if ($screen->layout === '') {
+        if ($screen->window === '') {
             return null;
         }
-        $layout = $classes[$screen->layout] ?? null;
-        if ($layout === null || !$layout->isLayout) {
-            throw new TemplateException($screen->file, 0, "{$screen->short}::layout() names {$screen->layout}, which isn't a Layout of this app");
+        $frame = $classes[$screen->window] ?? null;
+        if ($frame === null || !$frame->isWindow) {
+            throw new TemplateException($screen->file, 0, "{$screen->short}::window() names {$screen->window}, which isn't a Window of this app");
         }
-        if (!$layout->constructible) {
-            throw new TemplateException($layout->file, 0, "{$layout->short} must be constructible without arguments: RageKit creates one for every window it frames");
+        if (!$frame->constructible) {
+            throw new TemplateException($frame->file, 0, "{$frame->short} must be constructible without arguments: RageKit creates one for every window it opens");
         }
-        if ($layout->context !== '' && !in_array($layout->context, $screen->interfaces, true)) {
-            throw new TemplateException($screen->file, 0, "{$screen->short} uses {$layout->short}, which needs {$layout->context}; implement it");
+        if ($frame->context !== '' && !in_array($frame->context, $screen->interfaces, true)) {
+            throw new TemplateException($screen->file, 0, "{$screen->short} uses {$frame->short}, which needs {$frame->context}; implement it");
         }
-        return $layout;
+        return $frame;
     }
 
     private function windowComponentFor(WindowModel $model, string $window): string
     {
-        $layout = $model->layout;
+        $frame = $model->frame;
         $pages = [];
         foreach ($model->pages as $page) {
             $pages[] = new Page($page->page, new Scope($page->class, $page), TemplateParser::parseFile($page->class->template));
         }
         $several = count($pages) > 1;
-        if ($layout !== null) {
-            $frame = TemplateParser::parseFile($layout->template);
-            if (self::count($frame, 'Content') !== 1) {
-                throw new TemplateException($layout->template, 0, "{$layout->short}'s template needs exactly one <Content /> (where the screen goes)");
+        if ($frame !== null) {
+            $root = TemplateParser::parseFile($frame->template);
+            if (self::count($root, 'Content') !== 1) {
+                throw new TemplateException($frame->template, 0, "{$frame->short}'s template needs exactly one <Content /> (where the screen goes)");
             }
-            // A layout's window: frameless, its template fills it edge to edge, resize grips on top.
-            $body = $this->elements->element($frame, new Scope($layout, $model->pages[0], [], 'layout', $pages), 'v');
+            // A Window subclass's window: frameless, its template fills it edge to edge, resize grips on top.
+            $body = $this->elements->element($root, new Scope($frame, $model->pages[0], [], 'window', $pages), 'v');
             $body = Code::block('VerticalLayout', ['padding: 0px;', 'alignment: stretch;'], $body);
         } else {
             $body = '';
@@ -215,7 +239,7 @@ final class SlintCompiler
             }
         }
         $overlays = $this->elements->takeOverlays() . $this->toasts($model);
-        if ($layout !== null) {
+        if ($frame !== null) {
             $overlays .= self::grips();
         }
         $properties = [];
@@ -231,7 +255,7 @@ final class SlintCompiler
             'name' => $model->name,
             'window' => $window,
             'dev' => $this->dev ? Code::stub('window-dev', []) : '',
-            'frameless' => $layout !== null ? Code::stub('window-frameless', []) : '',
+            'frameless' => $frame !== null ? Code::stub('window-frameless', []) : '',
             'properties' => implode("\n", $properties),
             'body' => $body,
             'overlays' => $overlays,
@@ -239,7 +263,7 @@ final class SlintCompiler
     }
 
     /**
-     * A screen without a layout: a root <View> fills the window itself ($alone: the window's only
+     * A screen in a plain window: a root <View> fills the window itself ($alone: the window's only
      * page; among several, the pages' layout stretches it); anything else sits in a padded column.
      */
     private function pageBody(Page $page, string $guard, bool $alone): string
@@ -257,7 +281,7 @@ final class SlintCompiler
     }
 
     /**
-     * Every window's toasts ($this->toast() in PHP): Navigator::toastTexts() as a list, shown
+     * Every window's toasts ($this->toast() in PHP): Window::toastTexts() as a list, shown
      * bottom-right with the kit's Toast; a timer ticks (action -2) while any is shown, so PHP
      * drops the expired ones.
      */

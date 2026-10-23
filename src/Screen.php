@@ -5,31 +5,16 @@ namespace RageKit;
 /** A component that fills a window: what App::open() shows. Child components can't be opened. */
 abstract class Screen extends Component
 {
-    /** The layout framing this screen's window, if layout() names one. Set before the first event. */
-    protected ?Layout $layout = null;
+    private ?Window $host = null;
 
     /**
-     * The Layout class that frames this screen's window, e.g. `return AppLayout::class;`.
-     * '' (the default) = an ordinary window with the OS's title bar.
+     * The Window class this screen shows in, e.g. `return AppWindow::class;` for a window with its
+     * own title bar. Window::class (the default) = an ordinary window with the OS's title bar.
      */
-    public static function layout(): string
+    public static function window(): string
     {
-        return '';
+        return Window::class;
     }
-
-    /** @internal */
-    public function useLayout(Layout $layout): void
-    {
-        $this->layout = $layout;
-    }
-
-    /** @internal */
-    public function layoutObject(): ?Layout
-    {
-        return $this->layout;
-    }
-
-    private ?Navigator $navigator = null;
 
     /**
      * The window's stack of screens: `$this->navigator()->push(new DetailsScreen($id))`,
@@ -38,18 +23,24 @@ abstract class Screen extends Component
      */
     protected function navigator(): Navigator
     {
-        if ($this->navigator === null) {
+        return $this->currentWindow()->navigator();
+    }
+
+    /** The window showing this screen (an instance of window()). */
+    protected function currentWindow(): Window
+    {
+        if ($this->host === null) {
             $class = \get_class($this);
             $slash = strrpos($class, '\\');
-            throw new \LogicException(($slash === false ? $class : substr($class, $slash + 1)) . ': no navigator yet; it exists once the screen is shown in a window');
+            throw new \LogicException(($slash === false ? $class : substr($class, $slash + 1)) . ': no window yet; it exists once the screen is shown in one');
         }
-        return $this->navigator;
+        return $this->host;
     }
 
     /** @internal */
-    public function useNavigator(Navigator $navigator): void
+    public function useWindow(Window $window): void
     {
-        $this->navigator = $navigator;
+        $this->host = $window;
     }
 
     /** Called when this screen becomes the one the window shows (also after back() returns to it). */

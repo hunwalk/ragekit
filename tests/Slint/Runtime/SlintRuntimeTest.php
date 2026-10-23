@@ -12,7 +12,7 @@ require_once __DIR__ . '/FakeScreens.php';
 
 final class SlintRuntimeTest extends TestCase
 {
-    private App $app;
+    private RuntimeApp $app;
 
     protected function setUp(): void
     {
@@ -20,7 +20,16 @@ final class SlintRuntimeTest extends TestCase
         if (!function_exists('ragekit_backend')) {
             eval('function ragekit_backend(): \RageKit\Backend { return new \RageKit\Slint\SlintBackend(); }');
         }
-        $this->app = new App();
+        $this->app = new RuntimeApp();
+        new RuntimeStore();
+    }
+
+    /** run() with the given first screen: it becomes the main window (id 1). */
+    private function runApp(?\RageKit\Screen $first = null): void
+    {
+        $this->app->first = $first;
+        $this->app->run();
+        FakeHost::$calls = [];
     }
 
     private function event(int $window, int $action, string $arg = ''): void
@@ -29,17 +38,13 @@ final class SlintRuntimeTest extends TestCase
         (FakeHost::$dispatcher)($window, $action, $arg);
     }
 
-    public function testLayoutIsCreatedPerWindow(): void
+    public function testWindowObjectIsCreatedPerWindow(): void
     {
-        $first = new FramedScreen();
-        $second = new FramedScreen();
-        $this->app->open($first, title: 'One');
-        $this->app->open($second, title: 'Two');
+        $one = $this->app->open(new FramedScreen(), title: 'One');
+        $two = $this->app->open(new FramedScreen(), title: 'Two');
 
-        $one = $first->layoutObject();
-        $two = $second->layoutObject();
-        self::assertInstanceOf(FrameLayout::class, $one);
-        self::assertInstanceOf(FrameLayout::class, $two);
+        self::assertInstanceOf(FrameWindow::class, $one);
+        self::assertInstanceOf(FrameWindow::class, $two);
         self::assertNotSame($one, $two);
         self::assertSame(1, $one->windowId());
         self::assertSame(2, $two->windowId());
@@ -47,7 +52,7 @@ final class SlintRuntimeTest extends TestCase
         self::assertContains('string 1 1 Framed', FakeHost::$calls);
     }
 
-    public function testLayoutValuesArePushed(): void
+    public function testWindowValuesArePushed(): void
     {
         $this->app->open(new FramedScreen(), title: 'One');
         $this->event(1, 3);
@@ -56,13 +61,12 @@ final class SlintRuntimeTest extends TestCase
 
     public function testMaximizedChangeFromOs(): void
     {
-        $screen = new FramedScreen();
-        $this->app->open($screen, title: 'One');
+        $window = $this->app->open(new FramedScreen(), title: 'One');
         $this->event(1, -1, '1');
-        self::assertTrue($screen->layoutObject()?->maximized);
+        self::assertTrue($window->maximized);
         self::assertSame(['bool 1 3 true'], FakeHost::$calls);
         $this->event(1, -1, '0');
-        self::assertFalse($screen->layoutObject()?->maximized);
+        self::assertFalse($window->maximized);
     }
 
     public function testToastTickOnlyResyncs(): void
@@ -73,11 +77,59 @@ final class SlintRuntimeTest extends TestCase
         self::assertSame([], FakeHost::$calls, 'nothing changed, nothing pushed, no handler');
     }
 
-    public function testLayoutCloseButtonClosesWindow(): void
+    public function testWindowCloseButtonClosesWindow(): void
     {
-        $this->app->open(new FramedScreen(), title: 'One');
-        $this->event(1, 1);
-        self::assertSame(['close 1', 'quit'], FakeHost::$calls);
+        $this->runApp();
+        $this->app->open(new FramedScreen(), title: 'Two');
+        $this->event(2, 1);
+        self::assertSame(['close 2'], FakeHost::$calls);
+    }
+
+    public function testRunOpensTheMainWindowThenStartsThenRuns(): void
+    {
+        $this->app->onStart = function (): void {
+            FakeHost::$calls[] = 'start ' . $this->app->main()->id;
+        };
+        $this->app->run();
+        self::assertSame(['open rk-screens "Main" 480x320', 'int 1 0 0', 'int 1 1 0', 'string 1 2 ', 'list 1 3', 'list end', 'string 1 5 ', 'start 1', 'run'], FakeHost::$calls);
+    }
+
+    /** Review Focus 1: closing the main window while About is open closes both and ends the app. */
+    public function testClosingMainClosesEverything(): void
+    {
+        $this->runApp();
+        $this->event(1, 3);
+        $this->event(1, 0);
+        self::assertSame(['close 1', 'close 2', 'quit'], FakeHost::$calls);
+        $this->event(2, 1);
+        self::assertSame([], FakeHost::$calls, 'a late event for a closed window does nothing');
+    }
+
+    /** Review Focus 2: a store event fired in a handler resets the main window in the same sync. */
+    public function testListenerNavigatesDuringAHandler(): void
+    {
+        $this->app->onStart = function (): void {
+            RuntimeStore::get()->session->on('signedOut', function (): void {
+                $this->app->main()->navigator()->reset(new DetailScreen(9));
+            });
+        };
+        $this->runApp();
+        $this->event(1, 9, 'ann');
+        self::assertSame(['string 1 5 ann'], FakeHost::$calls);
+        $this->event(1, 10);
+        self::assertSame(['int 1 0 2', 'int 1 4 9'], FakeHost::$calls);
+        $this->event(1, 1); // a click the counter page sent before it went away
+        self::assertSame([], FakeHost::$calls);
+    }
+
+    /** Review Focus 3: every window showing a store value follows a change made in one of them. */
+    public function testTwoWindowsShowTheSameStoreValue(): void
+    {
+        $this->runApp();
+        $this->app->open(new CounterScreen(), title: 'Second');
+        FakeHost::$calls = [];
+        $this->event(2, 9, 'ann');
+        self::assertSame(['string 1 5 ann', 'string 2 5 ann'], FakeHost::$calls);
     }
 
     public function testOpenPushesInitialValues(): void
@@ -91,6 +143,7 @@ final class SlintRuntimeTest extends TestCase
             'string 1 2 ',
             'list 1 3',
             'list end',
+            'string 1 5 ',
         ], FakeHost::$calls);
     }
 
@@ -107,7 +160,7 @@ final class SlintRuntimeTest extends TestCase
         $this->app->open(new CounterScreen(), title: 'Counter');
         FakeHost::$calls = [];
         $this->app->backend()->resync();
-        self::assertSame(['int 1 0 0', 'int 1 1 0', 'string 1 2 ', 'list 1 3', 'list end'], FakeHost::$calls);
+        self::assertSame(['int 1 0 0', 'int 1 1 0', 'string 1 2 ', 'list 1 3', 'list end', 'string 1 5 '], FakeHost::$calls);
     }
 
     public function testModuleEventsResyncWindows(): void
@@ -146,9 +199,9 @@ final class SlintRuntimeTest extends TestCase
         self::assertSame(['open rk-screens "About" 300x100', 'int 2 0 1'], FakeHost::$calls);
     }
 
-    public function testClosingLastWindowQuits(): void
+    public function testClosingAnotherWindowKeepsTheApp(): void
     {
-        $this->app->open(new CounterScreen(), title: 'Counter');
+        $this->runApp();
         $this->event(1, 3);
         $this->event(2, 0);
         self::assertSame(['close 2'], FakeHost::$calls);
@@ -213,11 +266,11 @@ final class SlintRuntimeTest extends TestCase
         self::assertSame([], FakeHost::$calls, 'back on the first screen does nothing');
     }
 
-    public function testPushOtherLayoutThrows(): void
+    public function testPushOtherWindowClassThrows(): void
     {
         $this->app->open(new WrongPushScreen(), title: 'W');
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage("FramedScreen uses layout FrameLayout; this window's layout is no layout");
+        $this->expectExceptionMessage('FramedScreen uses window FrameWindow; this window is Window');
         $this->event(1, 7);
     }
 

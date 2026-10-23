@@ -44,6 +44,12 @@ final class ExpressionCompiler
                     throw TemplateException::at($at, "\$context->{$node->value}(): methods shown in templates can't take arguments");
                 }
                 return $this->values->resolve('context.' . $node->value, $scope, $at);
+            case 'store':
+                [$store, $member, $call] = $node->value;
+                if ($node->children !== []) {
+                    throw TemplateException::at($at, "\$store->$store->$member(): methods shown in templates can't take arguments");
+                }
+                return $this->values->storeValue($store, $member, $call, $scope, $at);
             case 'not':
                 return new Ref('bool', '!(' . $this->condition($node->children[0], $scope, $at)->slint . ')');
             case 'neg':
@@ -248,6 +254,7 @@ final class ExpressionCompiler
             'var' => '$' . $node->value,
             'call' => $node->value . '()',
             'context' => '$context->' . $node->value . '()',
+            'store' => '$store->' . $node->value[0] . '->' . $node->value[1] . ($node->value[2] ? '()' : ''),
             'const' => 'self::' . $node->value,
             default => 'this value',
         };

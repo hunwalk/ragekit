@@ -44,7 +44,7 @@ final class AccordionCompiler implements ElementCompiler
         if ($binding === null || $binding->type !== 'int') {
             throw TemplateException::at($element, "<Accordion open=\"$raw\">: open must bind an int property, e.g. open=\"{{ \$open }}\" (-1: all closed)");
         }
-        $action = $scope->model?->action('set', $binding->name, [], $binding, $binding->owner);
+        $action = $scope->model?->action('set', $binding->name, [], $binding, $binding->owner, null, $scope->inWindow());
         $this->context->useKit($kit, $spec->component);
         $title = $spec->props['title']->property ?? 'title';
         $open = $spec->props['open']->property ?? 'open';

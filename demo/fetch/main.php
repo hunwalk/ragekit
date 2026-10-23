@@ -1,11 +1,8 @@
 <?php
 
-use Demo\FetchScreen;
-use RageKit\App;
+use Demo\FetchApp;
 
 function main(): void
 {
-    $app = new App();
-    $app->open(new FetchScreen(), title: 'RageKit · fetch', width: 460, height: 380);
-    $app->run();
+    (new FetchApp())->run();
 }

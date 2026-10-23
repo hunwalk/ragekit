@@ -30,7 +30,7 @@ final class SlintViewGenerator implements ViewGenerator
         GeneratedFile::write("$out/app.slint", $compiled->slint);
         GeneratedFile::write("$out/views_glue.cc", GlueEmitter::emit($compiled->windows));
         $binder = "$out/RageKit_Generated_Screens.php";
-        GeneratedFile::write($binder, BinderEmitter::emit($compiled->windows));
+        GeneratedFile::write($binder, BinderEmitter::emit($compiled->windows, $compiled->rootStore));
 
         FetchDependencies::fetchUsedKits($project->kits->used($compiled->imports), $context->status->show(...));
         $inputs = $compiled->imports;

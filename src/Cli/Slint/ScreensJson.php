@@ -28,8 +28,8 @@ final class ScreensJson
             }
             $out[] = [
                 'name' => $window->name,
-                'layout' => $window->layout?->name,
-                'frameless' => $window->layout !== null,
+                'window' => $window->frame?->name,
+                'frameless' => $window->frame !== null,
                 'values' => self::values($window->bindings),
                 'actions' => self::actions($window->actions, $window->pages[0] ?? null),
                 'pages' => $pages,

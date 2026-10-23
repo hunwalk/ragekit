@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace RageKit\Generated;
 
-use RageKit\Navigator;
 use RageKit\Screen;
 use RageKit\Slint\Dev\Session;
+use RageKit\Window;
 
 /**
  * Dev mode's stand-in for the binder `ragekit build` generates: the same API SlintWindow uses,
@@ -14,9 +14,9 @@ use RageKit\Slint\Dev\Session;
  */
 final class Screens
 {
-    public static function window(Screen $screen): string
+    public static function component(Screen $screen): string
     {
-        return Session::bindings()->window($screen);
+        return Session::bindings()->component($screen);
     }
 
     public static function page(Screen $screen): int
@@ -24,28 +24,25 @@ final class Screens
         return Session::bindings()->page($screen);
     }
 
-    /** Called once per window, just before slint_open(): the session learns the window's screen (and, after a restart, restores it). */
-    public static function layout(Screen $screen): ?\RageKit\Layout
+    /**
+     * Called once per window, just before slint_open(): the session learns the window's screen
+     * (and, after a restart, restores it, the stores and the window's state).
+     */
+    public static function newWindow(Screen $screen): Window
     {
-        Session::pending($screen);
-        Session::restore($screen);
-        $layout = Session::bindings()->layout($screen);
-        if ($layout instanceof \RageKit\Layout) {
-            Session::restoreLayout($layout);
-            return $layout;
-        }
-        return null;
+        return Session::windowFor($screen);
     }
 
     /** @return array<int, mixed> property id => current value */
-    public static function values(Navigator $n): array
+    public static function values(Window $w): array
     {
-        Session::restoreStack($n); // after a restart: the screens that were on top of this window's first one
-        return Session::bindings()->values($n);
+        Session::adopt($w);
+        Session::restoreStack($w->navigator()); // after a restart: the screens that were on top of this window's first one
+        return Session::bindings()->values($w);
     }
 
-    public static function dispatch(Navigator $n, int $action, string $arg): int
+    public static function dispatch(Window $w, int $action, string $arg): int
     {
-        return Session::bindings()->dispatch($n, $action, $arg);
+        return Session::bindings()->dispatch($w, $action, $arg);
     }
 }

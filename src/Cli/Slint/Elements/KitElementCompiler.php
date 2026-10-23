@@ -51,7 +51,7 @@ final class KitElementCompiler implements ElementCompiler
             $raw = $element->attributes[$name];
             $binding = $prop->twoWay !== null ? $this->context->values->twoWayBinding($raw, $prop, $scope, $element, $name) : null;
             if ($binding !== null) {
-                $action = $scope->model?->action('set', $binding->name, [], $binding, $binding->owner);
+                $action = $scope->model?->action('set', $binding->name, [], $binding, $binding->owner, null, $scope->inWindow());
                 $value = match ($prop->type) {
                     'bool' => 'value ? "1" : "0"',
                     'string' => 'value',

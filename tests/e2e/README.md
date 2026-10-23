@@ -7,13 +7,14 @@
 `tests/e2e/kitchen-sink.sh` opens every tab of `demo/kitchen-sink` and checks the window keeps its
 size (an element that caps a column's width shrinks the window); `--kit=material` for the other kit.
 
-`tests/e2e/navigator.sh` drives `demo/navigator`: pushes screens and goes back with the title bar's
-← and with Alt+Left, checking the window stays the same X window and size and the first screen
-keeps its state; a dialog on a pushed screen, a toast that survives a reset of the stack.
+`tests/e2e/navigator.sh` drives `demo/navigator`: signs in (a store event the app class turns into
+navigation), pushes screens and goes back with the title bar's ← and with Alt+Left, checking the
+window stays the same X window and size and the first screen keeps its state; a dialog on a pushed
+screen, a toast that survives a reset of the stack, Sign out in the title bar.
 
     DISPLAY=:99 tests/e2e/navigator.sh        # also with --kit=material, --nano
 
-`tests/e2e/titlebar.sh` drives `demo/titlebar` (a layout): drags the bar, resizes from a corner
+`tests/e2e/titlebar.sh` drives `demo/titlebar` (a `Window` subclass): drags the bar, resizes from a corner
 (on X11 the app moves and resizes its window itself), clicks a button inside the bar, closes with
 the window's own close button:
 

@@ -1,6 +1,7 @@
 /** @return array<int, mixed> */
-private static function values{{ short }}(Navigator $n, \{{ class }} $s{{ layoutParam }}): array
+private static function values{{ short }}(\{{ window }} $w, \{{ class }} $s): array
 {
+    {{ root }}
     return [
         {{ entries }}
     ];

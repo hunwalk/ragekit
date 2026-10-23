@@ -1,4 +1,4 @@
-# A screen framed by a layout (frameless window): built by tests/Slint/WindowNativeTest.php.
+# A screen in a Window subclass (frameless window): built by tests/Slint/WindowNativeTest.php.
 name: layouts
 sources:
   - main.php

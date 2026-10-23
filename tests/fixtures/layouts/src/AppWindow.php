@@ -2,15 +2,15 @@
 
 namespace Fix;
 
-use RageKit\Layout;
+use RageKit\Window;
 
-final class AppLayout extends Layout
+final class AppWindow extends Window
 {
     public string $query = '';
 
     public static function template(): string
     {
-        return 'templates/AppLayout.rk';
+        return 'templates/AppWindow.rk';
     }
 
     public static function context(): string

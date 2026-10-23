@@ -47,14 +47,25 @@ final class CounterScreen extends Screen
 ```php
 <?php
 
-use Demo\CounterScreen;
-use RageKit\App;
+namespace Demo;
 
+use RageKit\App;
+use RageKit\Screen;
+
+final class CounterApp extends App
+{
+    protected function firstScreen(): Screen
+    {
+        return new CounterScreen();
+    }
+}
+```
+
+```php
+// main.php
 function main(): void
 {
-    $app = new App();
-    $app->open(new CounterScreen(), title: 'Counter', width: 360, height: 200);
-    $app->run();
+    (new Demo\CounterApp())->run();
 }
 ```
 
@@ -68,13 +79,18 @@ runtime: loops and conditions become the UI's own `for` and `if`.
 
 ## Screens and components
 
-- **`RageKit\Screen`** fills a window. `$app->open($screen, title:, width:, height:)` shows it.
-  `open()` takes only screens.
+- **`RageKit\App`** is the app itself: you extend it, `firstScreen()` names the screen the main
+  window starts with, `title()`, `width()` and `height()` the main window's title and size, and
+  `createStore()` its [state](state.md). `main()` runs it: `(new MyApp())->run()`.
+- **`RageKit\Screen`** fills a window. A window can hold a stack of screens
+  ([navigation](navigation.md)).
+- **`RageKit\Window`** is one OS window. The plain `Window` has the OS's title bar; a subclass
+  with its own template draws its own ([Windows](#windows-a-frame-and-a-custom-title-bar)).
 - **`RageKit\Component`** is a child component: a piece of UI another template uses by its
   class name (see [Child components](#child-components)).
 
-Both inherit `$this->app` (the running `RageKit\App`), so any handler can open another window
-or quit:
+Screens, windows and components inherit `$this->app` (the running app), so any handler can open
+another window or quit:
 
 ```php
 public function about(): void
@@ -83,7 +99,10 @@ public function about(): void
 }
 ```
 
-`run()` returns when the last window closes or `$this->app->quit()` is called.
+`open()` returns the new `Window`. Closing the **main window** (the one `firstScreen()` opened in)
+ends the app and closes the others; closing another window only closes it. `$this->app->quit()`
+ends the app from code. (An app that should keep running without its main window overrides
+`mainWindowClosed()`.)
 
 ### Where the template lives
 
@@ -202,8 +221,9 @@ Inputs write the user's changes straight back into a property:
 <Select value="{{ $fruit }}" options="{{ self::FRUITS }}" />
 ```
 
-- The binding must be a single `{{ $property }}` of the **screen** (or, in a layout, of the
-  layout) with the input's type (`string` for Entry/Select/Textarea/RadioGroup, `bool` for
+- The binding must be a single `{{ $property }}` of the **screen** (or, in a window's template,
+  of the window), or a store property `{{ $store->settings->darkMode }}` ([state](state.md)), with
+  the input's type (`string` for Entry/Select/Textarea/RadioGroup, `bool` for
   Checkbox/Switch/Toggle, `float` for Slider, `int` for Tabs). Any other expression is shown
   one-way: the input displays it, but the user's edits don't reach PHP.
 - After the user edits the value, the property is updated and the window re-reads its other
@@ -435,11 +455,12 @@ other elements inside it (yet), and not both `text="…"` and content.
 
 - `open` is a two-way `bool` property: a handler sets `$this->confirmDelete = true` to show the
   dialog and `false` to close it. A click outside the panel or Esc sets it back to `false`.
-- The dialog covers the whole window wherever it's written (inside Tabs, a Card, a layout), and
+- The dialog covers the whole window wherever it's written (inside Tabs, a Card, a window's
+  template), and
   the rest of the window is dimmed and can't be clicked. In a window with its own title bar that
   includes the title bar; the edges still resize the window.
 - Its elements are laid out as a column; `title` is optional.
-- Allowed in screen and layout templates, not inside `@if`/`@foreach` (that's what `open` is
+- Allowed in screen and window templates, not inside `@if`/`@foreach` (that's what `open` is
   for) and not in child components. If two are open, the later one in the template is on top.
   A dialog written inside a tab that isn't showing still opens when its property is true.
 
@@ -453,7 +474,7 @@ public function save(): void
 }
 ```
 
-`$this->toast()` (in a screen or a layout) shows a short message in the window's bottom-right
+`$this->toast()` (in a screen or a window) shows a short message in the window's bottom-right
 corner for about 3 seconds. Several stack up. Nothing goes in the template.
 
 ### DropdownMenu
@@ -581,11 +602,12 @@ Current limits of child components:
 - A child can't contain other elements (`<History>…</History>`).
 - Components may use other components, but not in a cycle.
 
-## Layouts: a window frame and a custom title bar
+## Windows: a frame and a custom title bar
 
-A layout is the frame around a screen: a title bar with the app's own buttons, a sidebar, a footer.
-It's a `RageKit\Layout` class with its own template, its own state and its own handlers. A screen
-opts in by naming it:
+Every OS window is a `RageKit\Window`. The plain `Window` keeps the OS's title bar. A subclass of
+`Window` with its own template is the frame around the window's screens: a title bar with the
+app's own buttons, a sidebar, a footer, with its own state and handlers. A screen names its window
+class:
 
 ```php
 final class HomeScreen extends Screen implements TitleBarContext
@@ -595,9 +617,9 @@ final class HomeScreen extends Screen implements TitleBarContext
         return 'templates/HomeScreen.rk';
     }
 
-    public static function layout(): string
+    public static function window(): string
     {
-        return AppLayout::class;
+        return AppWindow::class;
     }
 
     public function title(): string
@@ -608,16 +630,16 @@ final class HomeScreen extends Screen implements TitleBarContext
 ```
 
 ```php
-final class AppLayout extends Layout
+final class AppWindow extends Window
 {
     public string $query = '';
 
     public static function template(): string
     {
-        return 'templates/AppLayout.rk';
+        return 'templates/AppWindow.rk';
     }
 
-    /** What screens using this layout must provide. */
+    /** What screens shown in this window must provide. */
     public static function context(): string
     {
         return TitleBarContext::class;
@@ -625,13 +647,13 @@ final class AppLayout extends Layout
 
     public function submit(): void
     {
-        $this->context->search($this->query); // the screen it frames
+        $this->context->search($this->query); // the screen on top
     }
 }
 ```
 
 ```blade
-<!-- templates/AppLayout.rk -->
+<!-- templates/AppWindow.rk -->
 <VStack padded="false">
     <WindowDrag>
         <Label text="{{ $context->title() }}" grow="true" />
@@ -643,41 +665,52 @@ final class AppLayout extends Layout
 </VStack>
 ```
 
-- **`<Content />`** is where the screen goes. A layout's template has exactly one.
-- **A window whose screen has a layout has no OS frame**: the layout draws the title bar. The
-  window keeps the OS's shadow (and, on Windows 11, rounded corners) and can still be resized from
-  its edges.
+- **`<Content />`** is where the screen goes. A window's template has exactly one.
+- **A window with a template has no OS frame**: the template draws the title bar. The window keeps
+  the OS's shadow (and, on Windows 11, rounded corners) and can still be resized from its edges.
 - **`<WindowDrag>`** lays out its children like `<HStack>`. Pressing on its background and dragging
   moves the window; double-clicking it maximises or restores. Buttons and inputs inside it still
   work as usual. On Windows the OS does the move, so snapping to screen edges works; on Linux the
   app moves the window itself, without the window manager's snapping.
 - **`<WindowControls />`** shows the kit's minimise, maximise/restore and close buttons. Close
-  works like the OS's close button.
-- **The context.** `context()` names an interface; every screen using the layout must implement
-  it, or the build fails. The layout's template shows its methods as `{{ $context->title() }}`
-  and calls them with `onClick="$context->refresh()"`; in PHP, `$this->context` is the screen.
-  Inputs in a layout bind the layout's own properties (`{{ $query }}` above); pass values on in a
-  handler. A layout's template uses the layout's `STYLES`; the screen inside `<Content />` uses the
-  screen's.
-- **State.** Each window gets its own layout object, created by RageKit (so its constructor can't
-  require arguments). `public bool $maximized` is kept up to date, also when the OS maximised the
-  window. `minimize()`, `toggleMaximize()` and `close()` can be used from your own buttons. A
-  screen reaches its layout as `$this->layout`.
-- `<Content />`, `<WindowDrag>` and `<WindowControls />` are only allowed in a layout's template.
-  Screens without `layout()` keep the ordinary OS window.
+  works like the OS's close button (on the main window it ends the app).
+- **The context.** `context()` names an interface; every screen shown in the window must implement
+  it, or the build fails. The window's template shows its methods as `{{ $context->title() }}`
+  and calls them with `onClick="$context->refresh()"`; in PHP, `$this->context` is the screen on
+  top. Inputs in a window's template bind the window's own properties (`{{ $query }}` above) or a
+  store's; pass values on in a handler. A window's template uses the window's `STYLES`; the screen
+  inside `<Content />` uses the screen's.
+- **State.** Each OS window gets its own `Window` object, created by RageKit (so a subclass's
+  constructor can't require arguments). `public bool $maximized` is kept up to date, also when the
+  OS maximised the window. `minimize()`, `toggleMaximize()` and `close()` can be used from your own
+  buttons, `back()` and `canGoBack()` from a back button. A screen reaches its window as
+  `$this->currentWindow()`.
+- `<Content />`, `<WindowDrag>` and `<WindowControls />` are only allowed in a window's template. A
+  `Window` subclass without a template is a build error: screens that want the OS's title bar use
+  `Window` itself (the default `window()`).
+- Screens naming the same window class can be shown in one window, one after the other
+  ([navigation](navigation.md)). A screen of another window class opens in its own window, with
+  `$this->app->open()`.
 
 **Linux:** the app moves and resizes its own window through X11 (the window manager can't take
-the drag over, so there's no edge snapping), so apps with a layout run on XWayland in a Wayland
-session (text can look blurry with fractional scaling). Set `RAGEKIT_WAYLAND=1` to stay on
+the drag over, so there's no edge snapping), so apps with a window template run on XWayland in a
+Wayland session (text can look blurry with fractional scaling). Set `RAGEKIT_WAYLAND=1` to stay on
 Wayland, where the title bar can't move the window. The corners stay square on Linux.
 
 `demo/titlebar` is a complete example.
 
+## App-wide state: $store
+
+State the whole app shares (who is signed in, settings) lives in stores, read in any screen's or
+window's template as `{{ $store->session->userName }}`, called as
+`onClick="$store->session->signOut()"` and bound two-way as
+`checked="{{ $store->settings->darkMode }}"`. See [state.md](state.md).
+
 ## Moving between screens
 
 A window can hold a stack of screens: `$this->navigator()->push(new DetailsScreen($id))` shows the
-next one in the same window, `back()` returns to the previous one with its state kept. A layout's
-`onClick="back"` and `@if (canGoBack())` make a back button; Alt+Left goes back too. See
+next one in the same window, `back()` returns to the previous one with its state kept. In a
+window's template, `onClick="back"` and `@if (canGoBack())` make a back button; Alt+Left goes back too. See
 [navigation.md](navigation.md).
 
 ## Elements from a kit
@@ -714,18 +747,25 @@ Template errors are reported as `file:line: message` and stop the build. The mos
 | `position: absolute needs a <View> parent` | Only a `<View>` can place children absolutely. |
 | `property $x has type ?string; templates support string, int, float, bool and array (not nullable)` | Give the property a supported, non-nullable type, or show it through a computed method. |
 | `<X> has no attribute 'y' (allowed: …)` | Use one of the listed attributes. |
-| `unknown element <X>` | Not a core element, layout or component; kit elements need their prefix. |
+| `unknown element <X>` | Not a core element or component; kit elements need their prefix. |
 | `two-way inputs need a single property` | Bind one `{{ $property }}`, not text, a method or a `@foreach` item. |
 | `expected a float property, $x is int` | Change the property's type to what the input edits. |
 | `'x' is not a public method of X` | Handlers must be public methods of the screen. |
 | `text content isn't supported, use text="…"` | Move the text into an attribute. |
 | `components use each other in a cycle` | A component can't (indirectly) contain itself. |
-| `X's template needs exactly one <Content />` | A layout's template marks where the screen goes, once. |
-| `<Content /> is only allowed in a Layout's template` | Also `<WindowDrag>`, `<WindowControls>`, `context.x`: move them to the layout. |
-| `X uses L, which needs I; implement it` | The screen must implement the interface the layout's `context()` names. |
+| `X's template needs exactly one <Content />` | A window's template marks where the screen goes, once. |
+| `<Content /> is only allowed in a Window's template` | Also `<WindowDrag>`, `<WindowControls>`, `context.x`: move them to the window's template. |
+| `X uses W, which needs I; implement it` | The screen must implement the interface the window's `context()` names. |
 | `'x' is not declared by I` | `$context->x()` can only call methods of the context interface. |
-| `two-way inputs in a layout must bind the layout's own properties` | Bind a layout property; pass it to the screen in a handler. |
-| `L must be constructible without arguments` | RageKit creates the layout; drop the constructor's required parameters. |
+| `two-way inputs in a window's template must bind the window's own properties` | Bind a property of the window (or a store); pass it to the screen in a handler. |
+| `W must be constructible without arguments` | RageKit creates the window; drop the constructor's required parameters. |
+| `W extends Window: give it a template, or use Window itself` | A Window subclass draws the frame, so it needs `template()`; for the OS's title bar, leave `window()` out. |
+| `X::window() names Y, which isn't a Window of this app` | `window()` returns a `Window` subclass (or isn't overridden). |
+| `$store needs the app's RootStore` | Declare a class that extends `RageKit\RootStore` with your stores as typed public properties ([state](state.md)). |
+| `$store->x: AppStore has no store 'x' (its stores: …)` | Use one of the listed stores, or add it to your RootStore. |
+| `'x' is not a property or method of Session (it has: …)` | Check the spelling against the listed members. |
+| `X has a property named $store` | `$store` is reserved for the stores; rename the property (or the loop variable). |
+| `child components can't read $store yet` | Pass the value in as a property from the screen's template. |
 
 ## Older syntax
 

@@ -177,6 +177,9 @@ final class Parser
 
     private function variable(string $name): Node
     {
+        if ($name === 'store') {
+            return $this->store();
+        }
         if (($name === 'this' || $name === 'context') && $this->isOp('->')) {
             $this->at++;
             [$kind, $method] = $this->take();
@@ -189,6 +192,29 @@ final class Parser
             throw $this->error('$this on its own isn\'t supported; call a method: $this->name()');
         }
         return new Node('var', $name);
+    }
+
+    /** $store->session->userName, $store->session->signedIn(), $store->session->signIn($name) */
+    private function store(): Node
+    {
+        if (!$this->isOp('->')) {
+            throw $this->error('$store on its own isn\'t supported; read a store\'s member: $store->session->userName');
+        }
+        $this->at++;
+        [$kind, $store] = $this->take();
+        if ($kind !== 'ident') {
+            throw $this->error("unexpected \"$store\" after \$store->");
+        }
+        if (!$this->isOp('->')) {
+            throw $this->error('$store->' . $store . ': read one of its members, e.g. $store->' . $store . '->userName');
+        }
+        $this->at++;
+        [$kind, $member] = $this->take();
+        if ($kind !== 'ident') {
+            throw $this->error('unexpected "' . $member . '" after $store->' . $store . '->');
+        }
+        $call = $this->isOp('(');
+        return new Node('store', [$store, $member, $call], $call ? $this->arguments() : []);
     }
 
     private function identifier(string $name): Node

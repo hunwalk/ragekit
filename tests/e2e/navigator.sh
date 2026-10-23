@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # demo/navigator under Xvfb: screens change inside ONE window (same X window id and size
-# throughout): albums → an album's photos (push) → back with the title bar's ← → the albums kept
-# their state; push twice and come back with Alt+Left twice; a dialog on a pushed screen; "All
-# albums" resets the stack. Needs DISPLAY (Xvfb :99, no window manager), xwininfo, ImageMagick
+# throughout): sign in (a store event the app class turns into a reset to the albums) → an album's
+# photos (push) → back with the title bar's ← → the albums kept their state; push twice and come
+# back with Alt+Left twice; a dialog on a pushed screen; "All albums" resets the stack; Sign out in
+# the title bar (the store again) brings the sign-in screen back. Needs DISPLAY (Xvfb :99, no window manager), xwininfo, ImageMagick
 # (import, compare), python3. Extra arguments go to ragekit build (e.g. --kit=material, --nano).
 set -uo pipefail
 
@@ -27,13 +28,23 @@ expected=$(size)
 click() { python3 -I "$root/tests/e2e/xclick.py" "$1"; sleep 0.5; }
 key() { python3 -I "$root/tests/e2e/xkey.py" "$1" "$window"; sleep 0.5; }
 shot() { import -window "$window" "$tmp/$1.png"; }
+type() { python3 -I "$root/tests/e2e/xtype.py" "$1" "$window"; sleep 0.3; }
 same() { [ "$(compare -metric AE "$tmp/$1.png" "$tmp/$2.png" null: 2>&1 | cut -d' ' -f1)" = "0" ]; }
 still() {
     [ "$(xwininfo -root -tree | grep -c '("navigator"')" = "1" ] || fail "$1: another window opened"
     [ "$(size)" = "$expected" ] || fail "$1: the window is now $(size) (was $expected)"
 }
 
+shot login-start
+click 260,171                       # "Sign in" with no name: nothing happens
+still "empty sign-in"
+click 260,127                       # the name field
+type ann
+click 260,171                       # "Sign in": Session emits signedIn, GalleryApp resets to the albums
+still "sign in"
+click 400,300                       # an empty spot: no hover highlight left
 shot albums-start
+same albums-start login-start && fail "signing in didn't show the albums"
 click 260,147                       # "Family": push the album's photos
 still "push"
 shot photos
@@ -68,6 +79,12 @@ sleep 3.2                           # the toast expires
 shot albums-reset
 same albums-reset albums-start || fail "reset didn't show a fresh albums screen"
 
+click 328,18                        # the title bar's "Sign out": Session emits signedOut
+still "sign out"
+click 400,300
+shot login-end
+same login-end login-start || fail "signing out didn't bring the sign-in screen back"
+
 python3 -I "$root/tests/e2e/xclose.py" "$window" 2>/dev/null || kill "$pid"
 wait "$pid" 2>/dev/null
-echo "ok navigator: push, back (← and Alt+Left), state kept, dialog, reset — one window, $expected"
+echo "ok navigator: sign in, push, back (← and Alt+Left), state kept, dialog, reset, sign out — one window, $expected"

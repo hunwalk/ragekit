@@ -34,7 +34,7 @@ final class DevCommandTest extends TestCase
         }
         @unlink("$this->project/build/dev/state.json");
         file_put_contents("$this->project/project.yml", "name: devtest\nsources:\n  - main.php\n  - src\nragekit:\n  backend: slint\n");
-        file_put_contents("$this->project/main.php", "<?php\nfunction main(): void { \$app = new \\RageKit\\App(); \$app->open(new Demo\\S(), 'Dev test', 300, 200); \$app->run(); }\n");
+        file_put_contents("$this->project/main.php", self::main(false));
         file_put_contents("$this->project/src/S.php", self::screen('public int $count = 0;'));
         file_put_contents("$this->project/templates/S.rk", '<VStack xmlns:k="k"><Label text="{count}" /><k:Box /></VStack>');
         file_put_contents("$this->project/kits/k/kit.yml", "name: k\nentry: k.slint\nelements:\n  Box:\n    component: KBox\n");
@@ -89,7 +89,7 @@ final class DevCommandTest extends TestCase
         file_put_contents("$this->project/project.yml", "name: devtest\nsources:\n  - main.php\n  - src\nragekit:\n  backend: slint\n  modules: [audio]\n  assets: [assets/]\n");
         @mkdir("$this->project/assets");
         \RageKit\Tests\Modules\AudioLibraryTest::wav("$this->project/assets/short.wav", 0.5);
-        file_put_contents("$this->project/main.php", "<?php\nfunction main(): void { \$app = new \\RageKit\\App(); \$s = new Demo\\S(); \$app->open(\$s, 'Dev test', 300, 200); \$s->start(); \$app->run(); }\n");
+        file_put_contents("$this->project/main.php", self::main(true));
         $screen = static fn(string $extra) => "<?php\nnamespace Demo;\nfinal class S extends \\RageKit\\Screen {\n    public int \$count = 0;\n    public string \$status = 'Idle';\n"
             . "    private ?\\RageKit\\Audio\\Sound \$sound = null;\n"
             . "    public static function template(): string { return 'templates/S.rk'; }\n"
@@ -114,7 +114,7 @@ final class DevCommandTest extends TestCase
         file_put_contents("$this->project/modules/echo/module.yml", "name: echo\nlibrary:\n  sources: [native]\nfunctions:\n  echo_version: { returns: string }\n");
         $native = fn(string $version) => "#include \"rk_module_echo.h\"\nRKM_API const char *rkm_echo_version(void) { return \"$version\"; }\nRKM_API void rkm_echo_init(rk_post_fn) { }\nRKM_API void rkm_echo_reset(void) { }\n";
         file_put_contents("$this->project/modules/echo/native/echo.cc", $native('v1'));
-        file_put_contents("$this->project/main.php", "<?php\nfunction main(): void { \$app = new \\RageKit\\App(); \$s = new Demo\\S(); \$app->open(\$s, 'Dev test', 300, 200); \$s->start(); \$app->run(); }\n");
+        file_put_contents("$this->project/main.php", self::main(true));
         file_put_contents("$this->project/src/S.php", "<?php\nnamespace Demo;\nfinal class S extends \\RageKit\\Screen {\n    public int \$count = 0;\n    public string \$status = '';\n"
             . "    public static function template(): string { return 'templates/S.rk'; }\n"
             . "    public function start(): void { \$this->status = \\echo_version(); }\n}\n");
@@ -182,5 +182,18 @@ final class DevCommandTest extends TestCase
             usleep(100_000);
         }
         self::fail("waited for '$text'\nstdout:\n$this->out\nstderr:\n$this->err");
+    }
+
+    /** main.php: an App whose first screen is Demo\S (with $start: start() calls the screen's start()). */
+    private static function main(bool $start): string
+    {
+        return "<?php\nfinal class DevTestApp extends \\RageKit\\App {\n"
+            . "    private ?Demo\\S \$s = null;\n"
+            . "    protected function firstScreen(): \\RageKit\\Screen { return \$this->s = new Demo\\S(); }\n"
+            . ($start ? "    protected function start(): void { \$this->s->start(); }\n" : '')
+            . "    protected function title(): string { return 'Dev test'; }\n"
+            . "    protected function width(): int { return 300; }\n"
+            . "    protected function height(): int { return 200; }\n"
+            . "}\nfunction main(): void { (new DevTestApp())->run(); }\n";
     }
 }

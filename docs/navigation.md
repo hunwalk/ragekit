@@ -10,7 +10,7 @@ final class AlbumsScreen extends Screen implements GalleryContext
     public string $last = 'none yet';
 
     public static function template(): string { return 'templates/Albums.rk'; }
-    public static function layout(): string { return AppLayout::class; }
+    public static function window(): string { return AppWindow::class; }
     public function title(): string { return 'Albums'; }
 
     public function show(string $album): void
@@ -33,11 +33,29 @@ final class AlbumsScreen extends Screen implements GalleryContext
 | `top()`, `depth()` | the screen shown, how many are on the stack |
 
 The navigator exists once the screen is shown in a window: calling `navigator()` in a constructor
-throws ("no navigator yet").
+throws ("no window yet").
+
+## From the app class
+
+The navigator belongs to the window, so code outside a screen reaches it through the window:
+`$this->main()->navigator()` in the app class (the main window), or the `Window` that
+`$this->app->open()` returned. That's how a store event becomes navigation, without the store
+knowing about screens:
+
+```php
+protected function start(): void
+{
+    AppStore::get()->session->on('signedOut', function (): void {
+        $this->main()->navigator()->reset(new LoginScreen());
+    });
+}
+```
+
+See [state.md](state.md#events-stores-and-navigation-stay-apart).
 
 ## Back
 
-- A layout has `back()` and `canGoBack()` too, so a back button in the title bar is one line:
+- A window has `back()` and `canGoBack()` too, so a back button in its title bar is one line:
 
   ```
   @if (canGoBack())
@@ -46,7 +64,7 @@ throws ("no navigator yet").
   <Label text="{{ $context->title() }}" grow="true" />
   ```
 
-  The layout's `$context` is always the screen on top, so the title follows it.
+  The window's `$context` is always the screen on top, so the title follows it.
 - **Alt+Left** goes back too (unless the focused element uses the key itself, e.g. a text field).
 
 ## Hooks
@@ -64,10 +82,10 @@ public function shown(): void
 
 ## Rules
 
-- **Screens in one window share its layout.** Every screen pushed into a window must name the same
-  `layout()` as its first screen (or none, like it). Pushing another one is an error
-  ("PhotosScreen uses layout X; this window's layout is Y"). Open such a screen in its own window
-  with `$app->open()`.
+- **Screens in one window share its window class.** Every screen pushed into a window must name the
+  same `window()` as its first screen (or leave it out, like it). Pushing another one is an error
+  ("SettingsScreen uses window SettingsWindow; this window is AppWindow"). Open such a screen in its
+  own window with `$this->app->open()`.
 - A covered screen is a plain PHP object: its properties stay as they were. What the window showed
   of it (scroll position, focus) is rebuilt when it comes back. Two screens of the same class in a
   row share their page, so that part carries over from one to the other.
@@ -79,7 +97,8 @@ public function shown(): void
 
 ## How it works
 
-All screens that use the same layout (and all that use none) compile into one Slint window
-component, each screen a page shown while the window's `rk-page` is its index, like `<Tabs>`. Only
-the page shown exists in Slint; the others are only PHP objects, so a deep stack costs nothing in
-the UI. See `demo/navigator` (albums → photos → one photo, with a dialog and a toast).
+All screens that use the same window class (and all that use `Window` itself) compile into one
+Slint window component, each screen a page shown while the window's `rk-page` is its index, like
+`<Tabs>`. Only the page shown exists in Slint; the others are only PHP objects, so a deep stack
+costs nothing in the UI. See `demo/navigator` (sign in → albums → photos → one photo, with a dialog, a toast and
+Sign out in the title bar).

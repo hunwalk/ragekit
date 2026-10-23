@@ -7,11 +7,12 @@ namespace RageKit\Cli\Slint;
 use RageKit\Cli\Templates\ClassInfo;
 
 /**
- * One compiled window component: every screen sharing a layout (or sharing "no layout"), each a
- * page shown while rk-page is its index. Binding and action ids are unique across the whole
- * window, so a page's root.pN never meets another page's. Window-level bindings and actions
- * belong to the layout ('layout'), the screen on top ('context': the layout's
- * {{ $context->x() }}) or the window itself ('window': its toasts).
+ * One compiled window component: every screen sharing a window class (a Window subclass with a
+ * template, or Window itself), each a page shown while rk-page is its index. Binding and action
+ * ids are unique across the whole window, so a page's root.pN never meets another page's.
+ * Window-level bindings and actions belong to the window ('window': the Window subclass's own
+ * properties and handlers, and its toasts) or the screen on top ('context': the window
+ * template's {{ $context->x() }}).
  */
 final class WindowModel
 {
@@ -28,14 +29,18 @@ final class WindowModel
 
     private int $actionIds = 0;
 
-    public function __construct(public readonly string $name, public readonly ?ClassInfo $layout = null)
+    public function __construct(public readonly string $name, public readonly ?ClassInfo $frame = null)
     {
     }
 
-    /** rk-screens for screens without a layout, rk-screens-<Layout> for a layout's screens (lowercase with a dash: no kit component or PHP class can have that name). */
-    public static function nameFor(?ClassInfo $layout): string
+    /**
+     * rk-screens for screens in Window itself, rk-screens-<Window> for a Window subclass's screens
+     * (lowercase with a dash: no kit component or PHP class can have that name). $frame is the
+     * Window subclass that draws the window (null: the OS's title bar).
+     */
+    public static function nameFor(?ClassInfo $frame): string
     {
-        return $layout === null ? 'rk-screens' : 'rk-screens-' . $layout->short;
+        return $frame === null ? 'rk-screens' : 'rk-screens-' . $frame->short;
     }
 
     public function nextBindingId(): int

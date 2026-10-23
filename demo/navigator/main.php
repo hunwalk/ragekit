@@ -1,11 +1,8 @@
 <?php
 
-use Demo\AlbumsScreen;
-use RageKit\App;
+use Demo\GalleryApp;
 
 function main(): void
 {
-    $app = new App();
-    $app->open(new AlbumsScreen(), title: 'RageKit · navigator', width: 520, height: 420);
-    $app->run();
+    (new GalleryApp())->run();
 }

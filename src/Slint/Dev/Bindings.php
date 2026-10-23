@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace RageKit\Slint\Dev;
 
-use RageKit\Navigator;
+use RageKit\RootStore;
+use RageKit\Window;
 
 /**
  * What RageKit\Generated\Screens does in release builds, read from screens.json instead of
- * generated code: each window component's pages, the shown values of a window (its layout's,
- * the screen on top's) and what its actions run (same conversions as Cli/Slint/BinderEmitter.php).
+ * generated code: each window component's pages, the shown values of a window (its own, the
+ * screen on top's, the stores') and what its actions run (same conversions as
+ * Cli/Slint/BinderEmitter.php).
  */
 final class Bindings
 {
@@ -45,7 +47,7 @@ final class Bindings
         return $out;
     }
 
-    public function window(object $screen): string
+    public function component(object $screen): string
     {
         return $this->entry($screen)['window']['name'];
     }
@@ -61,24 +63,24 @@ final class Bindings
         return $this->pages[get_class($screen)] ?? throw new \RuntimeException('No template for ' . get_class($screen));
     }
 
-    /** A new instance of the Layout framing $screen's window, or null. */
-    public function layout(object $screen): ?object
+    /** A new Window of the class $screen's window() names (Window itself for a plain one). */
+    public function newWindow(object $screen): Window
     {
-        $class = $this->entry($screen)['window']['layout'] ?? null;
-        return $class === null ? null : new $class();
+        $class = $this->entry($screen)['window']['window'] ?? null;
+        return $class === null ? new Window() : new $class();
     }
 
     /** @return array<int, mixed> property id => current value: the window's and the top screen's */
-    public function values(Navigator $n): array
+    public function values(Window $w): array
     {
-        $page = $this->entry($n->top());
+        $page = $this->entry($w->navigator()->top());
         $values = [];
         foreach ([...$page['window']['values'], ...$page['values']] as $value) {
-            $object = self::owner($n, $value);
+            [$object, $name] = self::owner($w, $value, $value['name']);
             if ($object === null) {
                 return [];
             }
-            $read = $value['source'] === 'method' ? $object->{$value['name']}() : $object->{$value['name']};
+            $read = $value['source'] === 'method' ? $object->{$name}() : $object->{$name};
             $values[$value['id']] = $value['type'] === 'list' ? array_map('strval', array_values((array) $read)) : $read;
         }
         ksort($values);
@@ -89,16 +91,16 @@ final class Bindings
      * Runs an action of the window or of the screen on top (another page's action does nothing);
      * returns the id of a property the UI already shows (two-way input), else 0.
      */
-    public function dispatch(Navigator $n, int $action, string $arg): int
+    public function dispatch(Window $w, int $action, string $arg): int
     {
-        $page = $this->entry($n->top());
+        $page = $this->entry($w->navigator()->top());
         $spec = $page['window']['actions'][$action] ?? $page['actions'][$action] ?? null;
-        $object = $spec === null ? null : self::owner($n, $spec);
+        [$object, $target] = $spec === null ? [null, ''] : self::owner($w, $spec, $spec['target']);
         if ($spec === null || $object === null) {
             return 0;
         }
         if ($spec['kind'] === 'set') {
-            $object->{$spec['target']} = self::convert($arg, $spec['type']);
+            $object->{$target} = self::convert($arg, $spec['type']);
             return $spec['binding'];
         }
         $args = [];
@@ -110,18 +112,28 @@ final class Bindings
                 default => self::literal((string) $value, $type),
             };
         }
-        $object->{$spec['target']}(...$args);
+        $object->{$target}(...$args);
         return 0;
     }
 
-    /** Whose value or action an entry is: the layout's, the window's (navigator), else the screen on top. */
-    private static function owner(Navigator $n, array $entry): ?object
+    /**
+     * Whose value or action an entry is, and the member's name there: the window's, a store's
+     * ("session.userName" → the root's $session, userName), else the screen on top's.
+     *
+     * @return array{0: object|null, 1: string}
+     */
+    private static function owner(Window $w, array $entry, string $name): array
     {
-        return match ($entry['owner'] ?? 'screen') {
-            'layout' => $n->layout(),
-            'window' => $n,
-            default => $n->top(),
-        };
+        switch ($entry['owner'] ?? 'screen') {
+            case 'window':
+                return [$w, $name];
+            case 'store':
+                [$store, $member] = explode('.', $name, 2);
+                $root = RootStore::current();
+                return [$root === null ? null : $root->{$store}, $member];
+            default:
+                return [$w->navigator()->top(), $name];
+        }
     }
 
     private static function convert(string $value, string $type): mixed

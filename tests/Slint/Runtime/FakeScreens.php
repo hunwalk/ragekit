@@ -3,7 +3,62 @@
 declare(strict_types=1);
 
 namespace RageKit\Tests\Slint\Runtime {
+    use RageKit\App;
+    use RageKit\RootStore;
     use RageKit\Screen;
+    use RageKit\Store;
+
+    final class RuntimeSession extends Store
+    {
+        public string $userName = '';
+
+        public function signOut(): void
+        {
+            $this->userName = '';
+            $this->emit('signedOut');
+        }
+    }
+
+    final class RuntimeStore extends RootStore
+    {
+        public RuntimeSession $session;
+
+        public function __construct()
+        {
+            parent::__construct();
+            $this->session = new RuntimeSession();
+        }
+    }
+
+    /** The app under test: its first screen and start() are set by the test. */
+    final class RuntimeApp extends App
+    {
+        public ?Screen $first = null;
+
+        public ?\Closure $onStart = null;
+
+        protected function firstScreen(): Screen
+        {
+            return $this->first ?? new CounterScreen();
+        }
+
+        protected function createStore(): RootStore
+        {
+            return new RuntimeStore();
+        }
+
+        protected function start(): void
+        {
+            if ($this->onStart !== null) {
+                ($this->onStart)();
+            }
+        }
+
+        protected function title(): string
+        {
+            return 'Main';
+        }
+    }
 
     final class CounterScreen extends Screen
     {
@@ -27,13 +82,23 @@ namespace RageKit\Tests\Slint\Runtime {
         {
             $this->navigator()->push(new DetailScreen($this->count));
         }
+
+        public function signIn(string $name): void
+        {
+            RuntimeStore::get()->session->userName = $name;
+        }
+
+        public function signOut(): void
+        {
+            RuntimeStore::get()->session->signOut();
+        }
     }
 
     final class AboutScreen extends Screen
     {
     }
 
-    /** A screen pushed on top of CounterScreen (same window: no layout). */
+    /** A screen pushed on top of CounterScreen (same window: Window itself). */
     final class DetailScreen extends Screen
     {
         public function __construct(public int $value = 0)
@@ -62,7 +127,7 @@ namespace RageKit\Tests\Slint\Runtime {
         public bool $restored = false;
     }
 
-    /** A screen without a layout that tries to push one with a layout. */
+    /** A screen in Window itself that tries to push one of a Window subclass. */
     final class WrongPushScreen extends Screen
     {
         public function go(): void
@@ -78,9 +143,9 @@ namespace RageKit\Tests\Slint\Runtime {
 
     final class FramedScreen extends Screen implements Titled
     {
-        public static function layout(): string
+        public static function window(): string
         {
-            return FrameLayout::class;
+            return FrameWindow::class;
         }
 
         public function title(): string
@@ -89,7 +154,7 @@ namespace RageKit\Tests\Slint\Runtime {
         }
     }
 
-    final class FrameLayout extends \RageKit\Layout
+    final class FrameWindow extends \RageKit\Window
     {
         public string $query = '';
 
@@ -100,7 +165,7 @@ namespace RageKit\Tests\Slint\Runtime {
 
         public function windowId(): int
         {
-            return $this->window;
+            return $this->id;
         }
 
         public function contextTitle(): string
@@ -111,26 +176,27 @@ namespace RageKit\Tests\Slint\Runtime {
 }
 
 namespace RageKit\Generated {
-    use RageKit\Layout;
-    use RageKit\Navigator;
     use RageKit\Screen;
     use RageKit\Tests\Slint\Runtime\AboutScreen;
     use RageKit\Tests\Slint\Runtime\CounterScreen;
     use RageKit\Tests\Slint\Runtime\DetailScreen;
-    use RageKit\Tests\Slint\Runtime\FrameLayout;
+    use RageKit\Tests\Slint\Runtime\FrameWindow;
     use RageKit\Tests\Slint\Runtime\FramedScreen;
     use RageKit\Tests\Slint\Runtime\RestoringScreen;
+    use RageKit\Tests\Slint\Runtime\RuntimeStore;
     use RageKit\Tests\Slint\Runtime\WrongPushScreen;
+    use RageKit\Window;
 
     /**
      * What ragekit would generate: window rk-screens = Counter (page 0), About (1), Detail (2),
-     * WrongPush (3); window rk-screens-FrameLayout = Framed (page 0). Ids are unique per window.
+     * WrongPush (3); window rk-screens-FrameWindow = Framed (page 0). Ids are unique per window.
+     * Counter also shows the store's $store->session->userName (id 5).
      */
     final class Screens
     {
-        public static function window(Screen $screen): string
+        public static function component(Screen $screen): string
         {
-            return $screen instanceof FramedScreen ? 'rk-screens-FrameLayout' : 'rk-screens';
+            return $screen instanceof FramedScreen ? 'rk-screens-FrameWindow' : 'rk-screens';
         }
 
         public static function page(Screen $screen): int
@@ -144,13 +210,14 @@ namespace RageKit\Generated {
             return $screen instanceof WrongPushScreen ? 3 : 0;
         }
 
-        public static function layout(Screen $screen): ?Layout
+        public static function newWindow(Screen $screen): Window
         {
-            return $screen instanceof FramedScreen ? new FrameLayout() : null;
+            return $screen instanceof FramedScreen ? new FrameWindow() : new Window();
         }
 
-        public static function values(Navigator $n): array
+        public static function values(Window $w): array
         {
+            $n = $w->navigator();
             $root = $n->stack()[0];
             if ($root instanceof RestoringScreen && !$root->restored) {
                 $root->restored = true;
@@ -158,24 +225,23 @@ namespace RageKit\Generated {
             }
             $s = $n->top();
             if ($s instanceof CounterScreen) {
-                return [1 => $s->count, 2 => $s->name, 3 => $s->history];
+                return [1 => $s->count, 2 => $s->name, 3 => $s->history, 5 => RuntimeStore::get()->session->userName];
             }
             if ($s instanceof DetailScreen) {
                 return [4 => $s->value];
             }
             if ($s instanceof FramedScreen) {
-                $l = $n->layout();
-                if ($l instanceof FrameLayout) {
-                    return [1 => $s->title(), 2 => $l->query, 3 => $l->maximized];
+                if ($w instanceof FrameWindow) {
+                    return [1 => $s->title(), 2 => $w->query, 3 => $w->maximized];
                 }
                 return [];
             }
             return [];
         }
 
-        public static function dispatch(Navigator $n, int $action, string $arg): int
+        public static function dispatch(Window $w, int $action, string $arg): int
         {
-            $s = $n->top();
+            $s = $w->navigator()->top();
             if ($s instanceof CounterScreen) {
                 switch ($action) {
                     case 1:
@@ -189,6 +255,12 @@ namespace RageKit\Generated {
                         return 0;
                     case 4:
                         $s->detail();
+                        return 0;
+                    case 9:
+                        $s->signIn($arg);
+                        return 0;
+                    case 10:
+                        $s->signOut();
                         return 0;
                     default:
                         return 0;
@@ -219,17 +291,16 @@ namespace RageKit\Generated {
                 }
             }
             if ($s instanceof FramedScreen) {
-                $l = $n->layout();
-                if ($l instanceof FrameLayout) {
+                if ($w instanceof FrameWindow) {
                     switch ($action) {
                         case 1:
-                            $l->close();
+                            $w->close();
                             return 0;
                         case 2:
-                            $l->query = $arg;
+                            $w->query = $arg;
                             return 2;
                         case 3:
-                            $l->search();
+                            $w->search();
                             return 0;
                         default:
                             return 0;

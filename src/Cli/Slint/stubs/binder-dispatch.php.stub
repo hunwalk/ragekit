@@ -1,5 +1,6 @@
-private static function dispatch{{ short }}(Navigator $n, \{{ class }} $s{{ layoutParam }}, int $action, string $arg): int
+private static function dispatch{{ short }}(\{{ window }} $w, \{{ class }} $s, int $action, string $arg): int
 {
+    {{ root }}
     switch ($action) {
         {{ cases }}
         default:

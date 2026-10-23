@@ -4,17 +4,16 @@
 
 namespace RageKit\Generated;
 
-use RageKit\Layout;
-use RageKit\Navigator;
 use RageKit\Screen;
+use RageKit\Window;
 
 /** Each Screen's compiled window component and page there: shown values, and actions → handlers. */
 final class Screens
 {
-    /** The window component $screen shows in: one per layout (rk-screens-<Layout>), rk-screens without one. */
-    public static function window(Screen $screen): string
+    /** The window component $screen shows in: rk-screens-<Window> for a Window subclass, rk-screens for Window itself. */
+    public static function component(Screen $screen): string
     {
-        {{ windows }}
+        {{ components }}
         throw new \RuntimeException('No compiled template for ' . \get_class($screen));
     }
 
@@ -25,17 +24,17 @@ final class Screens
         throw new \RuntimeException('No compiled template for ' . \get_class($screen));
     }
 
-    /** A new instance of the Layout framing $screen's window, or null. */
-    public static function layout(Screen $screen): ?Layout
+    /** A new Window of the class $screen's window() names, for a window that opens with $screen. */
+    public static function newWindow(Screen $screen): Window
     {
-        {{ layouts }}
-        return null;
+        {{ windows }}
+        throw new \RuntimeException('No compiled template for ' . \get_class($screen));
     }
 
     /** @return array<int, mixed> property id => current value: the window's and the top screen's */
-    public static function values(Navigator $n): array
+    public static function values(Window $w): array
     {
-        $s = $n->top();
+        $s = $w->navigator()->top();
         {{ values }}
         return [];
     }
@@ -45,9 +44,9 @@ final class Screens
      * before the page changed) does nothing. Returns the id of a property the UI already shows
      * (two-way input), else 0.
      */
-    public static function dispatch(Navigator $n, int $action, string $arg): int
+    public static function dispatch(Window $w, int $action, string $arg): int
     {
-        $s = $n->top();
+        $s = $w->navigator()->top();
         {{ dispatch }}
         return 0;
     }

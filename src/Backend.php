@@ -8,19 +8,20 @@ namespace RageKit;
  */
 interface Backend
 {
-    /** Opens a window showing $screen; returns the window id. */
-    public function open(App $app, Screen $screen, string $title, int $width, int $height): int;
+    /** Opens a window showing $screen: an instance of the screen's window() class. */
+    public function open(App $app, Screen $screen, string $title, int $width, int $height): Window;
 
-    /** Closes a window. Closing the last one ends run(). */
-    public function close(int $window): void;
+    /** Closes one window. */
+    public function close(Window $window): void;
 
     public function minimize(int $window): void;
 
     public function setMaximized(int $window, bool $maximized): void;
 
+    /** Closes every window and ends run(). */
     public function quit(): void;
 
-    /** Runs the event loop until the last window closes or quit() is called. */
+    /** Runs the event loop until quit() (or the last window closed). */
     public function run(): void;
 
     /** The app's folder: where the executable and its assets are (in dev mode: the project). */

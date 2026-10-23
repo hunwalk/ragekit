@@ -21,7 +21,9 @@ final class DevAppTest extends TestCase
         $dir = sys_get_temp_dir() . '/rk-devapp-' . uniqid();
         mkdir($dir);
         file_put_contents("$dir/screens.json", json_encode(['windows' => [[
-            'name' => 'rk-screens', 'layout' => null, 'frameless' => false, 'values' => [], 'actions' => [],
+            'name' => 'rk-screens', 'window' => null, 'frameless' => false,
+            'values' => [['id' => 3, 'owner' => 'store', 'source' => 'property', 'name' => 'session.userName', 'type' => 'string']],
+            'actions' => [['id' => 3, 'owner' => 'store', 'kind' => 'call', 'target' => 'session.signIn', 'args' => [['expr', 0]], 'params' => ['string']]],
             'pages' => [[
                 'class' => 'App\\Counter', 'name' => 'Counter', 'page' => 0,
                 'values' => [['id' => 1, 'owner' => 'screen', 'source' => 'property', 'name' => 'count', 'type' => 'int'], ['id' => 2, 'owner' => 'screen', 'source' => 'property', 'name' => 'name', 'type' => 'string']],
@@ -29,14 +31,69 @@ final class DevAppTest extends TestCase
             ]],
         ]]]));
         file_put_contents("$dir/Counter.php", "<?php\nnamespace App;\nfinal class Counter extends \\RageKit\\Screen { public int \$count = 0; public string \$name = ''; public function add(): void { \$this->count++; } }\n");
-        file_put_contents("$dir/main.php", "<?php\nfunction main(): void { \$app = new \\RageKit\\App(); \$app->open(new App\\Counter(), 'C', 300, 200); \$app->run(); }\n");
+        file_put_contents("$dir/Stores.php", "<?php\nnamespace App;\n"
+            . "final class Session extends \\RageKit\\Store { public string \$userName = ''; public function signIn(string \$n): void { \$this->userName = \$n; } }\n"
+            . "final class AppStore extends \\RageKit\\RootStore { public Session \$session; public function __construct() { parent::__construct(); \$this->session = new Session(); } }\n"
+            . "final class CounterApp extends \\RageKit\\App {\n"
+            . "    protected function firstScreen(): \\RageKit\\Screen { return new Counter(); }\n"
+            . "    protected function createStore(): \\RageKit\\RootStore { return new AppStore(); }\n"
+            . "    protected function title(): string { return 'C'; }\n"
+            . "    protected function width(): int { return 300; }\n"
+            . "    protected function height(): int { return 200; }\n"
+            . "}\n");
+        file_put_contents("$dir/main.php", "<?php\nfunction main(): void { (new App\\CounterApp())->run(); }\n");
         $root = dirname(__DIR__, 2);
         $runtime = "$root/src/Slint/Dev";
-        $php = [...glob("$runtime/*.php"), "$root/src/App.php", "$root/src/Backend.php", "$root/src/Component.php", "$root/src/Screen.php", "$root/src/Layout.php", "$root/src/Navigator.php", "$root/src/Events.php", "$root/src/Modules.php", "$root/src/ModuleUnavailable.php", "$root/src/Slint/SlintBackend.php", "$root/src/Slint/SlintWindow.php", "$root/src/Slint/backend.php", "$dir/Counter.php", "$dir/main.php"];
+        $php = [...glob("$runtime/*.php"), "$root/src/App.php", "$root/src/Backend.php", "$root/src/Component.php", "$root/src/Screen.php", "$root/src/Window.php", "$root/src/Navigator.php", "$root/src/Store.php", "$root/src/RootStore.php", "$root/src/Events.php", "$root/src/Modules.php", "$root/src/ModuleUnavailable.php", "$root/src/Slint/SlintBackend.php", "$root/src/Slint/SlintWindow.php", "$root/src/Slint/backend.php", "$dir/Counter.php", "$dir/Stores.php", "$dir/main.php"];
         Bootstrap::write("$dir/boot.php", $php, ["$runtime/functions.php", "$root/src/Slint/backend.php", "$dir/main.php"]);
 
+        [$proc, $pipes, $read] = $this->start($dir, restart: false);
+        self::assertSame(['open', 'rk-screens', 'C', '300', '200'], $read());
+        fwrite($pipes[3], Protocol::encode('opened', '1'));
+        self::assertSame(['set-int', '1', 'rk-page', '0'], $read());
+        self::assertSame(['set-int', '1', 'p1', '0'], $read());
+        self::assertSame(['set-string', '1', 'p2', ''], $read());
+        self::assertSame(['set-string', '1', 'p3', ''], $read());
+        self::assertSame(['run'], $read());
+        fwrite($pipes[3], Protocol::encode('event', '1', '1', ''));
+        self::assertSame(['set-int', '1', 'p1', '1'], $read());
+        fwrite($pipes[3], Protocol::encode('event', '1', '2', "Ann\t✓"));
+        fwrite($pipes[3], Protocol::encode('event', '1', '3', 'ann'));
+        self::assertSame(['set-string', '1', 'p3', 'ann'], $read(), 'a store action, then its value');
+        fwrite($pipes[3], Protocol::encode('reload'));
+        self::assertSame(['set-int', '1', 'rk-page', '0'], $read(), 'reload pushes everything again');
+        self::assertSame(['set-int', '1', 'p1', '1'], $read());
+        self::assertSame(['set-string', '1', 'p2', "Ann\t✓"], $read());
+        self::assertSame(['set-string', '1', 'p3', 'ann'], $read());
+        // A PHP restart: the shell stops PHP (stdin of fd 3 closes) and starts it again.
+        fclose($pipes[3]);
+        $stderr = (string) stream_get_contents($pipes[2]);
+        proc_close($proc);
+        $state = json_decode((string) file_get_contents("$dir/state.json"), true);
+        self::assertSame(['count' => 1, 'name' => "Ann\t✓"], $state['windows'][0]['props'] ?? null, $stderr);
+        self::assertSame(['session' => ['userName' => 'ann']], $state['stores'] ?? null);
+
+        [$proc, $pipes, $read] = $this->start($dir, restart: true);
+        self::assertSame(['open', 'rk-screens', 'C', '300', '200'], $read());
+        fwrite($pipes[3], Protocol::encode('opened', '1'));
+        self::assertSame(['set-int', '1', 'rk-page', '0'], $read());
+        self::assertSame(['set-int', '1', 'p1', '1'], $read());
+        self::assertSame(['set-string', '1', 'p2', "Ann\t✓"], $read());
+        self::assertSame(['set-string', '1', 'p3', 'ann'], $read(), 'the store is back before the first sync');
+        self::assertSame(['run'], $read());
+        fwrite($pipes[3], Protocol::encode('event', '1', '0', ''));
+        self::assertSame(['close', '1'], $read());
+        self::assertSame(['quit'], $read());
+        fclose($pipes[3]);
+        $stderr = (string) stream_get_contents($pipes[2]);
+        self::assertSame(0, proc_close($proc), $stderr);
+    }
+
+    /** @return array{0: resource, 1: array<int, resource>, 2: \Closure(): list<string>} */
+    private function start(string $dir, bool $restart): array
+    {
         $proc = proc_open([PHP_BINARY, "$dir/boot.php"], [3 => ['pipe', 'r'], 4 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $dir,
-            ['RAGEKIT_DEV_SCREENS' => "$dir/screens.json", 'RAGEKIT_DEV_STATE' => "$dir/state.json"] + getenv());
+            ['RAGEKIT_DEV_SCREENS' => "$dir/screens.json", 'RAGEKIT_DEV_STATE' => "$dir/state.json", 'RAGEKIT_DEV_RESTART' => $restart ? '1' : '0'] + getenv());
         $read = function () use ($pipes): array {
             $line = fgets($pipes[4]);
             if ($line === false) {
@@ -44,26 +101,6 @@ final class DevAppTest extends TestCase
             }
             return Protocol::decode($line);
         };
-        self::assertSame(['open', 'rk-screens', 'C', '300', '200'], $read());
-        fwrite($pipes[3], Protocol::encode('opened', '1'));
-        self::assertSame(['set-int', '1', 'rk-page', '0'], $read());
-        self::assertSame(['set-int', '1', 'p1', '0'], $read());
-        self::assertSame(['set-string', '1', 'p2', ''], $read());
-        self::assertSame(['run'], $read());
-        fwrite($pipes[3], Protocol::encode('event', '1', '1', ''));
-        self::assertSame(['set-int', '1', 'p1', '1'], $read());
-        fwrite($pipes[3], Protocol::encode('event', '1', '2', "Ann\t✓"));
-        fwrite($pipes[3], Protocol::encode('reload'));
-        self::assertSame(['set-int', '1', 'rk-page', '0'], $read(), 'reload pushes everything again');
-        self::assertSame(['set-int', '1', 'p1', '1'], $read());
-        self::assertSame(['set-string', '1', 'p2', "Ann\t✓"], $read());
-        fwrite($pipes[3], Protocol::encode('event', '1', '0', ''));
-        self::assertSame(['close', '1'], $read());
-        self::assertSame(['quit'], $read());
-        fclose($pipes[3]);
-        $stderr = (string) stream_get_contents($pipes[2]);
-        self::assertSame(0, proc_close($proc), $stderr);
-        $props = json_decode((string) file_get_contents("$dir/state.json"), true)['windows'][0]['props'] ?? null;
-        self::assertSame(['count' => 1, 'name' => "Ann\t✓"], $props, 'the last snapshot before quitting is kept');
+        return [$proc, $pipes, $read];
     }
 }

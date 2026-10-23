@@ -210,9 +210,7 @@ final class DevSession
     private function writeBootstrap(): void
     {
         $files = $this->phpFiles();
-        $classes = Bootstrap::classes($files);
-        $eager = array_values(array_filter($files, fn(string $file) => !in_array($file, $classes, true)));
-        Bootstrap::write("$this->devDir/bootstrap.php", $files, $eager);
+        Bootstrap::write("$this->devDir/bootstrap.php", $files, Bootstrap::eagerFiles($files));
     }
 
     /** @return list<string> the backend's core PHP, the dev runtime, the modules' PHP and the app's */

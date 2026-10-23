@@ -75,12 +75,19 @@ final class CounterScreen extends \RageKit\Screen
 ```
 
 ```php
+// src/CounterApp.php — the app: its first screen (and its state, title, size…)
+final class CounterApp extends \RageKit\App
+{
+    protected function firstScreen(): \RageKit\Screen
+    {
+        return new CounterScreen();
+    }
+}
+
 // main.php
 function main(): void
 {
-    $app = new \RageKit\App();
-    $app->open(new CounterScreen(), title: 'Counter', width: 360, height: 420);
-    $app->run();
+    (new CounterApp())->run();
 }
 ```
 
@@ -166,6 +173,7 @@ On Windows, run `setup.ps1` instead of `setup.sh`.
 - [The toolchain](docs/toolchain.md) — TypePHP, Slint, `ragekit setup` / `doctor`, normal vs Nano
 - [Templates](docs/templates.md) — `.rk` syntax, elements, components
 - [Moving between screens](docs/navigation.md) — the navigator: push, back, a window's stack of screens
+- [App-wide state](docs/state.md) — stores: the signed-in user, settings; `$store` in templates
 - [Kits](docs/kits.md) — choosing and writing UI kits
 - [Native modules](docs/modules.md) — using and writing modules (audio, http)
 - [Dev mode](docs/dev-mode.md) — `ragekit dev` and hot reload
@@ -181,8 +189,8 @@ On Windows, run `setup.ps1` instead of `setup.sh`.
 | `demo/kitchen-sink` | every core element, in five tabs, with its own title bar (`--kit=material` to compare kits) |
 | `demo/kit-demo` | an app's own kit (`kits/icons`) with SVG icons embedded at build time |
 | `demo/player` | the audio module: play, pause, progress, volume |
-| `demo/titlebar` | a layout: frameless window, own title bar with a search box and window buttons |
-| `demo/navigator` | moving between screens in one window: push, back (← and Alt+Left), state kept, a dialog and a toast |
+| `demo/titlebar` | a `Window` subclass: frameless window, own title bar with a search box and window buttons |
+| `demo/navigator` | app state and moving between screens in one window: sign in and out through a store, push, back (← and Alt+Left), state kept, a dialog and a toast |
 | `demo/fetch` | the http module: a GitHub API lookup and a download with progress (needs the internet) |
 
 Run one with `../../bin/ragekit run` from its folder, or `../../bin/ragekit dev` for hot reload.
