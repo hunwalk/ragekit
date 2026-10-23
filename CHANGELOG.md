@@ -11,7 +11,7 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-10-23
+## [0.3.0] - 2026-10-24
 
 The app gets a shape: an app class you extend, a `Window` object per OS window, and app-wide state
 in stores. This release breaks 0.2 apps; "Upgrading from 0.2" below lists every change.
