@@ -10,6 +10,7 @@ vendor/bin/ragekit make:component UserBadge # src/Components/UserBadge.php + tem
 vendor/bin/ragekit make:store Session      # src/Stores/Session.php, added to your AppStore
 vendor/bin/ragekit make:service GithubApi  # src/Services/GithubApi.php
 vendor/bin/ragekit make:flow LoadUser      # src/Flows/LoadUser.php
+vendor/bin/ragekit make:assets Images      # src/Assets/Images.php: register it in your App's assets()
 ```
 
 ## Where things go
@@ -23,6 +24,7 @@ src/
   Stores/              AppStore (the root store) and its stores
   Flows/               flows: one user action step by step (see state.md)
   Services/            outside calls: API clients, files, native modules
+  Assets/              classes listing the app's images ($assets->images->logo in templates)
 templates/             .rk templates, in the same folders as their classes
 assets/                images and other files the app reads at runtime
 ```

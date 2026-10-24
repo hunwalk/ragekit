@@ -180,6 +180,9 @@ final class Parser
         if ($name === 'store') {
             return $this->store();
         }
+        if ($name === 'assets') {
+            return $this->assets();
+        }
         if (($name === 'this' || $name === 'context') && $this->isOp('->')) {
             $this->at++;
             [$kind, $method] = $this->take();
@@ -215,6 +218,24 @@ final class Parser
         }
         $call = $this->isOp('(');
         return new Node('store', [$store, $member, $call], $call ? $this->arguments() : []);
+    }
+
+    /** $assets->images->logo: an image the App registered. */
+    private function assets(): Node
+    {
+        $parts = [];
+        foreach (['group', 'image'] as $what) {
+            if (!$this->isOp('->')) {
+                throw $this->error('$assets' . implode('', array_map(fn($p) => "->$p", $parts)) . ": name the $what, e.g. \$assets->images->logo");
+            }
+            $this->at++;
+            [$kind, $part] = $this->take();
+            if ($kind !== 'ident') {
+                throw $this->error("unexpected \"$part\" after \$assets->" . implode('->', $parts));
+            }
+            $parts[] = $part;
+        }
+        return new Node('assets', $parts);
     }
 
     private function identifier(string $name): Node

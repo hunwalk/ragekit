@@ -50,6 +50,8 @@ final class ExpressionCompiler
                     throw TemplateException::at($at, "\$store->$store->$member(): methods shown in templates can't take arguments");
                 }
                 return $this->values->storeValue($store, $member, $call, $scope, $at);
+            case 'assets':
+                throw TemplateException::at($at, "\$assets->{$node->value[0]}->{$node->value[1]} is an image; use it in an image attribute like source=");
             case 'not':
                 return new Ref('bool', '!(' . $this->condition($node->children[0], $scope, $at)->slint . ')');
             case 'neg':

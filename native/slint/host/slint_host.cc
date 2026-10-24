@@ -148,6 +148,23 @@ String php_slint_app_dir()
     return String(buffer, len);
 }
 
+void php_slint_set_image_asset(Int window, Int id, Int index)
+{
+    rk_set_image_asset(window, static_cast<int32_t>(id), static_cast<int32_t>(index));
+}
+
+Bool php_slint_set_image_file(Int window, Int id, String path)
+{
+    return rk_set_image_file(window, static_cast<int32_t>(id), path.data(), path.length()) != 0;
+}
+
+String php_slint_cache_dir()
+{
+    char buffer[4096];
+    size_t len = rk_cache_dir(buffer, sizeof buffer);
+    return String(buffer, len);
+}
+
 void php_slint_print_error(String line)
 {
     rk_print_error(line.data(), line.length());

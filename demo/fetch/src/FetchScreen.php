@@ -16,6 +16,8 @@ final class FetchScreen extends Screen
     public string $name = '—';
     public string $description = '';
     public string $stats = '';
+    /** The owner's avatar: a web image, downloaded and cached by RageKit. */
+    public string $avatar = '';
     public float $downloaded = 0.0;
     public string $downloadStatus = '';
     private ?Request $download = null;
@@ -84,7 +86,9 @@ final class FetchScreen extends Screen
         }
         $this->status = 'Found it.';
         $this->name = (string) ($data['full_name'] ?? $this->repo);
-        $this->description = self::shorten((string) ($data['description'] ?? ''), 52);
+        $this->description = self::shorten((string) ($data['description'] ?? ''), 40);
+        $owner = $data['owner'] ?? [];
+        $this->avatar = is_array($owner) ? (string) ($owner['avatar_url'] ?? '') : '';
         $this->stats = '★ ' . (string) ($data['stargazers_count'] ?? 0) . '   forks ' . (string) ($data['forks_count'] ?? 0)
             . '   open issues ' . (string) ($data['open_issues_count'] ?? 0);
     }

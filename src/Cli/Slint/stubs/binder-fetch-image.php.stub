@@ -1,0 +1,4 @@
+\RageKit\Http\Http::get($url)->saveTo($file)->send(function (\RageKit\Http\Response $r) use ($done): void {
+    $done($r->ok() ? '' : ($r->error !== '' ? $r->error : 'HTTP ' . $r->status), $r->header('Content-Type'));
+});
+return true;

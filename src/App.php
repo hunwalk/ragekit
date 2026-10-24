@@ -62,6 +62,18 @@ abstract class App
         return new RootStore();
     }
 
+    /**
+     * The app's images by group, e.g. `['images' => Images::class]`: classes of string constants
+     * holding project-relative paths. Templates show them as `$assets->images->logo`; the build
+     * checks the files exist and embeds them.
+     *
+     * @return array<string, string>
+     */
+    protected function assets(): array
+    {
+        return [];
+    }
+
     /** Runs once the main window is open: wire store events to navigation here. */
     protected function start(): void
     {

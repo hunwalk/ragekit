@@ -9,8 +9,13 @@
     </HStack>
     <Label text="{{ $status }}" />
     <Card title="{{ $name }}">
-        <Label text="{{ $description }}" />
-        <Label text="{{ $stats }}" />
+        <HStack>
+            <Image source="{{ $avatar }}" fallback="{{ $assets->images->avatar }}" width="48" height="48" />
+            <VStack grow="true">
+                <Label text="{{ $description }}" />
+                <Label text="{{ $stats }}" />
+            </VStack>
+        </HStack>
     </Card>
     <HStack>
         <Button text="Download README" variant="secondary" onClick="download" />

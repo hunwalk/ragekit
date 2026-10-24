@@ -51,6 +51,23 @@ final class Screens
         return 0;
     }
 
+    /** The position of a registered image (App::assets()) in the embedded list, or -1. */
+    public static function assetIndex(string $source): int
+    {
+        {{ assetIndex }}
+        return -1;
+    }
+
+    /**
+     * Downloads $url to $file in the background (the http module); $done(string $error, string
+     * $contentType) runs on the UI thread, $error '' on a 2xx answer. False: the app doesn't
+     * enable the http module.
+     */
+    public static function fetchImage(string $url, string $file, \Closure $done): bool
+    {
+        {{ fetchImage }}
+    }
+
     {{ helpers }}
 
     /** Argument $index of an action that sends several, separated by U+001F. */

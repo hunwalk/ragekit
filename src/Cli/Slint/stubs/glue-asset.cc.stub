@@ -1,0 +1,7 @@
+std::optional<slint::Image> asset(int index) override
+{
+    if (index < 0) {
+        return std::nullopt;
+    }
+    return handle_->global<RkAssets>().get_list()->row_data(static_cast<size_t>(index));
+}

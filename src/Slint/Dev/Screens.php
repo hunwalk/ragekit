@@ -45,4 +45,22 @@ final class Screens
     {
         return Session::bindings()->dispatch($w, $action, $arg);
     }
+
+    /** Dev mode reads registered images from the project folder like any file: never embedded. */
+    public static function assetIndex(string $source): int
+    {
+        return -1;
+    }
+
+    /** As the generated binder's, when the app enables the http module (its classes are loaded then). */
+    public static function fetchImage(string $url, string $file, \Closure $done): bool
+    {
+        if (!class_exists(\RageKit\Http\Http::class)) {
+            return false;
+        }
+        \RageKit\Http\Http::get($url)->saveTo($file)->send(function (\RageKit\Http\Response $r) use ($done): void {
+            $done($r->ok() ? '' : ($r->error !== '' ? $r->error : 'HTTP ' . $r->status), $r->header('Content-Type'));
+        });
+        return true;
+    }
 }

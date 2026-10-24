@@ -1,0 +1,13 @@
+<?php
+
+namespace {{ namespace }};
+
+/**
+ * Images the app ships: each constant is a path relative to the project. Register this class in
+ * your App's assets(); templates then show LOGO as $assets->group->logo (APP_LOGO becomes
+ * appLogo), and PHP can hand {{ class }}::LOGO to any bound image source.
+ */
+final class {{ class }}
+{
+    // public const LOGO = 'assets/images/logo.png';
+}

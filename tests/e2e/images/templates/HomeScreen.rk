@@ -1,0 +1,8 @@
+<VStack>
+    <HStack>
+        <Image source="{{ $assets->images->red }}" width="64" height="64" />
+        <Image source="{{ $state }}" width="64" height="64" />
+        <Image source="{{ $web }}" fallback="{{ $assets->images->blue }}" width="64" height="64" />
+    </HStack>
+    <Button text="Toggle" onClick="toggle" />
+</VStack>

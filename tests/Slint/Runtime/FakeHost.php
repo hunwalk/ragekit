@@ -15,9 +15,19 @@ namespace RageKit\Tests\Slint\Runtime {
         /** @var list<array<string, mixed>> http_request / http_cancel calls */
         public static array $http = [];
         public static int $nextRequest = 1;
+        /** @var list<array{url: string, file: string, done: \Closure}> Screens::fetchImage() calls */
+        public static array $fetches = [];
+        public static bool $httpModule = true;
+        public static string $cacheDir = '';
+        /** Files the fake bridge can't decode (besides paths containing "broken"). */
+        public static array $unloadable = [];
 
         public static function reset(): void
         {
+            self::$unloadable = [];
+            self::$fetches = [];
+            self::$httpModule = true;
+            self::$cacheDir = '';
             self::$calls = [];
             self::$dispatcher = null;
             self::$eventDispatcher = null;
@@ -49,6 +59,9 @@ namespace {
     function slint_set_event_dispatcher(mixed $fn): void { FakeHost::$eventDispatcher = $fn; }
     function slint_app_dir(): string { return '/app'; }
     function slint_print_error(string $line): void { FakeHost::$calls[] = "error $line"; }
+    function slint_set_image_asset(int $window, int $id, int $index): void { FakeHost::$calls[] = "image-asset $window $id $index"; }
+    function slint_set_image_file(int $window, int $id, string $path): bool { FakeHost::$calls[] = "image-file $window $id $path"; return !str_contains($path, 'broken') && !in_array($path, FakeHost::$unloadable, true); }
+    function slint_cache_dir(): string { return FakeHost::$cacheDir; }
     function ragekit_module_available(string $name): bool { return (FakeHost::$modules[$name] ?? 'not installed') === ''; }
     function http_request(string $method, string $url, string $headers, string $body, string $file, float $timeout): int
     {

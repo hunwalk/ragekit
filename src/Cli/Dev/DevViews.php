@@ -58,7 +58,9 @@ final class DevViews
         GeneratedFile::write("$outDir/screens.json", ScreensJson::emit($compiled->windows));
 
         foreach ($project->classes as $class) {
-            $watch[] = $class->template;
+            if ($class->template !== '') {
+                $watch[] = $class->template;
+            }
         }
         return new DevOutput($entries, "$outDir/screens.json", array_values(array_unique([...$watch, ...$compiled->images])), $changed, $compiled->warnings);
     }

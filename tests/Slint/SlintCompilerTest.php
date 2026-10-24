@@ -472,10 +472,11 @@ final class SlintCompilerTest extends TestCase
         self::assertSame([$abs], $out->images);
     }
 
-    public function testImageBindingIsRejected(): void
+    /** The old {name} spelling isn't an image binding; the error points to {{ $name }}. */
+    public function testOldImageBindingSyntaxIsRejected(): void
     {
         $this->expectException(TemplateException::class);
-        $this->expectExceptionMessage("image=\"{icon}\": image props take a file path; binding images to PHP values isn't supported yet");
+        $this->expectExceptionMessage('image="{icon}": write a bound image as {{ $name }}');
         $this->compileIn(__DIR__ . '/../fixtures', [$this->screen('S', '<VStack xmlns:p="pics"><p:ImageButton image="{icon}" /></VStack>', props: ['icon' => 'string'])]);
     }
 

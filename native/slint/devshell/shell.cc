@@ -337,6 +337,13 @@ void Shell::set(Win &win, const std::string &kind, const std::string &property, 
             ok = win.instance->set_property(property, Value(std::strtod(f[3].c_str(), nullptr)));
         } else if (kind == "set-bool") {
             ok = win.instance->set_property(property, Value(f[3] == "1"));
+        } else if (kind == "set-image") {
+            // '' clears the image; a file the interpreter can't decode is reported once.
+            auto image = f[3].empty() ? slint::Image() : slint::Image::load_from_path(slint::SharedString(f[3]));
+            if (!f[3].empty() && image.size().width == 0) {
+                std::fprintf(stderr, "ragekit: image %s: couldn't be loaded\n", f[3].c_str());
+            }
+            ok = win.instance->set_property(property, Value(image));
         }
     }
     if (!ok && warned_.insert(win.screen + "." + property).second) {

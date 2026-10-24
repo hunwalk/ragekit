@@ -55,7 +55,8 @@ final class WindowModel
 
     public function bind(string $source, string $name, string $type, string $owner): Binding
     {
-        return $this->bindings["$owner:$source:$name"] ??= new Binding($this->nextBindingId(), $source, $name, $type, false, $owner);
+        $key = "$owner:$source:$name" . ($type === 'image' ? ':image' : '');
+        return $this->bindings[$key] ??= new Binding($this->nextBindingId(), $source, $name, $type, false, $owner);
     }
 
     /**

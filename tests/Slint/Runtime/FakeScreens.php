@@ -151,6 +151,13 @@ namespace RageKit\Tests\Slint\Runtime {
         }
     }
 
+    /** Shows one image bound to $cover (id 6) and another to $icon (id 7). */
+    final class PictureScreen extends Screen
+    {
+        public string $cover = '';
+        public string $icon = '';
+    }
+
     interface Titled
     {
         public function title(): string;
@@ -200,6 +207,8 @@ namespace RageKit\Generated {
     use RageKit\Tests\Slint\Runtime\RestoringScreen;
     use RageKit\Tests\Slint\Runtime\RuntimeStore;
     use RageKit\Tests\Slint\Runtime\WrongPushScreen;
+    use RageKit\Tests\Slint\Runtime\FakeHost;
+    use RageKit\Tests\Slint\Runtime\PictureScreen;
     use RageKit\Window;
 
     /**
@@ -221,6 +230,9 @@ namespace RageKit\Generated {
             }
             if ($screen instanceof DetailScreen) {
                 return 2;
+            }
+            if ($screen instanceof PictureScreen) {
+                return 4;
             }
             return $screen instanceof WrongPushScreen ? 3 : 0;
         }
@@ -245,6 +257,9 @@ namespace RageKit\Generated {
             if ($s instanceof DetailScreen) {
                 return [4 => $s->value];
             }
+            if ($s instanceof PictureScreen) {
+                return [6 => new \RageKit\Slint\ImageValue($s->cover), 7 => new \RageKit\Slint\ImageValue($s->icon)];
+            }
             if ($s instanceof FramedScreen) {
                 if ($w instanceof FrameWindow) {
                     return [1 => $s->title(), 2 => $w->query, 3 => $w->maximized];
@@ -252,6 +267,21 @@ namespace RageKit\Generated {
                 return [];
             }
             return [];
+        }
+
+        /** One registered image: assets/logo.png. */
+        public static function assetIndex(string $source): int
+        {
+            return $source === 'assets/logo.png' ? 0 : -1;
+        }
+
+        public static function fetchImage(string $url, string $file, \Closure $done): bool
+        {
+            if (!FakeHost::$httpModule) {
+                return false;
+            }
+            FakeHost::$fetches[] = ['url' => $url, 'file' => $file, 'done' => $done];
+            return true;
         }
 
         public static function dispatch(Window $w, int $action, string $arg): int

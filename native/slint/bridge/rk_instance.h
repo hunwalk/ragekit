@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -23,6 +24,9 @@ public:
     virtual void set_float(int id, double value) = 0;
     virtual void set_bool(int id, bool value) = 0;
     virtual void set_list(int id, std::vector<slint::SharedString> value) = 0;
+    virtual void set_image(int id, const slint::Image &value) = 0;
+    /** A registered image (App::assets()), embedded in the RkAssets global; nullopt if none. */
+    virtual std::optional<slint::Image> asset(int) { return std::nullopt; }
     /** Screens with a layout: frameless windows with an app-drawn title bar. */
     virtual bool frameless() const { return false; }
     virtual void set_maximized(bool) {}

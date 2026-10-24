@@ -13,6 +13,7 @@ enum MakeKind: string
     case Store = 'store';
     case Service = 'service';
     case Flow = 'flow';
+    case Assets = 'assets';
 
     public function folder(): string
     {
@@ -23,6 +24,7 @@ enum MakeKind: string
             self::Store => 'Stores',
             self::Service => 'Services',
             self::Flow => 'Flows',
+            self::Assets => 'Assets',
         };
     }
 

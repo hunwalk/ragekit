@@ -223,6 +223,30 @@ RK_API void rk_set_list(int64_t window, int32_t id, const char *const *items, co
     }
 }
 
+RK_API void rk_set_image_asset(int64_t window, int32_t id, int32_t index)
+{
+    if (auto *instance = find(window)) {
+        instance->set_image(id, instance->asset(index).value_or(slint::Image()));
+    }
+}
+
+RK_API int rk_set_image_file(int64_t window, int32_t id, const char *path, size_t len)
+{
+    auto *instance = find(window);
+    if (instance == nullptr) {
+        return 1;
+    }
+    if (len == 0) {
+        instance->set_image(id, slint::Image());
+        return 1;
+    }
+    // Slint takes UTF-8 paths on every platform. An image it can't decode has no size.
+    auto image = slint::Image::load_from_path(slint::SharedString(std::string_view(path, len)));
+    bool loaded = image.size().width > 0;
+    instance->set_image(id, loaded ? image : slint::Image());
+    return loaded ? 1 : 0;
+}
+
 RK_API void rk_close(int64_t window)
 {
     auto it = windows.find(window);

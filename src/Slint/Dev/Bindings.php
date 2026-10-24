@@ -81,7 +81,11 @@ final class Bindings
                 return [];
             }
             $read = $value['source'] === 'method' ? $object->{$name}() : $object->{$name};
-            $values[$value['id']] = $value['type'] === 'list' ? array_map('strval', array_values((array) $read)) : $read;
+            $values[$value['id']] = match ($value['type']) {
+                'list' => array_map('strval', array_values((array) $read)),
+                'image' => new \RageKit\Slint\ImageValue((string) $read),
+                default => $read,
+            };
         }
         ksort($values);
         return $values;

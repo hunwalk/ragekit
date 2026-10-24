@@ -32,6 +32,10 @@ RK_API void rk_set_int(int64_t window, int32_t id, int64_t value);
 RK_API void rk_set_float(int64_t window, int32_t id, double value);
 RK_API void rk_set_bool(int64_t window, int32_t id, int value);
 RK_API void rk_set_list(int64_t window, int32_t id, const char *const *items, const size_t *lens, size_t count);
+/** Shows registered image `index` (App::assets(), embedded) in image property `id`. */
+RK_API void rk_set_image_asset(int64_t window, int32_t id, int32_t index);
+/** Loads the image file at path (UTF-8) into image property `id`; len 0 clears it. 0 = couldn't load it. */
+RK_API int rk_set_image_file(int64_t window, int32_t id, const char *path, size_t len);
 RK_API void rk_close(int64_t window);
 /** Window controls for layouts (frameless windows); see native/slint/window. */
 RK_API void rk_window_minimize(int64_t window);
@@ -54,6 +58,9 @@ RK_API void *rk_module_symbol(int64_t module, const char *symbol);
 RK_API void rk_modules_reset(void);
 /** The executable's folder (no trailing slash) into buffer; returns its length. */
 RK_API size_t rk_app_dir(char *buffer, size_t size);
+/** The app's image cache folder (created; no trailing slash) into buffer; returns its length:
+ *  <XDG_CACHE_HOME or ~/.cache | %LOCALAPPDATA% | ~/Library/Caches>/<executable name>/images. */
+RK_API size_t rk_cache_dir(char *buffer, size_t size);
 /** Writes text and a newline to stderr. */
 RK_API void rk_print_error(const char *text, size_t len);
 

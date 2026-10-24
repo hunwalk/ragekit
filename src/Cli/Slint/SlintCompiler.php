@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RageKit\Cli\Slint;
 
 use RageKit\Cli\Kits\KitRegistry;
+use RageKit\Cli\Templates\AssetRegistry;
 use RageKit\Cli\Templates\ClassInfo;
 use RageKit\Cli\Templates\Element;
 use RageKit\Cli\Templates\Errors\MissingKitElement;
@@ -23,6 +24,9 @@ final class SlintCompiler
     private array $children = [];
 
     private ValueCompiler $values;
+
+    /** The app's registered images (App::assets()). */
+    private AssetRegistry $assets;
     private ElementDispatcher $elements;
 
     public function __construct(
@@ -39,7 +43,12 @@ final class SlintCompiler
         $owners = [];
         $root = null;
         $stores = [];
+        $this->assets = AssetRegistry::fromClasses($classes, $this->projectRoot);
         foreach ($classes as $name => $class) {
+            if ($class->isApp) {
+                unset($classes[$name]);
+                continue;
+            }
             if ($class->isRootStore) {
                 if ($root !== null) {
                     throw new TemplateException($class->file, 0, "two classes extend RageKit\\RootStore ({$root->name} and {$class->name}); an app has one root store");
@@ -81,6 +90,7 @@ final class SlintCompiler
 
         $this->values = new ValueCompiler($this->projectRoot);
         $this->values->useStores($root, $stores);
+        $this->values->useAssets($this->assets);
         $this->elements = new ElementDispatcher($this->kits, $this->activeKit, $this->children, $this->values);
         $window = $this->windowComponent();
         $definitions = [];
@@ -112,6 +122,9 @@ final class SlintCompiler
         foreach ($this->elements->imports() as $file => $components) {
             $imports[] = 'import { ' . implode(', ', array_keys($components)) . ' } from ' . TextAttribute::slintString($file) . ';';
         }
+        if ($this->assets->paths() !== []) {
+            array_unshift($definitions, $this->assetsGlobal());
+        }
         return new CompiledViews(
             Code::stub('app', ['imports' => implode("\n", $imports), 'components' => implode("\n", $definitions)]),
             $screens,
@@ -121,7 +134,19 @@ final class SlintCompiler
             $this->elements->warnings(),
             $windows,
             $root?->name,
+            $this->assets,
         );
+    }
+
+    /** Every registered image, embedded, in AssetRegistry::paths() order: what a bound value switches to. */
+    private function assetsGlobal(): string
+    {
+        $images = [];
+        foreach ($this->assets->absolutePaths() as $path) {
+            $images[] = '@image-url(' . TextAttribute::slintString($path) . ')';
+            $this->values->embed($path);
+        }
+        return "export global RkAssets {\n    out property <[image]> list: [" . implode(', ', $images) . "];\n}\n";
     }
 
     /** $path relative to the project root, when it's inside it. */
@@ -261,7 +286,7 @@ final class SlintCompiler
         }
         usort($bindings, fn(Binding $a, Binding $b) => $a->id <=> $b->id);
         foreach ($bindings as $binding) {
-            $properties[] = ($binding->twoWay ? 'in-out' : 'in') . ' property <' . ValueCompiler::TYPES[$binding->type] . '> ' . $binding->slintName() . ';';
+            $properties[] = ($binding->twoWay ? 'in-out' : 'in') . ' property <' . ($binding->type === 'image' ? 'image' : ValueCompiler::TYPES[$binding->type]) . '> ' . $binding->slintName() . ';';
         }
         return Code::stub('window', [
             'name' => $model->name,

@@ -117,7 +117,7 @@ final class MakeCommandTest extends TestCase
     public function testListShowsMakeCommands(): void
     {
         $app = new Application((string) realpath(self::ROOT));
-        foreach (['make:screen', 'make:window', 'make:component', 'make:store', 'make:service', 'make:flow', 'stub:publish'] as $name) {
+        foreach (['make:screen', 'make:window', 'make:component', 'make:store', 'make:service', 'make:flow', 'make:assets', 'stub:publish'] as $name) {
             self::assertTrue($app->has($name), $name);
         }
     }

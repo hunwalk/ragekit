@@ -44,6 +44,15 @@ function slint_set_event_dispatcher(mixed $dispatcher): void {}
 /** The folder of the executable (the dev runtime answers with the project's folder). */
 function slint_app_dir(): string {}
 
+/** Shows registered image $index (RkAssets.list) in image property $id. */
+function slint_set_image_asset(int $window, int $id, int $index): void {}
+
+/** Loads $path into image property $id ('' clears it); false if it couldn't be loaded. */
+function slint_set_image_file(int $window, int $id, string $path): bool {}
+
+/** The app's image cache folder (created): <user cache>/<app>/images. */
+function slint_cache_dir(): string {}
+
 /** Writes $line and a newline to stderr (Nano PHP has no STDERR). */
 function slint_print_error(string $line): void {}
 

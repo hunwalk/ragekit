@@ -38,7 +38,8 @@ final class KitElementCompiler implements ElementCompiler
     public function compile(Element $element, Scope $scope, string $axis): string
     {
         [$kit, $spec] = $this->elementSpec($element);
-        $this->context->checkAttributes($element, [...array_keys($spec->props), ...array_keys($spec->events), 'grow', 'when', 'each'], styled: true);
+        $hasImage = ($spec->props['source'] ?? null)?->type === 'image';
+        $this->context->checkAttributes($element, [...array_keys($spec->props), ...array_keys($spec->events), 'grow', 'when', 'each', ...($hasImage ? ['fallback'] : [])], styled: true);
         if ($element->children !== [] && !$spec->children) {
             throw new NoChildrenAllowed($element);
         }
@@ -61,7 +62,15 @@ final class KitElementCompiler implements ElementCompiler
                 $lines[] = "{$prop->twoWay}(value) => { root.action({$action?->id}, $value); }";
                 continue;
             }
-            $lines[] = "{$prop->property}: " . $this->context->values->value($raw, $prop->type, $prop->enum, $scope, $element, $name) . ';';
+            $value = $this->context->values->value($raw, $prop->type, $prop->enum, $scope, $element, $name);
+            if ($prop->type === 'image' && isset($element->attributes['fallback'])) {
+                // Shown while a bound image is empty: loading, failed, or ''.
+                $fallback = $this->context->values->staticImage($element->attributes['fallback'], $element, 'fallback');
+                if (str_starts_with($value, 'root.')) {
+                    $value = "$value.width > 0 ? $value : $fallback";
+                }
+            }
+            $lines[] = "{$prop->property}: $value;";
         }
         foreach ($spec->events as $attribute => $callback) {
             if (!isset($element->attributes[$attribute])) {

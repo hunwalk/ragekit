@@ -80,15 +80,37 @@ final class SlintWindow
         $this->sync();
     }
 
-    /** Pushes every value that changed since the last sync. */
+    /** Pushes every value that changed since the last sync. Images compare by what they show (Images::state()). */
     public function sync(): void
     {
         foreach ($this->values() as $id => $value) {
+            if ($value instanceof ImageValue) {
+                $state = Images::state($this->app->backend(), $value->source);
+                if (array_key_exists($id, $this->sent) && $this->sent[$id] === $state) {
+                    continue;
+                }
+                $this->pushImage($id, $value->source, $state);
+                $this->sent[$id] = $state;
+                continue;
+            }
             if (array_key_exists($id, $this->sent) && $this->sent[$id] === $value) {
                 continue;
             }
             self::push($this->id, $id, $value);
             $this->sent[$id] = $value;
+        }
+    }
+
+    /** $state from Images::state(): 'none', 'asset:<index>' or 'file:<path>'. */
+    private function pushImage(int $id, string $source, string $state): void
+    {
+        if (str_starts_with($state, 'asset:')) {
+            \slint_set_image_asset($this->id, $id, (int) substr($state, 6));
+            return;
+        }
+        $path = str_starts_with($state, 'file:') ? substr($state, 5) : '';
+        if (!\slint_set_image_file($this->id, $id, $path)) {
+            Images::loadFailed($this->app->backend(), $source);
         }
     }
 

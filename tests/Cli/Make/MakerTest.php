@@ -75,6 +75,16 @@ final class MakerTest extends TestCase
         self::assertStringContainsString('public static function run(): void', $this->read('src/Flows/LoadUser.php'));
     }
 
+    public function testAssetsClassAndRegistrationHint(): void
+    {
+        $made = $this->maker()->make(MakeKind::Assets, 'Images');
+        self::assertSame(['src/Assets/Images.php'], $made->created);
+        self::assertStringContainsString('namespace App\Assets;', $this->read('src/Assets/Images.php'));
+        self::assertStringContainsString('final class Images', $this->read('src/Assets/Images.php'));
+        self::assertStringContainsString("// public const LOGO = 'assets/images/logo.png';", $this->read('src/Assets/Images.php'));
+        self::assertSame(["register it in your App: protected function assets(): array { return ['images' => \App\Assets\Images::class]; }"], $made->hints);
+    }
+
     /** @return iterable<string, array{0: string}> */
     public static function badNames(): iterable
     {

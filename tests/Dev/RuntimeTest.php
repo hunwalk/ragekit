@@ -140,6 +140,18 @@ final class RuntimeTest extends TestCase
         self::assertSame([1 => 12, 2 => 'count 12 x', 3 => ['1', '2']], $b->values($n->window()));
     }
 
+    /** A bound image source reaches SlintWindow as an ImageValue, as the generated binder gives it. */
+    public function testImageValuesInDev(): void
+    {
+        $json = str_replace('"name":"label","type":"string"', '"name":"label","type":"image"', self::JSON);
+        $b = Bindings::load($json);
+        $s = new DevFixtureScreen();
+        $n = $this->nav($b, $s);
+        $value = $b->values($n->window())[2];
+        self::assertInstanceOf(\RageKit\Slint\ImageValue::class, $value);
+        self::assertSame('count 0 ', $value->source);
+    }
+
     /** Review Focus 1 in dev: another page's action does nothing. */
     public function testOtherPagesActionsAreIgnored(): void
     {

@@ -11,6 +11,25 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+### Added
+
+- **Images from PHP** (docs/templates.md, "Image"): `source="{{ $cover }}"` shows whatever a string
+  property, method or `$store` value holds while the app runs: a registered image, a file, or an
+  `http(s)://` URL, downloaded in the background (http module) and cached in the user's cache
+  folder. `fallback="…"` is shown while a bound image is empty, loading or failed.
+- **Registered images:** `App::assets()` returns classes of path constants (`['images' =>
+  Images::class]`); templates show them as `$assets->images->logo`, the build checks and embeds
+  them, and `Images::LOGO` in PHP switches a bound image to the embedded copy.
+  `ragekit make:assets Images` creates such a class.
+- demo/fetch shows the repository owner's avatar.
+
+### Changed
+
+- **Kits:** `image` props can be bound (`in property <image>` set from PHP), and
+  `source="{name}"` (the old spelling) now says to write `{{ $name }}`.
+- **Bridge C API:** `rk_set_image_asset`, `rk_set_image_file`, `rk_cache_dir`; generated window
+  instances implement `set_image()` (and `asset()` when the app registers images).
+
 ## [0.4.0] - 2026-10-24
 
 Generators for screens, windows, components, stores, services and flows, templates that find

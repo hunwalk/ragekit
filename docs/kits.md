@@ -258,9 +258,10 @@ when the value is set from PHP. RageKit binds the property to the screen's PHP p
 
 ### Image props
 
-`image` props take a file path in the template (relative to the app's project root, or
-absolute). The file is checked and embedded into the app when it is built. Binding an image to a
-PHP value isn't supported yet.
+`image` props take what `Image`'s `source` takes (see templates.md, "Image"): a file path or
+`$assets->…`, embedded when the app is built, or a string value bound from PHP (a registered
+image, a file or a web URL), plus `fallback="…"` while a bound image is empty. In Slint the prop
+is an `in property <image>`; an empty image has `width == 0`.
 
 ### The window component
 

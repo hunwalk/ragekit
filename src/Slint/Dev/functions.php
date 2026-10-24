@@ -64,6 +64,34 @@ function slint_set_float(int $window, int $id, float $value): void
     Session::channel()->send('set-float', (string) $window, Session::property($id), sprintf('%.17g', $value));
 }
 
+/** Dev mode never embeds registered images: they're read from the project like any file. */
+function slint_set_image_asset(int $window, int $id, int $index): void
+{
+}
+
+/** The shell loads the file (and reports one it can't decode); here: whether the file exists. */
+function slint_set_image_file(int $window, int $id, string $path): bool
+{
+    Session::channel()->send('set-image', (string) $window, Session::property($id), $path);
+    return $path === '' || is_file($path);
+}
+
+/** As the bridge's rk_cache_dir(), named after the project folder. */
+function slint_cache_dir(): string
+{
+    $home = (string) (getenv('HOME') ?: '.');
+    $base = match (PHP_OS_FAMILY) {
+        'Windows' => (string) (getenv('LOCALAPPDATA') ?: '.'),
+        'Darwin' => "$home/Library/Caches",
+        default => (string) (getenv('XDG_CACHE_HOME') ?: "$home/.cache"),
+    };
+    $dir = $base . '/' . basename(slint_app_dir()) . '/images';
+    if (!is_dir($dir)) {
+        mkdir($dir, 0777, true);
+    }
+    return $dir;
+}
+
 function slint_set_bool(int $window, int $id, bool $value): void
 {
     Session::channel()->send('set-bool', (string) $window, Session::property($id), $value ? '1' : '0');

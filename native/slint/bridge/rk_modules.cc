@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <map>
 #include <mutex>
 #include <string>
@@ -33,21 +34,52 @@ std::map<std::string, Loaded> modules;  // by name; never erased, so error strin
 std::vector<void *> handles(1, nullptr); // module id => library (id 0 = none)
 std::map<std::string, std::vector<std::string>> expected; // name => symbols the app needs
 
-std::string appDir()
+/** The executable's full path (UTF-8). */
+std::string exePath()
 {
-#ifdef _WIN32
+#ifdef _WIN32 // Windows: untested
     std::vector<wchar_t> wide(32768);
     DWORD n = GetModuleFileNameW(nullptr, wide.data(), static_cast<DWORD>(wide.size()));
     int bytes = WideCharToMultiByte(CP_UTF8, 0, wide.data(), static_cast<int>(n), nullptr, 0, nullptr, nullptr);
     std::string path(bytes, '\0');
     WideCharToMultiByte(CP_UTF8, 0, wide.data(), static_cast<int>(n), path.data(), bytes, nullptr, nullptr);
-    auto slash = path.find_last_of("\\/");
+    return path;
 #else
     std::vector<char> buffer(4096);
     ssize_t n = readlink("/proc/self/exe", buffer.data(), buffer.size() - 1);
-    std::string path(buffer.data(), n > 0 ? static_cast<size_t>(n) : 0);
-    auto slash = path.find_last_of('/');
+    return std::string(buffer.data(), n > 0 ? static_cast<size_t>(n) : 0);
 #endif
+}
+
+/** The user's cache folder: XDG_CACHE_HOME or ~/.cache, %LOCALAPPDATA%, ~/Library/Caches. */
+std::string userCacheDir()
+{
+#ifdef _WIN32 // Windows: untested
+    std::vector<wchar_t> wide(32768);
+    DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", wide.data(), static_cast<DWORD>(wide.size()));
+    if (n == 0 || n >= wide.size()) {
+        return ".";
+    }
+    int bytes = WideCharToMultiByte(CP_UTF8, 0, wide.data(), static_cast<int>(n), nullptr, 0, nullptr, nullptr);
+    std::string path(bytes, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wide.data(), static_cast<int>(n), path.data(), bytes, nullptr, nullptr);
+    return path;
+#else
+    const char *home = std::getenv("HOME");
+    std::string base = home != nullptr ? home : ".";
+#  ifdef __APPLE__
+    return base + "/Library/Caches";
+#  else
+    const char *xdg = std::getenv("XDG_CACHE_HOME");
+    return xdg != nullptr && xdg[0] != '\0' ? std::string(xdg) : base + "/.cache";
+#  endif
+#endif
+}
+
+std::string appDir()
+{
+    std::string path = exePath();
+    auto slash = path.find_last_of("\\/");
     return slash == std::string::npos ? std::string(".") : path.substr(0, slash);
 }
 
@@ -58,6 +90,22 @@ extern "C" {
 RK_API size_t rk_app_dir(char *buffer, size_t size)
 {
     std::string dir = appDir();
+    size_t n = dir.size() < size ? dir.size() : size;
+    std::memcpy(buffer, dir.data(), n);
+    return n;
+}
+
+RK_API size_t rk_cache_dir(char *buffer, size_t size)
+{
+    std::string exe = exePath();
+    auto slash = exe.find_last_of("\\/");
+    std::string name = slash == std::string::npos ? exe : exe.substr(slash + 1);
+    if (name.size() > 4 && (name.compare(name.size() - 4, 4, ".exe") == 0 || name.compare(name.size() - 4, 4, ".EXE") == 0)) {
+        name.resize(name.size() - 4);
+    }
+    std::string dir = userCacheDir() + "/" + (name.empty() ? std::string("ragekit") : name) + "/images";
+    std::error_code ignored;
+    std::filesystem::create_directories(std::filesystem::path(std::u8string(dir.begin(), dir.end())), ignored);
     size_t n = dir.size() < size ? dir.size() : size;
     std::memcpy(buffer, dir.data(), n);
     return n;

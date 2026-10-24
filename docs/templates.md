@@ -418,7 +418,7 @@ any kit. A kit may lack one; it then falls back to the Material kit's version.
 | `Checkbox` | `text`, `checked` | `checked`: two-way `bool` |
 | `Slider` | `value`, `min`, `max` | `value`: two-way `float`; range defaults to 0 to 1 |
 | `Select` | `value`, `options` | `value`: two-way `string`; `options`: a list |
-| `Image` | `source` | a file path, see below |
+| `Image` | `source` | a file path, `$assets->…` or a bound value (see "Image" below) |
 | `Progress` | `value` | `float` from 0 to 1 |
 | `Card` | `title` | holds other elements |
 | `Separator` | (none) | a thin line |
@@ -541,9 +541,60 @@ Templates are XML, so `&` and `<` in plain attribute text are written `&amp;` an
 <Image source="assets/logo.svg" />
 ```
 
-`source` is a path relative to the project root, or absolute. The image is embedded into the app
-at build time, so it doesn't need to ship next to the executable. A missing file is a build error.
-Binding the source to a PHP value (`source="{{ $cover }}"`) isn't supported yet.
+`source` (on `Image`, `Avatar`, and any kit element with an `image` prop) takes:
+
+| Written | Shows |
+|---|---|
+| `source="assets/logo.svg"` | that file, embedded into the app at build time (a missing file is a build error) |
+| `source="{{ $assets->images->logo }}"` | an image the app registered (below), embedded |
+| `source="{{ $cover }}"`, `{{ cover() }}`, `{{ $store->user->avatar }}` | whatever that string holds, while the app runs |
+
+**Registered images.** List the images your app ships in a class of constants (paths relative to
+the project; `ragekit make:assets Images` creates one) and register it in your App:
+
+```php
+namespace App\Assets;
+
+final class Images
+{
+    public const LOGO = 'assets/images/logo.png';
+    public const SUN = 'assets/images/weather/sun.svg';
+}
+```
+
+```php
+protected function assets(): array
+{
+    return ['images' => Images::class];
+}
+```
+
+Templates show them as `$assets->images->logo` (`APP_LOGO` is written `appLogo`); PHP uses
+`Images::LOGO`. The build checks every file exists and embeds them all, so a bound value can switch
+between them without reading the disk: `public string $icon = Images::SUN;`.
+
+**A bound source** is a string property, method or `$store` value, read on every update:
+
+- `''` shows nothing;
+- a registered image's path (`Images::SUN`) shows the embedded image;
+- `http://…` / `https://…` is downloaded in the background and shown when it arrives. Every image
+  showing the same URL shares one download, and the file is kept in the user's cache folder
+  (`~/.cache/<app>/images` on Linux, `%LOCALAPPDATA%\<app>\images` on Windows,
+  `~/Library/Caches/<app>/images` on macOS), so later runs show it straight away. Web images need
+  the http module: `ragekit: { modules: [http] }`;
+- anything else is a file, relative to the app's folder (next to the executable) unless absolute.
+
+While an image is loading, or if it can't be loaded, it shows nothing, unless you give it a
+`fallback` (a file path or `$assets->…`):
+
+```xml
+<Image source="{{ $avatarUrl }}" fallback="{{ $assets->images->placeholder }}" />
+```
+
+A problem prints one line, e.g. `ragekit: image https://example.com/a.png: HTTP 404`, and that
+source isn't tried again until the app restarts. Not supported yet: bound images inside
+`@foreach` and in child components (a fixed path or `$assets->…` works there), expiring the cache,
+request headers for image downloads.
 
 ### Tabs
 

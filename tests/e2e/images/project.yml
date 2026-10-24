@@ -1,0 +1,11 @@
+# tests/e2e/images.sh's app: a registered asset, one switched by state, one from the web.
+name: images
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  renderer: software
+  kit: shadcn
+  modules: [http]

@@ -57,7 +57,7 @@ final class Maker
         }
         $created = array_keys($files);
         $changed = [];
-        $hints = self::hints($kind, $class->short);
+        $hints = self::hints($kind, $class->short, $values['namespace']);
         if ($kind === MakeKind::Store) {
             [$created, $changed, $hints] = $this->registerStore($class, $values['namespace'], $contents, $force);
         }
@@ -135,13 +135,14 @@ final class Maker
     }
 
     /** @return list<string> */
-    private static function hints(MakeKind $kind, string $short): array
+    private static function hints(MakeKind $kind, string $short, string $namespace): array
     {
         return match ($kind) {
             MakeKind::Screen => ["show it: return new $short(); from your App's firstScreen(), or \$this->navigator()->push(new $short()) in a handler"],
             MakeKind::Window => ["use it: public static function window(): string { return $short::class; } in a screen"],
             MakeKind::Component => ["use it in a template: <$short />"],
             MakeKind::Flow => ["run it from a handler: $short::run();"],
+            MakeKind::Assets => ["register it in your App: protected function assets(): array { return ['" . lcfirst($short) . "' => \\$namespace\\$short::class]; }"],
             default => [],
         };
     }

@@ -40,7 +40,8 @@ final class ScreenModel
         if ($owner !== 'screen') {
             return $this->window->bind($source, $name, $type, $owner);
         }
-        return $this->bindings["$owner:$source:$name"] ??= new Binding($this->window->nextBindingId(), $source, $name, $type, false, $owner);
+        $key = "$owner:$source:$name" . ($type === 'image' ? ':image' : '');
+        return $this->bindings[$key] ??= new Binding($this->window->nextBindingId(), $source, $name, $type, false, $owner);
     }
 
     /**

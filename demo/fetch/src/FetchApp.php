@@ -2,6 +2,7 @@
 
 namespace Demo;
 
+use Demo\Assets\Images;
 use RageKit\App;
 use RageKit\Screen;
 
@@ -11,6 +12,11 @@ final class FetchApp extends App
     protected function firstScreen(): Screen
     {
         return new FetchScreen();
+    }
+
+    protected function assets(): array
+    {
+        return ['images' => Images::class];
     }
 
     protected function title(): string

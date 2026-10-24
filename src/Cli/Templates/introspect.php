@@ -43,12 +43,52 @@ foreach (array_keys($map) as $class) {
     }
     $reflection = new ReflectionClass($class);
     $state = $reflection->isSubclassOf('RageKit\\RootStore') || $reflection->isSubclassOf('RageKit\\Store');
+    if (!$reflection->isAbstract() && $reflection->isSubclassOf('RageKit\\App')) {
+        $out[] = describeApp($reflection);
+        continue;
+    }
     if ($reflection->isAbstract() || (!$reflection->isSubclassOf('RageKit\\Component') && !$state)) {
         continue;
     }
     $out[] = describe($reflection, $projectDir, $sourceDirs);
 }
 echo json_encode($out, JSON_THROW_ON_ERROR);
+
+/**
+ * An App subclass: its assets() registry, read without running its constructor (which needs the
+ * compiled-in backend). Each group: the class named, whether it exists, and its constants.
+ */
+function describeApp(ReflectionClass $class): array
+{
+    $app = $class->newInstanceWithoutConstructor();
+    $method = new ReflectionMethod($app, 'assets');
+    $method->setAccessible(true);
+    $assets = [];
+    foreach ((array) $method->invoke($app) as $group => $groupClass) {
+        $groupClass = ltrim((string) $groupClass, '\\');
+        $found = class_exists($groupClass);
+        $constants = [];
+        if ($found) {
+            foreach ((new ReflectionClass($groupClass))->getReflectionConstants() as $constant) {
+                $constants[$constant->getName()] = $constant->getValue();
+            }
+        }
+        $assets[] = ['group' => (string) $group, 'class' => $groupClass, 'found' => $found, 'constants' => (object) $constants];
+    }
+    return [
+        'name' => $class->getName(),
+        'short' => $class->getShortName(),
+        'file' => (string) $class->getFileName(),
+        'screen' => false,
+        'template' => '',
+        'props' => (object) [],
+        'computed' => (object) [],
+        'handlers' => (object) [],
+        'constants' => (object) [],
+        'isApp' => true,
+        'assets' => $assets,
+    ];
+}
 
 /** @return list<string> fully qualified names of the classes, interfaces, traits and enums declared in $file */
 function declaredClasses(string $file): array

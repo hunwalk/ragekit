@@ -26,6 +26,7 @@ final class MakeCommand extends Command
         'store' => 'Create a store (src/Stores) and add it to the app\'s root store',
         'service' => 'Create a service for outside calls, e.g. an API client (src/Services)',
         'flow' => 'Create a flow: one user action step by step (src/Flows)',
+        'assets' => 'Create a class of image paths (src/Assets) for App::assets() and $assets in templates',
     ];
 
     public function __construct(private readonly string $rageKitRoot, private readonly MakeKind $kind)
@@ -35,7 +36,11 @@ final class MakeCommand extends Command
 
     protected function configure(): void
     {
-        $example = $this->kind->suffix() === '' ? 'Session' : 'Login';
+        $example = match (true) {
+            $this->kind === MakeKind::Assets => 'Images',
+            $this->kind->suffix() === '' => 'Session',
+            default => 'Login',
+        };
         $this->setDescription(self::DESCRIPTIONS[$this->kind->value])
             ->addArgument('name', InputArgument::OPTIONAL, "the class name, e.g. $example or Auth/$example (sub-folder)")
             ->addOption('force', null, InputOption::VALUE_NONE, 'overwrite files that already exist');

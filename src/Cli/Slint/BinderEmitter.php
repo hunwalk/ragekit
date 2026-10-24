@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RageKit\Cli\Slint;
 
 use RageKit\Cli\Stub;
+use RageKit\Cli\Templates\AssetRegistry;
 
 /**
  * RageKit\Generated\Screens: statically typed PHP that reads the shown values of a window (its
@@ -16,8 +17,10 @@ final class BinderEmitter
     /**
      * @param list<WindowModel> $windows
      * @param string|null $rootStore the app's RootStore subclass, which $store bindings read through get()
+     * @param AssetRegistry|null $assets the app's registered images: assetIndex() maps their paths
+     * @param list<string> $modules the native modules the app enables: with http, fetchImage() downloads
      */
-    public static function emit(array $windows, ?string $rootStore = null): string
+    public static function emit(array $windows, ?string $rootStore = null, ?AssetRegistry $assets = null, array $modules = []): string
     {
         $components = $pages = $news = $values = $dispatch = $helpers = [];
         foreach ($windows as $window) {
@@ -42,7 +45,19 @@ final class BinderEmitter
             'values' => implode("\n", $values),
             'dispatch' => implode("\n", $dispatch),
             'helpers' => implode("\n", $helpers),
+            'assetIndex' => self::assetIndex($assets ?? AssetRegistry::empty()),
+            'fetchImage' => in_array('http', $modules, true) ? self::stub('binder-fetch-image', []) : 'return false;',
         ]);
+    }
+
+    /** if ($source === 'assets/logo.png') { return 0; } … for every registered image. */
+    private static function assetIndex(AssetRegistry $assets): string
+    {
+        $lines = [];
+        foreach ($assets->paths() as $index => $path) {
+            $lines[] = 'if ($source === ' . var_export($path, true) . ") {\n    return $index;\n}";
+        }
+        return implode("\n", $lines);
     }
 
     /** A page's values: the window's (its own, top screen, toasts) and the page's, by id. */
@@ -58,6 +73,9 @@ final class BinderEmitter
             $read = $binding->source === 'method' ? "$member()" : $member;
             if ($binding->type === 'list') {
                 $read = "self::strings($read)";
+            }
+            if ($binding->type === 'image') {
+                $read = "new \\RageKit\\Slint\\ImageValue((string) $read)";
             }
             $entries[] = "{$binding->id} => $read,";
         }

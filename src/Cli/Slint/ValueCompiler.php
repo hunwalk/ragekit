@@ -6,6 +6,7 @@ namespace RageKit\Cli\Slint;
 
 use RageKit\Cli\Rageblade\Node;
 use RageKit\Cli\Rageblade\Parser;
+use RageKit\Cli\Templates\AssetRegistry;
 use RageKit\Cli\Templates\ClassInfo;
 use RageKit\Cli\Templates\Element;
 use RageKit\Cli\Kits\PropSpec;
@@ -30,6 +31,8 @@ final class ValueCompiler
 
     /** @var array<string, ClassInfo> store name ($store->name) => its Store class */
     private array $stores = [];
+
+    private ?AssetRegistry $assets = null;
 
     /** @param string $projectRoot what image paths in templates are relative to */
     public function __construct(private readonly string $projectRoot = '')
@@ -105,6 +108,18 @@ final class ValueCompiler
         return implode(', ', [...array_keys($class->props), ...array_map(fn(string $m) => "$m()", array_keys($class->handlers))]);
     }
 
+    /** The app's registered images, for $assets->group->name. */
+    public function useAssets(AssetRegistry $assets): void
+    {
+        $this->assets = $assets;
+    }
+
+    /** Records an image file embedded by generated code outside templates (RkAssets). */
+    public function embed(string $path): void
+    {
+        $this->images[] = $path;
+    }
+
     /** @return list<string> */
     public function images(): array
     {
@@ -177,7 +192,7 @@ final class ValueCompiler
             return TextAttribute::slintString($raw);
         }
         if ($type === 'image') {
-            return $this->image($raw, $element, $attribute);
+            return $this->image($raw, $scope, $element, $attribute);
         }
         if (str_contains($raw, '{{')) {
             return $this->rageblade($raw, $type, $scope, $element, $attribute);
@@ -235,19 +250,113 @@ final class ValueCompiler
         throw TemplateException::at($element, "$attribute=\"$raw\": expected " . ($type === 'int' ? 'an' : 'a') . " $type, the expression is " . ($ref->type === 'int' ? 'an' : 'a') . " {$ref->type}");
     }
 
-    /** A literal image path (project-relative or absolute), embedded at build time via @image-url. */
-    private function image(string $raw, Element $element, string $attribute): string
+    /**
+     * An image attribute: a literal path or $assets->group->name (both embedded at build time), or
+     * one string property / method / $store value of the screen or window, shown at runtime
+     * (binding type image; RageKit\Slint\Images resolves the value).
+     */
+    private function image(string $raw, Scope $scope, Element $element, string $attribute): string
     {
+        $node = $this->imageNode($raw, $element, $attribute);
+        if ($node === null || $node->kind === 'assets') {
+            return $this->staticImage($raw, $element, $attribute);
+        }
+        if (!in_array($node->kind, ['var', 'call', 'store'], true) || ($node->kind !== 'var' && $node->children !== [])) {
+            throw TemplateException::at($element, "$attribute=\"$raw\": image sources take one property, method or \$store value; for anything else add a method");
+        }
+        if ($node->kind === 'var' && $scope->item((string) $node->value) !== null) {
+            throw TemplateException::at($element, "$attribute=\"$raw\": images in @foreach aren't supported yet");
+        }
+        if ($scope->model === null) {
+            throw TemplateException::at($element, "$attribute=\"$raw\": child components can't show images bound to PHP values yet");
+        }
+        [$source, $name, $owner, $type, $label] = $this->imageSource($node, $scope, $element);
+        if ($type !== 'string') {
+            throw TemplateException::at($element, "$attribute=\"$raw\": expected a string, '$label' is " . self::article($type));
+        }
+        return 'root.' . $scope->model->bind($source, $name, 'image', $owner)->slintName();
+    }
+
+    /**
+     * A literal path or $assets->group->name, embedded via @image-url (also what fallback= takes).
+     */
+    public function staticImage(string $raw, Element $element, string $attribute): string
+    {
+        $node = $this->imageNode($raw, $element, $attribute);
+        if ($node !== null && $node->kind !== 'assets') {
+            throw TemplateException::at($element, "$attribute=\"$raw\": $attribute takes a file path or \$assets->…, not a bound value");
+        }
+        if ($node !== null) {
+            [$group, $name] = $node->value;
+            return $this->embedded($this->asset($group, $name, $element));
+        }
         if (TextAttribute::hasRefs($raw)) {
-            throw TemplateException::at($element, "$attribute=\"$raw\": image props take a file path; binding images to PHP values isn't supported yet");
+            throw TemplateException::at($element, "$attribute=\"$raw\": write a bound image as {{ \$name }}");
         }
         $absolute = preg_match('~^([A-Za-z]:[\\\\/]|[\\\\/])~', $raw) === 1;
         $path = realpath($absolute ? $raw : rtrim($this->projectRoot, '/\\') . '/' . $raw);
         if ($path === false || !is_file($path)) {
             throw TemplateException::at($element, "$attribute=\"$raw\": file not found");
         }
+        return $this->embedded($path);
+    }
+
+    private function embedded(string $path): string
+    {
         $this->images[] = $path;
         return '@image-url(' . TextAttribute::slintString(str_replace('\\', '/', $path)) . ')';
+    }
+
+    /** The one {{ expression }} of an image attribute, or null for a literal path. */
+    private function imageNode(string $raw, Element $element, string $attribute): ?Node
+    {
+        if (!str_contains($raw, '{{')) {
+            return null;
+        }
+        if (preg_match('/^\s*\{\{(.*)\}\}\s*$/s', $raw, $m) !== 1 || str_contains($m[1], '}}')) {
+            throw TemplateException::at($element, "$attribute=\"$raw\": an image takes one {{ expression }} and no other text");
+        }
+        return Parser::parse($m[1], $element->file, $element->line);
+    }
+
+    private function asset(string $group, string $name, Element $at): string
+    {
+        $assets = $this->assets ?? AssetRegistry::empty();
+        if ($assets->groups() === []) {
+            throw TemplateException::at($at, "\$assets needs images registered by your App: protected function assets(): array { return ['$group' => Images::class]; }");
+        }
+        if (!in_array($group, $assets->groups(), true)) {
+            throw TemplateException::at($at, "\$assets->$group: no asset group '$group' (groups: " . implode(', ', $assets->groups()) . ')');
+        }
+        return $assets->find($group, $name)
+            ?? throw TemplateException::at($at, "\$assets->$group->$name: no image '$name' ($group has: " . implode(', ', $assets->names($group)) . ')');
+    }
+
+    /**
+     * What a bound image source reads: [binding source, name, owner, PHP type, how the template wrote it].
+     *
+     * @return array{0: string, 1: string, 2: string, 3: string, 4: string}
+     */
+    private function imageSource(Node $node, Scope $scope, Element $at): array
+    {
+        if ($node->kind === 'store') {
+            [$store, $member, $call] = $node->value;
+            $class = $this->store($store, $scope, $at);
+            $label = "\$store->$store->$member" . ($call ? '()' : '');
+            $type = $call ? ($class->computed[$member] ?? null) : ($class->props[$member] ?? null);
+            if ($type === null) {
+                throw TemplateException::at($at, "$label: '$member' is not a " . ($call ? 'method without parameters' : 'property') . " of {$class->short} (it has: " . self::members($class) . ')');
+            }
+            return [$call ? 'method' : 'property', "$store.$member", 'store', $type, $label];
+        }
+        $name = (string) $node->value;
+        $class = $scope->class;
+        if ($node->kind === 'call') {
+            $type = $class->computed[$name] ?? throw TemplateException::at($at, "'$name' is not a public method without parameters of {$class->short}");
+            return ['method', $name, $scope->owner, $type, "$name()"];
+        }
+        $type = $class->props[$name] ?? throw TemplateException::at($at, "'\$$name' is not a property of {$class->short}");
+        return ['property', $name, $scope->owner, $type, "\$$name"];
     }
 
     public function handler(string $raw, Scope $scope, Element $element): string

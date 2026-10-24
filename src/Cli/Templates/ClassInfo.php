@@ -26,6 +26,8 @@ final class ClassInfo
      * @param string                     $templateDeclared what template() returned ('' = not declared);
      *                                              $template is that path resolved against the project root,
      *                                              or ($templateDefault) templates/<path under src/>.rk
+     * @param list<array{group: string, class: string, found: bool, constants: array<string, mixed>}> $assets
+     *                                              $isApp: what the App subclass's assets() registers
      */
     public function __construct(
         public readonly string $name,
@@ -48,6 +50,8 @@ final class ClassInfo
         public readonly bool $isRootStore = false,
         public readonly bool $isStore = false,
         public readonly bool $templateDefault = false,
+        public readonly bool $isApp = false,
+        public readonly array $assets = [],
     ) {
     }
 
@@ -75,6 +79,8 @@ final class ClassInfo
             (bool) ($row['isRootStore'] ?? false),
             (bool) ($row['isStore'] ?? false),
             (bool) ($row['templateDefault'] ?? false),
+            (bool) ($row['isApp'] ?? false),
+            array_map(fn(array $g) => ['group' => (string) $g['group'], 'class' => (string) $g['class'], 'found' => (bool) $g['found'], 'constants' => (array) $g['constants']], (array) ($row['assets'] ?? [])),
         );
     }
 }
