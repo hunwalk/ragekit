@@ -11,6 +11,27 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-24
+
+The dev shell on Windows: `ragekit dev` (hot reload) now works there too. Nothing changes for
+0.5 apps.
+
+### Added
+
+- **`ragekit dev` on Windows.** The dev shell now builds with MSVC and runs there: hot reload,
+  PHP restarts with state restored, and native modules (loaded with `LoadLibrary`).
+
+### Changed
+
+- The dev shell talks to the app's PHP and to `ragekit dev` over 127.0.0.1 (a one-time token
+  passed in the environment) instead of inherited fds 3 and 4, on every OS. Nothing changes for
+  apps; a custom dev runtime opens the link with `RageKit\Slint\Dev\Channel::connect()`.
+
+### Fixed
+
+- Windows: detecting MSVC a second time in one process (vcvars printing `PATH` where the
+  environment had `Path`) left the old `Path` in place, so `cl.exe` wasn't found.
+
 ## [0.5.0] - 2026-10-24
 
 Images from PHP: registered assets, files and web images behind the same `source`. Nothing changes
