@@ -11,6 +11,12 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-24
+
+Generators for screens, windows, components, stores, services and flows, templates that find
+themselves, and two crash fixes. Nothing changes for 0.3 apps; a custom backend implements one new
+method (`printError()`, see Changed).
+
 ### Added
 
 - **Generators:** `ragekit make:screen`, `make:window`, `make:component`, `make:store`,
