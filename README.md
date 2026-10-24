@@ -174,6 +174,7 @@ On Windows, run `setup.ps1` instead of `setup.sh`.
 - [Templates](docs/templates.md) — `.rk` syntax, elements, components
 - [Moving between screens](docs/navigation.md) — the navigator: push, back, a window's stack of screens
 - [App-wide state](docs/state.md) — stores: the signed-in user, settings; `$store` in templates
+- [Generators](docs/make.md) — `ragekit make:screen` and friends, where things go, `stub:publish`
 - [Kits](docs/kits.md) — choosing and writing UI kits
 - [Native modules](docs/modules.md) — using and writing modules (audio, http)
 - [Dev mode](docs/dev-mode.md) — `ragekit dev` and hot reload

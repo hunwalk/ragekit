@@ -24,7 +24,8 @@ final class ClassInfo
      * @param string                     $window    screens: the Window subclass they show in ('' = Window itself)
      * @param list<string>                $interfaces interfaces the class implements
      * @param string                     $templateDeclared what template() returned ('' = not declared);
-     *                                              $template is that path resolved against the project root
+     *                                              $template is that path resolved against the project root,
+     *                                              or ($templateDefault) templates/<path under src/>.rk
      */
     public function __construct(
         public readonly string $name,
@@ -46,6 +47,7 @@ final class ClassInfo
         public readonly bool $constructible = true,
         public readonly bool $isRootStore = false,
         public readonly bool $isStore = false,
+        public readonly bool $templateDefault = false,
     ) {
     }
 
@@ -72,6 +74,7 @@ final class ClassInfo
             (bool) ($row['constructible'] ?? true),
             (bool) ($row['isRootStore'] ?? false),
             (bool) ($row['isStore'] ?? false),
+            (bool) ($row['templateDefault'] ?? false),
         );
     }
 }

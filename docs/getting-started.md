@@ -214,6 +214,13 @@ bar (a frameless window drawn by your own `Window` subclass), see
 [Windows](templates.md#windows-a-frame-and-a-custom-title-bar); for state the whole app shares
 (who is signed in), [state.md](state.md).
 
+## Where things go
+
+Bigger apps keep screens, windows, stores and services in their own folders under `src/`, with
+templates in matching folders under `templates/`. `ragekit make:screen Login` and friends create
+them in the right place; see [make.md](make.md). The starter (`composer create-project
+ragekit/starter`) is laid out that way.
+
 ## Build, run, develop
 
 ```sh

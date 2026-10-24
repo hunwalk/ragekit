@@ -67,6 +67,10 @@ final class SlintCompiler
             if ($class->template === '') {
                 throw new TemplateException($class->file, 0, "{$class->name} doesn't declare template()");
             }
+            if ($class->templateDefault && !is_file($class->template)) {
+                throw new TemplateException($class->file, 0, "{$class->short} has no template: create " . $this->relative($class->template)
+                    . ' (the default for ' . $this->relative($class->file) . ') or override template()');
+            }
             if (!is_file($class->template)) {
                 throw new TemplateException($class->file, 0, "{$class->short}::template() points to {$class->templateDeclared}, which doesn't exist ({$class->template})");
             }
@@ -118,6 +122,14 @@ final class SlintCompiler
             $windows,
             $root?->name,
         );
+    }
+
+    /** $path relative to the project root, when it's inside it. */
+    private function relative(string $path): string
+    {
+        $root = rtrim(str_replace('\\', '/', $this->projectRoot), '/') . '/';
+        $path = str_replace('\\', '/', $path);
+        return $this->projectRoot !== '' && str_starts_with($path, $root) ? substr($path, strlen($root)) : $path;
     }
 
     private function windowComponent(): string

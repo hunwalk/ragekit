@@ -501,4 +501,14 @@ final class SlintCompilerTest extends TestCase
         exec(escapeshellarg($compiler) . ' ' . escapeshellarg("$this->dir/app.slint") . ' -f cpp --embed-resources=embed-files -L material=' . escapeshellarg($material) . ' -o ' . escapeshellarg("$this->dir/app.h") . ' 2>&1', $output, $code);
         self::assertSame(0, $code, implode("\n", $output) . "\n\n" . $out->slint);
     }
+
+    public function testMissingDefaultTemplateNamesThePath(): void
+    {
+        $project = sys_get_temp_dir() . '/rk-default-' . uniqid();
+        $class = new ClassInfo('App\\Screens\\Auth\\LoginScreen', 'LoginScreen', "$project/src/Screens/Auth/LoginScreen.php", true,
+            "$project/templates/Screens/Auth/LoginScreen.rk", templateDefault: true);
+        $this->expectException(TemplateException::class);
+        $this->expectExceptionMessage('LoginScreen has no template: create templates/Screens/Auth/LoginScreen.rk (the default for src/Screens/Auth/LoginScreen.php) or override template()');
+        $this->compileIn($project, ['App\\Screens\\Auth\\LoginScreen' => $class]);
+    }
 }

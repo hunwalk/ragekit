@@ -1,0 +1,13 @@
+<?php
+
+namespace {{ namespace }};
+
+use RageKit\Screen;
+
+/**
+ * A screen: public properties are its state, public methods its event handlers. Its template is
+ * templates/ + this file's path under src/, with .rk instead of .php.
+ */
+final class {{ class }} extends Screen
+{
+}

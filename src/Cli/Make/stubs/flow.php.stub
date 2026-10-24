@@ -1,0 +1,15 @@
+<?php
+
+namespace {{ namespace }};
+
+/**
+ * A flow: one thing the user asks for, step by step — update a store (e.g. fetching = true), call
+ * a service, then write the result or the error into the store. A handler starts it with
+ * {{ class }}::run(). See RageKit's docs/state.md.
+ */
+final class {{ class }}
+{
+    public static function run(): void
+    {
+    }
+}

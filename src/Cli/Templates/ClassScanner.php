@@ -13,13 +13,15 @@ use RageKit\Cli\RageKitException;
 final class ClassScanner
 {
     /**
-     * @param list<string> $files app PHP files
+     * @param list<string> $files      app PHP files
+     * @param list<string> $sourceDirs the app's source folders: a class in one without template()
+     *                                 uses templates/<its path there>.rk
      * @return array<string, ClassInfo> by class name
      */
-    public static function scan(array $files, string $rageKitRoot, string $projectDir): array
+    public static function scan(array $files, string $rageKitRoot, string $projectDir, array $sourceDirs = []): array
     {
         $input = (string) tempnam(sys_get_temp_dir(), 'rk-introspect');
-        file_put_contents($input, json_encode(['rageKitRoot' => $rageKitRoot, 'projectDir' => $projectDir, 'files' => $files], JSON_THROW_ON_ERROR));
+        file_put_contents($input, json_encode(['rageKitRoot' => $rageKitRoot, 'projectDir' => $projectDir, 'files' => $files, 'sourceDirs' => $sourceDirs], JSON_THROW_ON_ERROR));
         // stderr goes to a temp file: stream_select() on proc_open pipes doesn't work on Windows,
         // and a file can't fill up and block the child like a second pipe could.
         $errFile = (string) tempnam(sys_get_temp_dir(), 'rk-introspect-err');

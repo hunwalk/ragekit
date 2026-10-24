@@ -68,6 +68,9 @@ src/Cli/
                          {{ expression }} parser
   Kits/                  kit.yml (the element contract: ElementSpec, PropSpec), finding kits,
                          ragekit eject
+  Make/                  ragekit make:* — Maker writes a class (+ template) from stubs in
+                         Make/stubs (or the app's stubs/), StoreRegistrar adds a store to the
+                         root store
   Slint/                 turning templates into Slint + the C++/PHP glue that connects them:
                          ElementDispatcher hands each element to its compiler in Slint/Elements/
                          (one class per construct, sharing a CompileContext); fixed shapes of

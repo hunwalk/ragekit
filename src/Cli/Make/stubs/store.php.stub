@@ -1,0 +1,14 @@
+<?php
+
+namespace {{ namespace }};
+
+use RageKit\Store;
+
+/**
+ * A store: app-wide state as public properties, read in templates as $store->name->property and in
+ * PHP as AppStore::get()->name. Tell the app what happened with $this->emit('event'); see
+ * RageKit's docs/state.md.
+ */
+final class {{ class }} extends Store
+{
+}

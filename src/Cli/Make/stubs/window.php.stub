@@ -1,0 +1,13 @@
+<?php
+
+namespace {{ namespace }};
+
+use RageKit\Window;
+
+/**
+ * A window with its own title bar: screens whose window() returns this class show inside it, where
+ * the template has <Content />. Its template is templates/ + this file's path under src/, with .rk.
+ */
+final class {{ class }} extends Window
+{
+}

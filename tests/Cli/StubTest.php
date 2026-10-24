@@ -74,4 +74,12 @@ final class StubTest extends TestCase
         $this->expectExceptionMessage('its value must be one line');
         Stub::render($this->stub("a: {{ v }};\n"), ['v' => "1\n2"]);
     }
+
+    /** Non-strict (an app's own stubs): values without a placeholder are fine. */
+    public function testNonStrictAllowsUnusedValues(): void
+    {
+        $file = sys_get_temp_dir() . '/rk-stub-' . uniqid() . '.stub';
+        file_put_contents($file, "class {{ class }}\n");
+        self::assertSame("class A\n", Stub::render($file, ['class' => 'A', 'namespace' => 'X'], strict: false));
+    }
 }

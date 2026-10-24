@@ -1,0 +1,13 @@
+<?php
+
+namespace {{ namespace }};
+
+use RageKit\Component;
+
+/**
+ * A child component: other templates use it as <{{ class }} />, passing its public properties as
+ * attributes. Its template is templates/ + this file's path under src/, with .rk.
+ */
+final class {{ class }} extends Component
+{
+}

@@ -8,7 +8,8 @@ namespace RageKit\Cli;
  * A stub: a file of generated code with {{ name }} placeholders (Laravel's stubs). A placeholder
  * alone on its line takes a block: every line of the value is indented like the placeholder,
  * and an empty value removes the line. Elsewhere a placeholder takes a one-line value.
- * A placeholder without a value, or a value without a placeholder, is an error.
+ * A placeholder without a value is an error, and so is a value without a placeholder unless
+ * $strict is false (an app's own stubs may leave values out).
  */
 final class Stub
 {
@@ -16,7 +17,7 @@ final class Stub
     private static array $cache = [];
 
     /** @param array<string, string> $values */
-    public static function render(string $path, array $values): string
+    public static function render(string $path, array $values, bool $strict = true): string
     {
         // CRLF (a Windows checkout) would hide a block placeholder behind its \r.
         $stub = self::$cache[$path] ??= str_replace("\r\n", "\n", (string) (@file_get_contents($path) ?: throw new RageKitException("stub not found: $path")));
@@ -41,7 +42,7 @@ final class Stub
             }, $line);
         }
         $unused = array_diff(array_keys($values), array_keys($used));
-        if ($unused !== []) {
+        if ($strict && $unused !== []) {
             throw new RageKitException("stub $path has no placeholder for: " . implode(', ', $unused));
         }
         return implode("\n", $out);

@@ -44,7 +44,7 @@ final class GenerateViews implements Step
         $project = $context->project;
         $root = $context->backend->rageKitRoot;
         $appSources = ConfigMerger::resolvePaths(['sources' => $project->config['sources'] ?? []], $project->dir)['sources'];
-        $classes = ClassScanner::scan(SourceFiles::php($appSources), $root, $project->dir);
+        $classes = ClassScanner::scan(SourceFiles::php($appSources), $root, $project->dir, array_values(array_filter($appSources, 'is_dir')));
         $kits = KitRegistry::discover($root, $project->dir);
         $kit = (string) ($project->options['kit'] ?? 'material');
         $kits->get($kit);

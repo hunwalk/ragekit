@@ -1,0 +1,8 @@
+<VStack padded="false">
+    <WindowDrag>
+        <Label text="  {{ class }}" grow="true" />
+        <WindowControls />
+    </WindowDrag>
+    <Separator />
+    <Content />
+</VStack>

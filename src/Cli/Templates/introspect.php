@@ -13,6 +13,7 @@ declare(strict_types=1);
 $input = json_decode((string) file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
 $root = $input['rageKitRoot'];
 $projectDir = $input['projectDir'];
+$sourceDirs = $input['sourceDirs'] ?? [];
 
 $map = [
     'RageKit\\App' => "$root/src/App.php",
@@ -45,7 +46,7 @@ foreach (array_keys($map) as $class) {
     if ($reflection->isAbstract() || (!$reflection->isSubclassOf('RageKit\\Component') && !$state)) {
         continue;
     }
-    $out[] = describe($reflection, $projectDir);
+    $out[] = describe($reflection, $projectDir, $sourceDirs);
 }
 echo json_encode($out, JSON_THROW_ON_ERROR);
 
@@ -98,7 +99,25 @@ function typeName(?ReflectionType $type): string
 }
 
 /** @return array<string, mixed> */
-function describe(ReflectionClass $class, string $projectDir): array
+/**
+ * templates/<path of $file under the source folder holding it, .php → .rk>, or '' when it's in none.
+ *
+ * @param list<string> $sourceDirs
+ */
+function defaultTemplate(string $file, string $projectDir, array $sourceDirs): string
+{
+    $file = str_replace('\\', '/', $file);
+    foreach ($sourceDirs as $dir) {
+        $dir = rtrim(str_replace('\\', '/', (string) (realpath($dir) ?: $dir)), '/') . '/';
+        if (str_starts_with($file, $dir)) {
+            return rtrim(str_replace('\\', '/', $projectDir), '/') . '/templates/' . substr($file, strlen($dir), -4) . '.rk';
+        }
+    }
+    return '';
+}
+
+/** @param list<string> $sourceDirs */
+function describe(ReflectionClass $class, string $projectDir, array $sourceDirs): array
 {
     $base = ['RageKit\\Component', 'RageKit\\Screen', 'RageKit\\Window', 'RageKit\\Store', 'RageKit\\RootStore'];
     $state = $class->isSubclassOf('RageKit\\RootStore') || $class->isSubclassOf('RageKit\\Store');
@@ -135,6 +154,11 @@ function describe(ReflectionClass $class, string $projectDir): array
     $declared = $state ? '' : (string) $class->getName()::template();
     $absolute = preg_match('~^([A-Za-z]:[\\\\/]|[\\\\/])~', $declared) === 1;
     $template = $declared === '' ? '' : ($absolute ? $declared : rtrim($projectDir, '/\\') . '/' . $declared);
+    $templateDefault = false;
+    if ($declared === '' && !$state && str_ends_with((string) $class->getFileName(), '.php')) {
+        $template = defaultTemplate((string) $class->getFileName(), $projectDir, $sourceDirs);
+        $templateDefault = $template !== '';
+    }
     $isWindow = $class->isSubclassOf('RageKit\\Window');
     $context = $isWindow ? (string) $class->getName()::context() : '';
     // A screen's window class; '' = Window itself (the OS's title bar).
@@ -157,6 +181,7 @@ function describe(ReflectionClass $class, string $projectDir): array
         'screen' => $class->isSubclassOf('RageKit\\Screen'),
         'template' => $template,
         'templateDeclared' => $declared,
+        'templateDefault' => $templateDefault,
         'props' => (object) $props,
         'computed' => (object) $computed,
         'handlers' => (object) $handlers,

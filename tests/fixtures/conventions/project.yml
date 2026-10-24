@@ -1,0 +1,5 @@
+# Classes without template() use templates/<their path under src/>.rk: tests/Templates/ClassScannerTest.php
+name: conventions
+sources:
+  - main.php
+  - src

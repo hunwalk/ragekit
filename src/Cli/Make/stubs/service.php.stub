@@ -1,0 +1,11 @@
+<?php
+
+namespace {{ namespace }};
+
+/**
+ * A service: talks to the outside world (an HTTP API, files, a native module) and knows nothing
+ * about screens or stores. Flows call it and put what it returns into a store.
+ */
+final class {{ class }}
+{
+}

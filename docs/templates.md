@@ -116,8 +116,10 @@ public static function template(): string
 }
 ```
 
-Folder and file names are up to you. A component that doesn't override `template()`, or points to
-a file that doesn't exist, fails the build.
+Folder and file names are up to you. Without `template()`, a class in a source folder uses the
+file at the same path under `templates/`: `src/Screens/LoginScreen.php` →
+`templates/Screens/LoginScreen.rk` (see [make.md](make.md#templates-find-themselves)). A template
+that doesn't exist fails the build, and the error names the file it expected.
 
 The class must not be abstract. Class short names must be unique across the whole app: two
 components both called `Card` in different namespaces are a build error, because the template uses

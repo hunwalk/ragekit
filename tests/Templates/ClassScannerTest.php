@@ -207,4 +207,35 @@ final class ClassScannerTest extends TestCase
         self::assertSame('', $classes['Und\B']->template);
         self::assertSame('', $classes['Und\B']->templateDeclared);
     }
+
+    /** A class without template() uses templates/<its path under its source folder>.rk. */
+    public function testDefaultTemplatePathMirrorsSrc(): void
+    {
+        $dir = Paths::normalize((string) realpath(__DIR__ . '/../fixtures/conventions'));
+        $classes = ClassScanner::scan(SourceFiles::php(["$dir/src"]), (string) realpath(__DIR__ . '/../..'), $dir, ["$dir/src"]);
+        $home = $classes['App\Screens\HomeScreen'];
+        self::assertSame("$dir/templates/Screens/HomeScreen.rk", $home->template);
+        self::assertTrue($home->templateDefault);
+        self::assertSame('', $home->templateDeclared);
+        $login = $classes['App\Screens\Auth\LoginScreen'];
+        self::assertSame("$dir/templates/Screens/Auth/LoginScreen.rk", $login->template);
+        self::assertTrue($login->templateDefault);
+    }
+
+    public function testDeclaredTemplateWins(): void
+    {
+        $dir = (string) realpath(self::APP);
+        $classes = ClassScanner::scan(SourceFiles::php([self::APP]), (string) realpath(__DIR__ . '/../..'), $dir, [$dir]);
+        self::assertSame(Paths::normalize($dir) . '/templates/counter.rk', $classes['Demo\CounterScreen']->template);
+        self::assertFalse($classes['Demo\CounterScreen']->templateDefault);
+    }
+
+    /** Outside every source folder there's no default: the class must declare template(). */
+    public function testOutsideSourceDirsNeedsTemplate(): void
+    {
+        $dir = Paths::normalize((string) realpath(__DIR__ . '/../fixtures/conventions'));
+        $classes = ClassScanner::scan(SourceFiles::php(["$dir/src"]), (string) realpath(__DIR__ . '/../..'), $dir);
+        self::assertSame('', $classes['App\Screens\HomeScreen']->template);
+        self::assertFalse($classes['App\Screens\HomeScreen']->templateDefault);
+    }
 }

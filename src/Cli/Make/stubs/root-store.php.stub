@@ -1,0 +1,20 @@
+<?php
+
+namespace {{ namespace }};
+
+use RageKit\RootStore;
+
+/**
+ * The app's state: each store is a typed public property. Your App returns it from createStore();
+ * code reaches it as {{ class }}::get().
+ */
+final class {{ class }} extends RootStore
+{
+    {{ properties }}
+
+    public function __construct()
+    {
+        parent::__construct();
+        {{ assignments }}
+    }
+}

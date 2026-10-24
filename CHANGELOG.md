@@ -11,6 +11,17 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+### Added
+
+- **Generators:** `ragekit make:screen`, `make:window`, `make:component`, `make:store`,
+  `make:service` and `make:flow` create a class (and, for screens, windows and components, its
+  `.rk` template) in the recommended folders (`src/Screens`, `src/Windows`, `src/Stores`, …).
+  `make:store` also adds the store to the app's root store. `ragekit stub:publish` copies the
+  stubs into the app's `stubs/` so it can change what `make:` writes. Docs: docs/make.md.
+- **Templates find themselves:** a screen, window or component without `template()` uses
+  `templates/<its path under src/>.rk`, e.g. `templates/Screens/LoginScreen.rk` for
+  `src/Screens/LoginScreen.php`. Overriding `template()` still works.
+
 ## [0.3.0] - 2026-10-24
 
 The app gets a shape: an app class you extend, a `Window` object per OS window, and app-wide state
