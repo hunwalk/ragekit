@@ -11,6 +11,11 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-24
+
+Images from PHP: registered assets, files and web images behind the same `source`. Nothing changes
+for 0.4 apps; kits with an `image` prop and custom bridges see the additions under Changed.
+
 ### Added
 
 - **Images from PHP** (docs/templates.md, "Image"): `source="{{ $cover }}"` shows whatever a string
