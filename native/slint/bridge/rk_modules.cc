@@ -6,6 +6,7 @@
 #endif
 #include "ragekit_slint.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <map>
@@ -60,6 +61,13 @@ RK_API size_t rk_app_dir(char *buffer, size_t size)
     size_t n = dir.size() < size ? dir.size() : size;
     std::memcpy(buffer, dir.data(), n);
     return n;
+}
+
+RK_API void rk_print_error(const char *text, size_t len)
+{
+    std::fwrite(text, 1, len, stderr);
+    std::fputc('\n', stderr);
+    std::fflush(stderr);
 }
 
 RK_API void rk_module_expect(const char *name, const char *symbols)

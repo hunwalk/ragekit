@@ -94,6 +94,16 @@ abstract class App
         $this->quit();
     }
 
+    /**
+     * A handler or a module event threw and nothing caught it. By default it's printed to stderr
+     * and the app keeps running (what changed before the throw is still shown); override it to
+     * show or log it instead.
+     */
+    protected function uncaughtException(\Throwable $e): void
+    {
+        $this->backend->printError('ragekit: uncaught ' . get_class($e) . ': ' . $e->getMessage());
+    }
+
     /** Creates the store, opens the main window, calls start(), then runs until quit(). */
     public function run(): void
     {
@@ -129,6 +139,12 @@ abstract class App
             return;
         }
         $this->backend->close($window);
+    }
+
+    /** @internal The backend caught an exception from a handler or a module event. */
+    public function exceptionThrown(\Throwable $e): void
+    {
+        $this->uncaughtException($e);
     }
 
     /** The active backend, for backend-specific APIs. */

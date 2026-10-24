@@ -48,6 +48,7 @@ namespace {
     function slint_quit(): void { FakeHost::$calls[] = 'quit'; }
     function slint_set_event_dispatcher(mixed $fn): void { FakeHost::$eventDispatcher = $fn; }
     function slint_app_dir(): string { return '/app'; }
+    function slint_print_error(string $line): void { FakeHost::$calls[] = "error $line"; }
     function ragekit_module_available(string $name): bool { return (FakeHost::$modules[$name] ?? 'not installed') === ''; }
     function http_request(string $method, string $url, string $headers, string $body, string $file, float $timeout): int
     {

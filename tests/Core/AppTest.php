@@ -114,6 +114,14 @@ final class AppTest extends TestCase
         self::assertSame(['hide'], $app->recorder->calls);
     }
 
+    /** An exception nobody caught is printed through the backend (stderr; Nano PHP has no STDERR). */
+    public function testUncaughtExceptionIsPrintedByDefault(): void
+    {
+        $app = RecordingApp::make();
+        $app->exceptionThrown(new \RuntimeException('boom'));
+        self::assertSame(['error ragekit: uncaught RuntimeException: boom'], $app->recorder->calls);
+    }
+
     /** A title bar's close button on the main window is the same as the OS's. */
     public function testWindowCloseButtonOnMainQuits(): void
     {

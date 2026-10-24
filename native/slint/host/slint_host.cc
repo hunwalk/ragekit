@@ -148,6 +148,11 @@ String php_slint_app_dir()
     return String(buffer, len);
 }
 
+void php_slint_print_error(String line)
+{
+    rk_print_error(line.data(), line.length());
+}
+
 Bool php_ragekit_module_available(String name)
 {
     return rk_module_open(std::string(name.data(), name.length()).c_str()) != 0;

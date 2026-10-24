@@ -269,9 +269,32 @@ final class SlintRuntimeTest extends TestCase
     public function testPushOtherWindowClassThrows(): void
     {
         $this->app->open(new WrongPushScreen(), title: 'W');
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('FramedScreen uses window FrameWindow; this window is Window');
         $this->event(1, 7);
+        self::assertCount(1, $this->app->uncaught);
+        self::assertInstanceOf(\RuntimeException::class, $this->app->uncaught[0]);
+        self::assertSame('FramedScreen uses window FrameWindow; this window is Window', $this->app->uncaught[0]->getMessage());
+    }
+
+    /** A handler that throws doesn't end the app: the app is told, and what changed before the throw is shown. */
+    public function testUncaughtExceptionInAHandlerKeepsTheAppRunning(): void
+    {
+        $this->runApp();
+        $this->event(1, 11);
+        self::assertSame(['boom at 1'], array_map(fn(\Throwable $e) => $e->getMessage(), $this->app->uncaught));
+        self::assertSame(['int 1 1 1'], FakeHost::$calls);
+        $this->event(1, 1);
+        self::assertSame(['int 1 1 2', 'list 1 3', '  item +1 → 2', 'list end'], FakeHost::$calls, 'the next click works');
+    }
+
+    public function testUncaughtExceptionInAModuleEventKeepsTheAppRunning(): void
+    {
+        $this->runApp();
+        \RageKit\Events::on('audio', 1, 'finished', function (string $data): void {
+            throw new \LogicException('bad event');
+        });
+        (FakeHost::$eventDispatcher)('audio', 1, 'finished', '');
+        \RageKit\Events::off('audio', 1);
+        self::assertSame(['bad event'], array_map(fn(\Throwable $e) => $e->getMessage(), $this->app->uncaught));
     }
 
     /** The page is read after the values: reading them may change the stack (dev mode restoring it). */

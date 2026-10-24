@@ -140,22 +140,9 @@ void stopTicker()
     }
 }
 
-// The app normally resets modules when its event loop ends; if it exits some other way, the
-// ticker must still be stopped before `ticker` is destroyed (a running std::thread aborts).
-struct ShutdownGuard {
-    ~ShutdownGuard() { stopTicker(); }
-} shutdownGuard;
-
-} // namespace
-
-extern "C" {
-
-RKM_API void rkm_audio_init(rk_post_fn fn)
-{
-    post = fn;
-}
-
-RKM_API void rkm_audio_reset(void)
+// Stops the ticker and frees every sound, the engine and the context (miniaudio's audio thread
+// ends with the engine).
+void shutdown()
 {
     stopTicker();
     std::lock_guard<std::mutex> sending(posting);
@@ -172,6 +159,27 @@ RKM_API void rkm_audio_reset(void)
         ma_context_uninit(&context);
         contextReady = false;
     }
+}
+
+// The app normally resets modules when its event loop ends; if it exits some other way, everything
+// must still be shut down before the statics above are destroyed: a running std::thread aborts, and
+// miniaudio's audio thread would keep mixing sounds that `sounds` has already freed.
+struct ShutdownGuard {
+    ~ShutdownGuard() { shutdown(); }
+} shutdownGuard;
+
+} // namespace
+
+extern "C" {
+
+RKM_API void rkm_audio_init(rk_post_fn fn)
+{
+    post = fn;
+}
+
+RKM_API void rkm_audio_reset(void)
+{
+    shutdown();
 }
 
 RKM_API int64_t rkm_audio_load(const char *path, size_t path_len)

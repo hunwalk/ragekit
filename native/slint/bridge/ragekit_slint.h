@@ -54,6 +54,8 @@ RK_API void *rk_module_symbol(int64_t module, const char *symbol);
 RK_API void rk_modules_reset(void);
 /** The executable's folder (no trailing slash) into buffer; returns its length. */
 RK_API size_t rk_app_dir(char *buffer, size_t size);
+/** Writes text and a newline to stderr. */
+RK_API void rk_print_error(const char *text, size_t len);
 
 /** A module event for PHP: module, handle, kind, data. */
 typedef void (*rk_module_event_fn)(const char *module, size_t module_len, int64_t handle, const char *kind, size_t kind_len, const char *data, size_t data_len);

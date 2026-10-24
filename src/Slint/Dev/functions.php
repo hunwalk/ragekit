@@ -25,6 +25,11 @@ function slint_app_dir(): string
     return (string) (getenv('RAGEKIT_APP_DIR') ?: getcwd());
 }
 
+function slint_print_error(string $line): void
+{
+    fwrite(STDERR, $line . "\n");
+}
+
 function ragekit_module_available(string $name): bool
 {
     return (Session::channel()->request('module', $name)[1] ?? '0') === '1';

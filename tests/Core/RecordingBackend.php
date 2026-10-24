@@ -57,4 +57,9 @@ final class RecordingBackend implements Backend
     {
         return '/app';
     }
+
+    public function printError(string $line): void
+    {
+        $this->calls[] = "error $line";
+    }
 }

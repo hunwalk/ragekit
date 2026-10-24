@@ -21,6 +21,20 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 - **Templates find themselves:** a screen, window or component without `template()` uses
   `templates/<its path under src/>.rk`, e.g. `templates/Screens/LoginScreen.rk` for
   `src/Screens/LoginScreen.php`. Overriding `template()` still works.
+- **`App::uncaughtException()`:** where exceptions nobody caught in a handler or a module event
+  end up. By default they're printed to stderr; override it to show or log them.
+
+### Fixed
+
+- An exception a click handler or a module event's callback didn't catch ended the app ("Fatal
+  error" in normal builds, a segfault in Nano builds). It's now printed and the app keeps running.
+- An app could crash on exit while a sound was playing: the audio module freed its sounds while
+  miniaudio's audio thread was still mixing them. It now shuts the engine down first.
+
+### Changed
+
+- **Backends:** `RageKit\Backend` gains `printError(string $line)` (the Slint backend writes to
+  stderr through the bridge's new `rk_print_error`, since Nano PHP has no `STDERR`).
 
 ## [0.3.0] - 2026-10-24
 

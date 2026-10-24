@@ -58,6 +58,14 @@ namespace RageKit\Tests\Slint\Runtime {
         {
             return 'Main';
         }
+
+        /** @var list<\Throwable> what uncaughtException() received */
+        public array $uncaught = [];
+
+        protected function uncaughtException(\Throwable $e): void
+        {
+            $this->uncaught[] = $e;
+        }
     }
 
     final class CounterScreen extends Screen
@@ -91,6 +99,13 @@ namespace RageKit\Tests\Slint\Runtime {
         public function signOut(): void
         {
             RuntimeStore::get()->session->signOut();
+        }
+
+        /** Changes a value, then throws. */
+        public function explode(): void
+        {
+            $this->count++;
+            throw new \RuntimeException('boom at ' . $this->count);
         }
     }
 
@@ -261,6 +276,9 @@ namespace RageKit\Generated {
                         return 0;
                     case 10:
                         $s->signOut();
+                        return 0;
+                    case 11:
+                        $s->explode();
                         return 0;
                     default:
                         return 0;

@@ -44,6 +44,9 @@ function slint_set_event_dispatcher(mixed $dispatcher): void {}
 /** The folder of the executable (the dev runtime answers with the project's folder). */
 function slint_app_dir(): string {}
 
+/** Writes $line and a newline to stderr (Nano PHP has no STDERR). */
+function slint_print_error(string $line): void {}
+
 /** Whether the native module's library could be loaded (see modules/<name>). */
 function ragekit_module_available(string $name): bool {}
 

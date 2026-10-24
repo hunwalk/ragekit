@@ -16,21 +16,27 @@ final class SlintBackend implements Backend
     /** @var array<int, SlintWindow> open windows by id */
     private array $windows = [];
 
+    /** The app, once it opened a window: exceptions from handlers go to it. */
+    private ?App $app = null;
+
     public function __construct()
     {
         \slint_set_dispatcher(function (int $window, int $action, string $arg): void {
             $this->dispatch($window, $action, $arg);
         });
         \slint_set_event_dispatcher(function (string $module, int $handle, string $kind, string $data): void {
-            \RageKit\Events::deliver($module, $handle, $kind, $data);
-            foreach ($this->windows as $open) {
-                $open->sync();
+            try {
+                \RageKit\Events::deliver($module, $handle, $kind, $data);
+            } catch (\Throwable $e) {
+                $this->report($e);
             }
+            $this->syncAll();
         });
     }
 
     public function open(App $app, Screen $screen, string $title, int $width, int $height): Window
     {
+        $this->app = $app;
         $window = new SlintWindow($app, $screen, $title, $width, $height);
         $this->windows[$window->id] = $window;
         return $window->window;
@@ -77,6 +83,11 @@ final class SlintBackend implements Backend
         return \slint_app_dir();
     }
 
+    public function printError(string $line): void
+    {
+        \slint_print_error($line);
+    }
+
     /** Pushes every window's values again (dev mode, after a template reload). */
     public function resync(): void
     {
@@ -88,7 +99,8 @@ final class SlintBackend implements Backend
     /**
      * Every UI event: action 0 is the OS closing the window (the App decides: the main window
      * ends the app), -1 reports its maximised state (arg "1"/"0"), -2 is the toast timer's tick,
-     * -3 is back (Alt+Left), others run a handler; then all windows re-sync.
+     * -3 is back (Alt+Left), others run a handler; then all windows re-sync. An exception nobody
+     * caught goes to the app (App::uncaughtException()) instead of ending it.
      */
     private function dispatch(int $window, int $action, string $arg): void
     {
@@ -96,19 +108,41 @@ final class SlintBackend implements Backend
         if ($target === null) {
             return;
         }
-        if ($action === 0) {
-            $target->closeRequested();
-        } elseif ($action === -1) {
-            $target->maximizedChanged($arg === '1');
-        } elseif ($action === -2) {
-            // A toast tick: no handler; the re-sync below drops expired toasts.
-        } elseif ($action === -3) {
-            $target->back();
-        } else {
-            $target->handle($action, $arg);
+        try {
+            if ($action === 0) {
+                $target->closeRequested();
+            } elseif ($action === -1) {
+                $target->maximizedChanged($arg === '1');
+            } elseif ($action === -2) {
+                // A toast tick: no handler; the re-sync below drops expired toasts.
+            } elseif ($action === -3) {
+                $target->back();
+            } else {
+                $target->handle($action, $arg);
+            }
+        } catch (\Throwable $e) {
+            $this->report($e);
         }
+        $this->syncAll();
+    }
+
+    /** Every window re-reads its values (a computed value may throw too). */
+    private function syncAll(): void
+    {
         foreach ($this->windows as $open) {
-            $open->sync();
+            try {
+                $open->sync();
+            } catch (\Throwable $e) {
+                $this->report($e);
+            }
         }
+    }
+
+    private function report(\Throwable $e): void
+    {
+        if ($this->app === null) {
+            throw $e;
+        }
+        $this->app->exceptionThrown($e);
     }
 }

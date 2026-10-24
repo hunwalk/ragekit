@@ -104,6 +104,18 @@ ends the app and closes the others; closing another window only closes it. `$thi
 ends the app from code. (An app that should keep running without its main window overrides
 `mainWindowClosed()`.)
 
+An exception that a handler (or a module event's callback) doesn't catch doesn't end the app: it's
+printed to stderr as `ragekit: uncaught RuntimeException: …`, what the handler changed before the
+throw is still shown, and the next click works. To show or log it yourself, override
+`uncaughtException()` in your app:
+
+```php
+protected function uncaughtException(\Throwable $e): void
+{
+    $this->main()->toast('Something went wrong: ' . $e->getMessage());
+}
+```
+
 ### Where the template lives
 
 Every component overrides the static `template()` method and returns the path of its `.rk`

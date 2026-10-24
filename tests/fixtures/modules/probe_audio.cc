@@ -1,6 +1,7 @@
 // Drives the audio module's library like PHP would (AudioLibraryTest): one "name value" line per
 // check, and "event <handle> <kind> <data>" lines from the library's event callback.
 #include <dlfcn.h>
+#include <cstdlib>
 
 #include <chrono>
 #include <cmath>
@@ -36,6 +37,10 @@ std::string num(double v)
 
 int main(int, char **argv)
 {
+    // Registered before the library loads, so it runs after the library's static destructors at
+    // exit: the process keeps living for a while, as a real app does while it tears down. Audio
+    // threads still running then would read freed sounds.
+    std::atexit([] { sleepMs(200); });
     void *lib = dlopen(argv[1], RTLD_NOW);
     if (lib == nullptr) {
         std::printf("dlopen failed: %s\n", dlerror());

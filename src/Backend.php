@@ -26,4 +26,7 @@ interface Backend
 
     /** The app's folder: where the executable and its assets are (in dev mode: the project). */
     public function appDir(): string;
+
+    /** Writes one line to the app's error output (stderr). */
+    public function printError(string $line): void;
 }
