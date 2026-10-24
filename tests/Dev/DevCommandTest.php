@@ -24,10 +24,7 @@ final class DevCommandTest extends TestCase
 
     protected function setUp(): void
     {
-        $slint = InstalledToolchain::slintHome();
-        if (Platform::os() !== 'linux' || trim((string) shell_exec('command -v g++')) === '' || !is_file("$slint/include/slint/slint-interpreter.h")) {
-            self::markTestSkipped('needs Linux, g++ and the Slint C++ package');
-        }
+        InstalledToolchain::skipWithoutDevShell();
         $this->project = sys_get_temp_dir() . '/rk-devcommand-fixture';
         foreach (['src', 'templates', 'kits/k'] as $dir) {
             @mkdir("$this->project/$dir", 0777, true);
@@ -157,17 +154,20 @@ final class DevCommandTest extends TestCase
     /** @param array<string, string> $env */
     private function start(array $env = [], array $options = []): void
     {
-        $this->process = proc_open([PHP_BINARY, dirname(__DIR__, 2) . '/bin/ragekit', 'dev', '--headless', ...$options], [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $this->pipes, $this->project, $env + ['SLINT_HOME' => InstalledToolchain::slintHome()] + getenv()); // the fixture has no .ragekit/ of its own
-        stream_set_blocking($this->pipes[1], false);
-        stream_set_blocking($this->pipes[2], false);
+        // Output goes to files: Windows can't read proc_open pipes without blocking.
+        @unlink("$this->project/dev.out");
+        @unlink("$this->project/dev.err");
+        $null = Platform::isWindows() ? 'NUL' : '/dev/null';
+        $this->process = proc_open([PHP_BINARY, dirname(__DIR__, 2) . '/bin/ragekit', 'dev', '--headless', ...$options], [0 => ['file', $null, 'r'], 1 => ['file', "$this->project/dev.out", 'w'], 2 => ['file', "$this->project/dev.err", 'w']], $this->pipes, $this->project, $env + ['SLINT_HOME' => InstalledToolchain::slintHome()] + getenv()); // the fixture has no .ragekit/ of its own
         $this->waitOut('app started', 120.0);
         usleep(800_000); // let PHP open its window and send `run`
     }
 
     private function drain(): void
     {
-        $this->out .= (string) stream_get_contents($this->pipes[1]);
-        $this->err .= (string) stream_get_contents($this->pipes[2]);
+        clearstatcache();
+        $this->out = (string) @file_get_contents("$this->project/dev.out");
+        $this->err = (string) @file_get_contents("$this->project/dev.err");
     }
 
     private function waitOut(string $text, float $timeout = 20.0): void

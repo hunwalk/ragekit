@@ -1,6 +1,12 @@
 #include "modules.h"
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#else
 #include <dlfcn.h>
+#endif
 
 #include <mutex>
 #include <utility>
@@ -8,6 +14,60 @@
 namespace rk::dev {
 
 namespace {
+
+#ifdef _WIN32
+void *openLibrary(const std::string &path)
+{
+    int size = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, nullptr, 0);
+    std::wstring wide(static_cast<size_t>(size), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, wide.data(), size);
+    return LoadLibraryW(wide.c_str());
+}
+
+void *symbol(void *library, const std::string &name)
+{
+    return reinterpret_cast<void *>(GetProcAddress(static_cast<HMODULE>(library), name.c_str()));
+}
+
+void closeLibrary(void *library)
+{
+    FreeLibrary(static_cast<HMODULE>(library));
+}
+
+std::string loadError(const std::string &path)
+{
+    DWORD code = GetLastError();
+    char *text = nullptr;
+    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, code, 0, reinterpret_cast<char *>(&text), 0, nullptr);
+    std::string why = text != nullptr ? text : "error " + std::to_string(code);
+    LocalFree(text);
+    while (!why.empty() && (why.back() == '\n' || why.back() == '\r' || why.back() == ' ')) {
+        why.pop_back();
+    }
+    return path + ": " + why;
+}
+#else
+void *openLibrary(const std::string &path)
+{
+    return dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+}
+
+void *symbol(void *library, const std::string &name)
+{
+    return dlsym(library, name.c_str());
+}
+
+void closeLibrary(void *library)
+{
+    dlclose(library);
+}
+
+std::string loadError(const std::string &path)
+{
+    const char *why = dlerror();
+    return why != nullptr ? why : "not found: " + path;
+}
+#endif
 
 // rk_post_fn can't carry state: the one Modules instance's handler.
 std::mutex handlerLock;
@@ -38,19 +98,18 @@ Modules::Modules(EventFn onEvent)
 bool Modules::load(const std::string &name, const std::string &path)
 {
     Module module;
-    module.library = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
+    module.library = openLibrary(path);
     if (module.library == nullptr) {
-        const char *why = dlerror();
-        module.error = why != nullptr ? why : "not found: " + path;
+        module.error = loadError(path);
         modules_[name] = module;
         return false;
     }
-    module.call = reinterpret_cast<decltype(module.call)>(dlsym(module.library, ("rkm_" + name + "_call").c_str()));
-    module.reset = reinterpret_cast<void (*)()>(dlsym(module.library, ("rkm_" + name + "_reset").c_str()));
-    auto init = reinterpret_cast<void (*)(PostFn)>(dlsym(module.library, ("rkm_" + name + "_init").c_str()));
+    module.call = reinterpret_cast<decltype(module.call)>(symbol(module.library, "rkm_" + name + "_call"));
+    module.reset = reinterpret_cast<void (*)()>(symbol(module.library, "rkm_" + name + "_reset"));
+    auto init = reinterpret_cast<void (*)(PostFn)>(symbol(module.library, "rkm_" + name + "_init"));
     if (module.call == nullptr || init == nullptr) {
         module.error = path + " is not a RageKit module (no rkm_" + name + "_call/_init)";
-        dlclose(module.library);
+        closeLibrary(module.library);
         module.library = nullptr;
         modules_[name] = module;
         return false;
@@ -70,7 +129,7 @@ void Modules::unload(const std::string &name)
         if (it->second.reset != nullptr) {
             it->second.reset();
         }
-        dlclose(it->second.library);
+        closeLibrary(it->second.library);
     }
     modules_.erase(it);
 }

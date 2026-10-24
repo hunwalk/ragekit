@@ -1,5 +1,6 @@
 #include "shell.h"
 
+#include "platform.h"
 #include "protocol.h"
 #include "window.h"
 
@@ -7,7 +8,6 @@
 #include <cstdlib>
 #include <fstream>
 #include <memory>
-#include <unistd.h>
 
 namespace rk::dev {
 
@@ -22,8 +22,10 @@ slint::Window &mutableWindow(const slint::interpreter::ComponentInstance &instan
 
 void Shell::log(const std::string &line) const
 {
-    if (!options_.log.empty()) {
-        std::ofstream(options_.log, std::ios::app) << line << "\n";
+    if (options_.log == "-") {
+        std::fprintf(stderr, "%s\n", line.c_str());
+    } else if (!options_.log.empty()) {
+        std::ofstream(options_.log, std::ios::app | std::ios::binary) << line << "\n"; // "\n" on Windows too
     }
 }
 
@@ -37,6 +39,14 @@ Shell::Shell(Options options)
           });
       })
 {
+    if (!options_.status.empty()) {
+        status_ = loopback::connect(options_.status);
+        if (status_ == loopback::none) {
+            std::fprintf(stderr, "ragekit dev: could not connect to %s\n", options_.status.c_str());
+        } else {
+            loopback::send(status_, options_.statusToken + "\n");
+        }
+    }
 }
 
 void Shell::loadModules()
@@ -58,9 +68,8 @@ void Shell::resetModules()
 
 void Shell::status(const std::string &line) const
 {
-    if (options_.statusFd >= 0) {
-        std::string data = line + "\n";
-        [[maybe_unused]] auto written = write(options_.statusFd, data.data(), data.size());
+    if (status_ != loopback::none) {
+        loopback::send(status_, line + "\n");
     }
 }
 
@@ -418,7 +427,7 @@ void Shell::restartPhp()
     for (auto &[id, win] : windows_) {
         win.orphan = true;
     }
-    setenv("RAGEKIT_DEV_RESTART", "1", 1);
+    platform::setEnv("RAGEKIT_DEV_RESTART", "1");
     startPhp();
 }
 

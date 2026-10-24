@@ -105,7 +105,7 @@ After every event the window shows the screen's new state; there is no manual re
 - **Kits.** The same template builds with `shadcn` (dark, minimal) or `material` (Material 3), or
   with a kit you write. `ragekit eject shadcn` copies a kit into your app to restyle it freely.
 - **Hot reload.** `ragekit dev` reloads templates in place and restarts only your PHP when it
-  changes, keeping the screen's state (Linux only for now).
+  changes, keeping the screen's state (Linux and Windows).
 - **Native modules.** Device and OS features as runtime-loaded libraries with a PHP API, starting
   with audio and HTTP. An app still runs when a module's library is missing.
 - **Your own title bar.** A layout frames screens in a frameless window with an app-drawn bar that

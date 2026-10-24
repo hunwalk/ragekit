@@ -16,4 +16,10 @@ final class MsvcEnvironmentTest extends TestCase
         preg_match('/-File "(.+)"$/', $hint, $m);
         self::assertFileExists(str_replace('\\', '/', $m[1]));
     }
+
+    public function testVcvarsVariablesReplaceTheSameNameInAnyCase(): void
+    {
+        $env = MsvcEnvironment::merge(['Path' => 'C:\\old', 'HOME' => 'C:\\me'], "PATH=C:\\msvc;C:\\old\r\nINCLUDE=C:\\inc\r\n");
+        self::assertSame(['HOME' => 'C:\\me', 'PATH' => 'C:\\msvc;C:\\old', 'INCLUDE' => 'C:\\inc'], $env);
+    }
 }

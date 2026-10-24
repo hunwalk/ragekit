@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // Dev mode's \slint_* functions (same signatures as native/slint/host/slint.stub.php): they
-// talk to the dev shell over fds 3/4 instead of calling libragekit_slint.
+// talk to the dev shell over a loopback connection (Channel) instead of calling libragekit_slint.
 
 use RageKit\Slint\Dev\Session;
 

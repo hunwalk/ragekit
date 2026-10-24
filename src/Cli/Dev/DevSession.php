@@ -258,9 +258,8 @@ final class DevSession
         if ($this->headless) {
             $command[] = '--headless';
         }
-        array_push($command, '--status-fd', '3');
         if ($this->context->output->isVerbose()) {
-            array_push($command, '--log', '/dev/stderr');
+            array_push($command, '--log', '-'); // stderr
         }
         array_push($command, '--', PHP_BINARY, "$this->devDir/bootstrap.php");
         $env = getenv();

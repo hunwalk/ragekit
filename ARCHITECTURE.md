@@ -48,8 +48,9 @@ src/
     backend.php          ragekit_backend(): which backend App uses
     SlintBackend.php     windows, event dispatch            ┐ compiled into apps
     SlintWindow.php      one window: values in, actions out ┘
-    Dev/                 dev runtime: \slint_* over a pipe to the dev shell, bindings read from
-                         screens.json, state snapshots (plain PHP, never compiled)
+    Dev/                 dev runtime: \slint_* over a loopback connection to the dev shell,
+                         bindings read from screens.json, state snapshots (plain PHP, never
+                         compiled)
   Cli/                   the ragekit command (never compiled)
 ```
 
@@ -95,7 +96,9 @@ native/
     host/                the PHPX host (C++17) + slint.stub.php: the \slint_* functions PHP
                          calls. Compiled into the app by TypePHP (also in Nano builds).
     devshell/            ragekit-devshell (C++20): runs Slint's interpreter and the app's PHP
-                         for `ragekit dev`.
+                         for `ragekit dev`. It talks to PHP and to `ragekit` over 127.0.0.1
+                         (loopback.cc); starting PHP and loading modules differ per OS
+                         (platform_posix.cc, platform_win32.cc).
     window/              what Slint's C++ API lacks for frameless windows (layouts): moving and
                          resizing (Windows: the OS's loop; X11: the app follows the pointer) and
                          the floating look. window.h + one file per platform

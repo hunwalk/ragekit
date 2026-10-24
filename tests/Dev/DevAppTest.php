@@ -12,7 +12,8 @@ require_once __DIR__ . '/../../src/Slint/Dev/Protocol.php';
 
 /**
  * The dev Screens.php + functions.php with the real SlintBackend, in a subprocess (they declare
- * the same functions/class as the runtime tests' fakes). This test plays the shell on fds 3/4.
+ * the same functions/class as the runtime tests' fakes). This test plays the shell: PHP connects
+ * to its loopback address and sends the token first.
  */
 final class DevAppTest extends TestCase
 {
@@ -47,60 +48,71 @@ final class DevAppTest extends TestCase
         $php = [...glob("$runtime/*.php"), "$root/src/App.php", "$root/src/Backend.php", "$root/src/Component.php", "$root/src/Screen.php", "$root/src/Window.php", "$root/src/Navigator.php", "$root/src/Store.php", "$root/src/RootStore.php", "$root/src/Events.php", "$root/src/Modules.php", "$root/src/ModuleUnavailable.php", "$root/src/Slint/SlintBackend.php", "$root/src/Slint/SlintWindow.php", "$root/src/Slint/backend.php", "$dir/Counter.php", "$dir/Stores.php", "$dir/main.php"];
         Bootstrap::write("$dir/boot.php", $php, ["$runtime/functions.php", "$root/src/Slint/backend.php", "$dir/main.php"]);
 
-        [$proc, $pipes, $read] = $this->start($dir, restart: false);
+        [$proc, $pipes, $read, $shell] = $this->start($dir, restart: false);
         self::assertSame(['open', 'rk-screens', 'C', '300', '200'], $read());
-        fwrite($pipes[3], Protocol::encode('opened', '1'));
+        fwrite($shell, Protocol::encode('opened', '1'));
         self::assertSame(['set-int', '1', 'rk-page', '0'], $read());
         self::assertSame(['set-int', '1', 'p1', '0'], $read());
         self::assertSame(['set-string', '1', 'p2', ''], $read());
         self::assertSame(['set-string', '1', 'p3', ''], $read());
         self::assertSame(['run'], $read());
-        fwrite($pipes[3], Protocol::encode('event', '1', '1', ''));
+        fwrite($shell, Protocol::encode('event', '1', '1', ''));
         self::assertSame(['set-int', '1', 'p1', '1'], $read());
-        fwrite($pipes[3], Protocol::encode('event', '1', '2', "Ann\t✓"));
-        fwrite($pipes[3], Protocol::encode('event', '1', '3', 'ann'));
+        fwrite($shell, Protocol::encode('event', '1', '2', "Ann\t✓"));
+        fwrite($shell, Protocol::encode('event', '1', '3', 'ann'));
         self::assertSame(['set-string', '1', 'p3', 'ann'], $read(), 'a store action, then its value');
-        fwrite($pipes[3], Protocol::encode('reload'));
+        fwrite($shell, Protocol::encode('reload'));
         self::assertSame(['set-int', '1', 'rk-page', '0'], $read(), 'reload pushes everything again');
         self::assertSame(['set-int', '1', 'p1', '1'], $read());
         self::assertSame(['set-string', '1', 'p2', "Ann\t✓"], $read());
         self::assertSame(['set-string', '1', 'p3', 'ann'], $read());
-        // A PHP restart: the shell stops PHP (stdin of fd 3 closes) and starts it again.
-        fclose($pipes[3]);
+        // A PHP restart: the shell stops PHP (its connection closes) and starts it again.
+        fclose($shell);
         $stderr = (string) stream_get_contents($pipes[2]);
         proc_close($proc);
         $state = json_decode((string) file_get_contents("$dir/state.json"), true);
         self::assertSame(['count' => 1, 'name' => "Ann\t✓"], $state['windows'][0]['props'] ?? null, $stderr);
         self::assertSame(['session' => ['userName' => 'ann']], $state['stores'] ?? null);
 
-        [$proc, $pipes, $read] = $this->start($dir, restart: true);
+        [$proc, $pipes, $read, $shell] = $this->start($dir, restart: true);
         self::assertSame(['open', 'rk-screens', 'C', '300', '200'], $read());
-        fwrite($pipes[3], Protocol::encode('opened', '1'));
+        fwrite($shell, Protocol::encode('opened', '1'));
         self::assertSame(['set-int', '1', 'rk-page', '0'], $read());
         self::assertSame(['set-int', '1', 'p1', '1'], $read());
         self::assertSame(['set-string', '1', 'p2', "Ann\t✓"], $read());
         self::assertSame(['set-string', '1', 'p3', 'ann'], $read(), 'the store is back before the first sync');
         self::assertSame(['run'], $read());
-        fwrite($pipes[3], Protocol::encode('event', '1', '0', ''));
+        fwrite($shell, Protocol::encode('event', '1', '0', ''));
         self::assertSame(['close', '1'], $read());
         self::assertSame(['quit'], $read());
-        fclose($pipes[3]);
+        fclose($shell);
         $stderr = (string) stream_get_contents($pipes[2]);
         self::assertSame(0, proc_close($proc), $stderr);
     }
 
-    /** @return array{0: resource, 1: array<int, resource>, 2: \Closure(): list<string>} */
+    /** @return array{0: resource, 1: array<int, resource>, 2: \Closure(): list<string>, 3: resource} */
     private function start(string $dir, bool $restart): array
     {
-        $proc = proc_open([PHP_BINARY, "$dir/boot.php"], [3 => ['pipe', 'r'], 4 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $dir,
-            ['RAGEKIT_DEV_SCREENS' => "$dir/screens.json", 'RAGEKIT_DEV_STATE' => "$dir/state.json", 'RAGEKIT_DEV_RESTART' => $restart ? '1' : '0'] + getenv());
-        $read = function () use ($pipes): array {
-            $line = fgets($pipes[4]);
+        $listener = stream_socket_server('tcp://127.0.0.1:0');
+        self::assertIsResource($listener);
+        $token = bin2hex(random_bytes(16));
+        $proc = proc_open([PHP_BINARY, "$dir/boot.php"], [2 => ['pipe', 'w']], $pipes, $dir, [
+            'RAGEKIT_DEV_SCREENS' => "$dir/screens.json", 'RAGEKIT_DEV_STATE' => "$dir/state.json", 'RAGEKIT_DEV_RESTART' => $restart ? '1' : '0',
+            'RAGEKIT_DEV_CHANNEL' => stream_socket_get_name($listener, false), 'RAGEKIT_DEV_TOKEN' => $token,
+        ] + getenv());
+        $shell = stream_socket_accept($listener, 20);
+        fclose($listener);
+        if ($shell === false) {
+            self::fail('PHP did not connect: ' . stream_get_contents($pipes[2]));
+        }
+        self::assertSame("$token\n", fgets($shell), 'the token comes first');
+        $read = function () use ($shell, $pipes): array {
+            $line = fgets($shell);
             if ($line === false) {
                 self::fail('PHP ended early: ' . stream_get_contents($pipes[2]));
             }
             return Protocol::decode($line);
         };
-        return [$proc, $pipes, $read];
+        return [$proc, $pipes, $read, $shell];
     }
 }

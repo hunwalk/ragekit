@@ -30,6 +30,23 @@ final class ShellBuilder
             $shell['defines'] ?? [],
         ));
         $built = NativeBuild::ensure($context, $program, $sources, 'building the dev shell (once per native change)', 'building the dev shell failed');
+        foreach ($shell['copy'] ?? [] as $copy) {
+            self::copyIfChanged($context->backend->path($copy['from']), dirname($program->output) . '/' . $copy['to']);
+        }
         return ['path' => $program->output, 'built' => $built];
+    }
+
+    /** A running shell keeps its DLLs open (Windows won't overwrite them): copy only what changed. */
+    private static function copyIfChanged(string $from, string $to): void
+    {
+        if (!is_file($from)) {
+            throw new RageKitException("the dev shell needs $from, which is missing (run ragekit setup)");
+        }
+        if (is_file($to) && filesize($to) === filesize($from) && filemtime($to) >= filemtime($from)) {
+            return;
+        }
+        if (!@copy($from, $to)) {
+            throw new RageKitException("could not copy $from to $to");
+        }
     }
 }

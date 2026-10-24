@@ -16,8 +16,8 @@ public:
     using EventFn = std::function<void(std::string module, int64_t handle, std::string kind, std::string data)>;
 
     explicit Modules(EventFn onEvent);
-    bool load(const std::string &name, const std::string &path); // dlopen + rkm_<name>_init
-    void unload(const std::string &name);                      // reset + dlclose
+    bool load(const std::string &name, const std::string &path); // dlopen (LoadLibrary) + rkm_<name>_init
+    void unload(const std::string &name);                      // reset + dlclose (FreeLibrary)
     void resetAll();
     bool available(const std::string &name) const;
     std::string error(const std::string &name) const;

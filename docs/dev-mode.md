@@ -19,7 +19,8 @@ templates to C++ with Slint. That takes a while. Dev mode skips both:
 - A prebuilt **dev shell** (`ragekit-devshell`) owns the windows. It draws your templates with
   Slint's interpreter, so a changed template needs no C++ build.
 - Your app's PHP runs on **plain `php`**, as a child process of the shell. Restarting it takes
-  milliseconds.
+  milliseconds. The two talk over a connection on 127.0.0.1 that PHP opens with a one-time token
+  from the shell, so nothing outside your machine can reach it.
 
 The first `ragekit dev` builds the dev shell into `build/dev/` (about 15 seconds). After that it
 is reused until RageKit's dev shell sources change.
@@ -114,8 +115,8 @@ uses the project folder there, and the executable's folder in a release build.
 
 ## Known limits
 
-- **Linux only for now.** The dev shell's process and library handling is written for POSIX
-  systems; on Windows use `ragekit build` / `ragekit run`.
+- **Linux and Windows.** Windows is tested less than Linux; macOS isn't supported. On Windows a PHP
+  restart ends PHP at once (there is no SIGTERM to send), and your PHP's stdin is empty (`NUL`).
 - A **new PHP file** is picked up with the next change after it is created. Save it (or any other
   watched file) once more if a new class isn't found.
 - PHP files that declare functions are loaded when PHP starts; class files are loaded on first

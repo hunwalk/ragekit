@@ -21,7 +21,7 @@ use Symfony\Component\Yaml\Yaml;
  *   libraries: [{ name, std, sources, include-paths, link-paths, link-libs }]
  *                                              native libraries built before tpc; `@generated`
  *                                              = build/<backend>/generated
- *   dev:       { shell: { std, defines, sources, include-paths, … }, runtime }   `ragekit dev`
+ *   dev:       { shell: { std, defines, sources, include-paths, …, copy }, runtime }   `ragekit dev`
  */
 final class BackendModule
 {

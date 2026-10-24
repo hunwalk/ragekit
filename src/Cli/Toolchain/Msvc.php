@@ -20,7 +20,7 @@ final class Msvc implements CppCompiler
         return new CompileCommand($command, $output, "{$build->dir}/{$build->name}.lib");
     }
 
-    public function program(CppBuild $build): CompileCommand // Windows: untested
+    public function program(CppBuild $build): CompileCommand // the dev shell
     {
         $output = "{$build->dir}/{$build->name}.exe";
         $command = [

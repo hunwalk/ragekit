@@ -33,14 +33,32 @@ final class MsvcEnvironment
         $vcvars = $vsPath . '\\VC\\Auxiliary\\Build\\vcvars64.bat';
         // vcvars64 calls vswhere itself and expects it on PATH.
         putenv('PATH=' . $installer . ';' . getenv('PATH'));
-        $output = (string) shell_exec('cmd /s /c ""' . $vcvars . '" >nul && set"');
-        foreach (preg_split('/\r?\n/', $output) as $line) {
+        $env = self::merge($env, (string) shell_exec('cmd /s /c ""' . $vcvars . '" >nul && set"'));
+        $pathKey = isset($env['Path']) ? 'Path' : 'PATH';
+        $env[$pathKey] = $installer . ';' . ($env[$pathKey] ?? '');
+        return $env;
+    }
+
+    /**
+     * $env with the variables of `set`'s output. Names are case-insensitive on Windows: `set` may
+     * print PATH where $env has Path (after a putenv('PATH=…')), and the old one must not stay.
+     *
+     * @internal public for tests
+     * @param array<string, string> $env
+     * @return array<string, string>
+     */
+    public static function merge(array $env, string $setOutput): array
+    {
+        foreach (preg_split('/\r?\n/', $setOutput) as $line) {
             if (preg_match('/^([^=]+)=(.*)$/', $line, $m)) {
+                foreach (array_keys($env) as $name) {
+                    if (strcasecmp((string) $name, $m[1]) === 0) {
+                        unset($env[$name]);
+                    }
+                }
                 $env[$m[1]] = $m[2];
             }
         }
-        $pathKey = isset($env['Path']) ? 'Path' : 'PATH';
-        $env[$pathKey] = $installer . ';' . ($env[$pathKey] ?? '');
         return $env;
     }
 

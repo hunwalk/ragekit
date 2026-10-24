@@ -13,7 +13,7 @@ use RageKit\Cli\Project\Project;
 use RageKit\Cli\Templates\ClassInfo;
 use RageKit\Cli\Kits\KitRegistry;
 use RageKit\Cli\Templates\ViewProject;
-use RageKit\Cli\Toolchain\Platform;
+use RageKit\Cli\Toolchain\CppBuild;
 use Symfony\Component\Console\Output\NullOutput;
 use RageKit\Tests\Support\InstalledToolchain;
 
@@ -161,9 +161,12 @@ final class ShellTest extends TestCase
         $m = \RageKit\Cli\Modules\Module::load("$root/tests/fixtures/modules/demo/module.yml", $root);
         file_put_contents("$dir/rk_module_demo.h", \RageKit\Cli\Modules\ModuleEmitter::header($m));
         file_put_contents("$dir/rk_module_demo_call.cc", \RageKit\Cli\Modules\ModuleEmitter::callEntry($m));
-        exec("g++ -std=c++17 -shared -fPIC -fvisibility=hidden $root/tests/fixtures/modules/demo/native/demo.cc $dir/rk_module_demo_call.cc -I$dir -I$root/native/include -o $dir/librk_module_demo.so 2>&1", $out, $code);
-        self::assertSame(0, $code, implode("\n", $out));
-        return $lib = "$dir/librk_module_demo.so";
+        $toolchain = InstalledToolchain::toolchain();
+        $build = $toolchain->compiler()->sharedLibrary(new CppBuild(
+            'rk_module_demo', $dir, ["$root/tests/fixtures/modules/demo/native/demo.cc", "$dir/rk_module_demo_call.cc"], [$dir, "$root/native/include"], [], [], 'c++17',
+        ));
+        self::assertSame(0, $toolchain->run($build->command, $dir), 'building the demo module');
+        return $lib = $build->output;
     }
 
     /** @var resource */
@@ -186,10 +189,7 @@ final class ShellTest extends TestCase
     /** @return array{0: string, 1: array<string, string>} the shell binary and the S screen's entry */
     private function buildShellAndEntries(): array
     {
-        $slint = InstalledToolchain::slintHome();
-        if (Platform::os() !== 'linux' || trim((string) shell_exec('command -v g++')) === '' || !is_file("$slint/include/slint/slint-interpreter.h")) {
-            self::markTestSkipped('needs Linux, g++ and the Slint C++ package');
-        }
+        InstalledToolchain::skipWithoutDevShell();
         if (self::$built !== null) {
             return self::$built;
         }

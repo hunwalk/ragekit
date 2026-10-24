@@ -1,9 +1,12 @@
 // ragekit-devshell [--headless] [--on-top] [--restore] [--renderer r] [--log file]
 //                  --screen Name=entry.slint … -- php bootstrap.php
 // --restore: the first PHP restores the last state snapshot too (the shell itself restarted).
-// --status-fd n: write "reloaded" / "reload-failed" there after each reload.
+// --status 127.0.0.1:port: connect there and write "reloaded" / "reload-failed" after each reload
+// (the first line is RAGEKIT_DEV_STATUS_TOKEN).
+// --log -: log to stderr.
 // --module name=path: a native module's library (repeatable); control `reload-module name path`.
 // Started by `ragekit dev`, which sends reload / restart-php / stop on stdin.
+#include "platform.h"
 #include "shell.h"
 #include "window.h"
 
@@ -12,15 +15,17 @@
 #endif
 
 #include <csignal>
-#include <fcntl.h>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <string>
 #include <thread>
+#include <vector>
 
-int main(int argc, char **argv)
+int main(int argc, char **raw)
 {
+    std::vector<std::string> argv = rk::dev::platform::arguments(argc, raw);
+    argc = static_cast<int>(argv.size());
     rk::dev::Options options;
     std::string renderer = "software";
     bool restore = false;
@@ -39,9 +44,8 @@ int main(int argc, char **argv)
             restore = true;
         } else if (arg == "--renderer" && i + 1 < argc) {
             renderer = argv[++i];
-        } else if (arg == "--status-fd" && i + 1 < argc) {
-            options.statusFd = std::atoi(argv[++i]);
-            fcntl(options.statusFd, F_SETFD, FD_CLOEXEC); // not for PHP
+        } else if (arg == "--status" && i + 1 < argc) {
+            options.status = argv[++i];
         } else if (arg == "--log" && i + 1 < argc) {
             options.log = argv[++i];
         } else if (arg == "--module" && i + 1 < argc) {
@@ -69,21 +73,29 @@ int main(int argc, char **argv)
         return 2;
     }
 
+#ifndef _WIN32
     std::signal(SIGPIPE, SIG_IGN);
+#endif
+    if (const char *token = std::getenv("RAGEKIT_DEV_STATUS_TOKEN")) {
+        options.statusToken = token;
+        rk::dev::platform::unsetEnv("RAGEKIT_DEV_STATUS_TOKEN"); // not for PHP
+    }
     if (restore) {
-        setenv("RAGEKIT_DEV_RESTART", "1", 1);
+        rk::dev::platform::setEnv("RAGEKIT_DEV_RESTART", "1");
     } else {
-        unsetenv("RAGEKIT_DEV_RESTART");
+        rk::dev::platform::unsetEnv("RAGEKIT_DEV_RESTART");
     }
     if (options.headless) {
 #ifdef SLINT_FEATURE_EXPERIMENTAL
         slint::testing::init();
 #endif
     } else {
-        setenv("SLINT_BACKEND", ("winit-" + renderer).c_str(), 0);
+        if (std::getenv("SLINT_BACKEND") == nullptr) {
+            rk::dev::platform::setEnv("SLINT_BACKEND", "winit-" + renderer);
+        }
         // Wayland has no always-on-top request; XWayland honours the X11 hint.
         if (options.onTop) {
-            unsetenv("WAYLAND_DISPLAY");
+            rk::dev::platform::unsetEnv("WAYLAND_DISPLAY");
         }
     }
 

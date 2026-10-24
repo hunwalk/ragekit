@@ -89,6 +89,15 @@ platforms:
       copy:
         - from: ${SLINT_HOME}/lib/slint_cpp.dll
           to: slint_cpp.dll
+      dev:
+        shell:
+          link-libs:
+            - ws2_32
+            - shell32
+          # Windows has no rpath: the shell finds its DLLs next to it.
+          copy:
+            - from: ${SLINT_HOME}/lib/slint_cpp.dll
+              to: slint_cpp.dll
   linux:
     # Find libragekit_slint.so / libslint_cpp.so next to the executable (tpc uses a shell).
     ld-flags:

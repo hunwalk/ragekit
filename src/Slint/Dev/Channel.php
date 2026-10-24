@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace RageKit\Slint\Dev;
 
-/** The pipe pair to the dev shell (fds 3 and 4): messages out, replies and events in. */
+/** The link to the dev shell: messages out, replies and events in. */
 final class Channel
 {
     /** @var list<list<string>> messages that arrived while waiting for a reply */
@@ -16,6 +16,24 @@ final class Channel
      */
     public function __construct(private $in, private $out)
     {
+    }
+
+    /**
+     * The shell's loopback connection: it passes the address (RAGEKIT_DEV_CHANNEL) and the token
+     * to send first (RAGEKIT_DEV_TOKEN) in the environment (native/slint/devshell/child.h).
+     */
+    public static function connect(): self
+    {
+        $address = (string) getenv('RAGEKIT_DEV_CHANNEL');
+        $context = stream_context_create(['socket' => ['tcp_nodelay' => true]]);
+        $socket = @stream_socket_client("tcp://$address", $errno, $error, 10, STREAM_CLIENT_CONNECT, $context);
+        if ($socket === false) {
+            throw new \RuntimeException("could not reach the dev shell at '$address': $error");
+        }
+        // Reads wait for the user, not default_socket_timeout (60 s, after which fgets() fails).
+        stream_set_timeout($socket, 86400 * 365);
+        fwrite($socket, getenv('RAGEKIT_DEV_TOKEN') . "\n");
+        return new self($socket, $socket);
     }
 
     public function send(string ...$fields): void

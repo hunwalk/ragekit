@@ -75,7 +75,7 @@ final class Session
         }
         $screens = (string) getenv('RAGEKIT_DEV_SCREENS');
         self::start(
-            new Channel(fopen('php://fd/3', 'r'), fopen('php://fd/4', 'w')),
+            Channel::connect(),
             (string) file_get_contents($screens),
             (string) getenv('RAGEKIT_DEV_STATE'),
             getenv('RAGEKIT_DEV_RESTART') === '1',

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "child.h"
+#include "loopback.h"
 #include "modules.h"
 
 #include <slint-interpreter.h>
@@ -21,9 +22,11 @@ struct Options {
     std::vector<std::string> php;               // the PHP command
     bool onTop = false;
     bool headless = false;
-    std::string log;
+    std::string log; // "-": stderr
     std::map<std::string, std::string> modules; // name => library path
-    int statusFd = -1; // reload outcomes for `ragekit dev`: "reloaded" / "reload-failed" lines
+    // Where `ragekit dev` takes reload outcomes ("reloaded" / "reload-failed" lines), after the token.
+    std::string status;
+    std::string statusToken;
 };
 
 class Shell {
@@ -76,6 +79,7 @@ private:
     bool quitting_ = false;
     bool hadWindow_ = false; // a window was opened since the shell started
     int exitCode_ = 0;
+    loopback::Socket status_ = loopback::none;
 };
 
 } // namespace rk::dev
