@@ -29,4 +29,12 @@ interface Backend
 
     /** Writes one line to the app's error output (stderr). */
     public function printError(string $line): void;
+
+    /**
+     * Starts native timer $id (see Timer): it fires every $milliseconds, or once, as the event
+     * Events::deliver('@timer', $id, 'tick', '') on the UI thread.
+     */
+    public function startTimer(int $id, int $milliseconds, bool $repeat): void;
+
+    public function stopTimer(int $id): void;
 }

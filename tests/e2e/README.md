@@ -20,6 +20,13 @@ the window's own close button:
 
     DISPLAY=:99 tests/e2e/titlebar.sh         # also with --nano
 
+`tests/e2e/timer.sh` builds `tests/fixtures/timer` in a temporary folder: a one-shot started before
+the window opens, one stopped before it fires, one that throws (reported, the app goes on) and a
+repeating timer that ticks five times, redrawing the window, then stops itself. Nano builds buffer
+stdout until exit, so the script reads the output after closing the window:
+
+    DISPLAY=:99 tests/e2e/timer.sh            # also with --nano
+
 By hand:
 
     Xvfb :99 -screen 0 1280x1024x24 -nolisten tcp &

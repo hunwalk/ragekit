@@ -204,6 +204,9 @@ Events::off('audio', $handle);   // removes all handlers for that handle
 
 `$data` is free-form text chosen by the module.
 
+Timers (`RageKit\Timer`, see [state.md](state.md#timers-polling-and-delays)) use the same path:
+their ticks are events of the module `@timer`. The `@` keeps that name apart from real modules.
+
 ## Writing a module
 
 A module lives in a folder with a `module.yml`:

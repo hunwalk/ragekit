@@ -42,6 +42,7 @@ src/
   Window.php, Navigator.php, Store.php, RootStore.php  app class, windows and their stacks of
                                                        screens, app-wide state
   Events.php, Modules.php, ModuleUnavailable.php       module events and availability
+  Timer.php                                            Timer::every()/after() (ticks are events)
   Slint/
     backend.yml          what the Slint backend adds to an app's build (sources, libraries,
                          options, dev shell)

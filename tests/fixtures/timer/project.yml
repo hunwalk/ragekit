@@ -1,0 +1,10 @@
+# Timers in a built app: tests/e2e/timer.sh runs it under Xvfb (normal and --nano).
+name: timer
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software

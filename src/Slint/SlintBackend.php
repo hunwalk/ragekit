@@ -88,6 +88,16 @@ final class SlintBackend implements Backend
         \slint_print_error($line);
     }
 
+    public function startTimer(int $id, int $milliseconds, bool $repeat): void
+    {
+        \slint_timer_start($id, $milliseconds, $repeat);
+    }
+
+    public function stopTimer(int $id): void
+    {
+        \slint_timer_stop($id);
+    }
+
     /** Pushes every window's values again (dev mode, after a template reload). */
     public function resync(): void
     {

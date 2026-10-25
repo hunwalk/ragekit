@@ -83,3 +83,8 @@ jobs:
 
       - name: Title bar (drag, resize, a button in the bar, close)
         run: DISPLAY=:99 tests/e2e/titlebar.sh
+
+      - name: Timers (normal and Nano builds)
+        run: |
+          DISPLAY=:99 tests/e2e/timer.sh
+          DISPLAY=:99 tests/e2e/timer.sh --nano

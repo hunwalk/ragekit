@@ -4,6 +4,9 @@
 #include "protocol.h"
 #include "window.h"
 
+#include <slint-testing.h>
+
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -64,6 +67,30 @@ void Shell::resetModules()
         log("reset " + name);
     }
     modules_.resetAll();
+}
+
+void Shell::stopTimer(int64_t id)
+{
+    auto it = timers_.find(id);
+    if (it == timers_.end()) {
+        return;
+    }
+    it->second->stop();
+    parkedTimers_.push_back(std::move(it->second));
+    timers_.erase(it);
+    slint::invoke_from_event_loop([this] { parkedTimers_.clear(); });
+    log("timer " + std::to_string(id) + " stopped");
+}
+
+void Shell::stopTimers()
+{
+    std::vector<int64_t> ids;
+    for (const auto &[id, timer] : timers_) {
+        ids.push_back(id);
+    }
+    for (int64_t id : ids) {
+        stopTimer(id);
+    }
 }
 
 void Shell::status(const std::string &line) const
@@ -268,6 +295,24 @@ void Shell::onPhpLine(unsigned generation, const std::string &line)
         child_.send(encode({ok ? "result" : "error", result}));
         return;
     }
+    if (cmd == "timer-start" && f.size() >= 4) {
+        int64_t id = std::atoll(f[1].c_str());
+        stopTimer(id);
+        auto timer = std::make_unique<slint::Timer>();
+        timer->start(f[3] == "1" ? slint::TimerMode::Repeated : slint::TimerMode::SingleShot,
+                     std::chrono::milliseconds(std::atoll(f[2].c_str())), [this, id] {
+                         if (running_) {
+                             child_.send(encode({"module-event", "@timer", std::to_string(id), "tick", ""}));
+                         }
+                     });
+        timers_[id] = std::move(timer);
+        log("timer " + f[1] + " started");
+        return;
+    }
+    if (cmd == "timer-stop" && f.size() >= 2) {
+        stopTimer(std::atoll(f[1].c_str()));
+        return;
+    }
     if (cmd == "module" && f.size() >= 2) {
         child_.send(encode({"result", modules_.available(f[1]) ? "1" : "0"}));
         return;
@@ -383,6 +428,7 @@ void Shell::onPhpExit(unsigned generation, int code)
     }
     running_ = false;
     ready_ = false;
+    stopTimers();
     // The app ends with its last window. PHP failing before any window opened (an error in main())
     // doesn't end the session: the next save starts PHP again.
     if (quitting_ || (windows_.empty() && (hadWindow_ || code == 0))) {
@@ -491,6 +537,7 @@ void Shell::restartPhp()
     }
     running_ = false;
     resetModules(); // the new PHP starts without the old one's sounds etc.
+    stopTimers();   // … and starts its own timers again
     for (auto &[id, win] : windows_) {
         win.orphan = true;
     }
@@ -505,6 +552,7 @@ void Shell::stop()
         running_ = false;
     }
     resetModules();
+    stopTimers();
     for (auto &[id, win] : windows_) {
         win.instance->hide();
     }
@@ -542,6 +590,9 @@ void Shell::control(const std::string &line)
         if (!ok) {
             std::fprintf(stderr, "ragekit dev: %s module not available: %s\n", f[1].c_str(), modules_.error(f[1]).c_str());
         }
+    } else if (f[0] == "advance" && options_.headless && f.size() >= 2) {
+        // Headless only: Slint's testing backend mocks time, so timers fire when a test moves it on.
+        slint::cbindgen_private::slint_mock_elapsed_time(std::strtoull(f[1].c_str(), nullptr, 10));
     } else if (f[0] == "click" && options_.headless && f.size() >= 3) {
         emit(std::atoll(f[1].c_str()), std::atoi(f[2].c_str()), f.size() > 3 ? f[3] : "");
     }

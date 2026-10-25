@@ -168,6 +168,16 @@ void php_slint_window_set_maximized(Int window, Bool maximized)
     rk_window_set_maximized(window, maximized ? 1 : 0);
 }
 
+void php_slint_timer_start(Int id, Int milliseconds, Bool repeat)
+{
+    rk_timer_start(id, milliseconds, repeat ? 1 : 0);
+}
+
+void php_slint_timer_stop(Int id)
+{
+    rk_timer_stop(id);
+}
+
 void php_slint_run()
 {
     rk_run();

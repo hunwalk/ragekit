@@ -65,6 +65,8 @@ namespace {
     function slint_window_set_maximized(int $window, bool $maximized): void { FakeHost::$calls[] = "maximize $window " . ($maximized ? '1' : '0'); }
     function slint_run(): void { FakeHost::$calls[] = 'run'; }
     function slint_quit(): void { FakeHost::$calls[] = 'quit'; }
+    function slint_timer_start(int $id, int $milliseconds, bool $repeat): void { FakeHost::$calls[] = "timer-start $id $milliseconds " . ($repeat ? '1' : '0'); }
+    function slint_timer_stop(int $id): void { FakeHost::$calls[] = "timer-stop $id"; }
     function slint_set_event_dispatcher(mixed $fn): void { FakeHost::$eventDispatcher = $fn; }
     function slint_app_dir(): string { return '/app'; }
     function slint_print_error(string $line): void { FakeHost::$calls[] = "error $line"; }

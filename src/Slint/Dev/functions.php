@@ -40,6 +40,17 @@ function ragekit_module_error(string $name): string
     return Session::channel()->request('module-error', $name)[1] ?? '';
 }
 
+/** The shell runs the timer and sends its ticks as "@timer" module events. */
+function slint_timer_start(int $id, int $milliseconds, bool $repeat): void
+{
+    Session::channel()->send('timer-start', (string) $id, (string) $milliseconds, $repeat ? '1' : '0');
+}
+
+function slint_timer_stop(int $id): void
+{
+    Session::channel()->send('timer-stop', (string) $id);
+}
+
 function slint_open(string $screen, string $title, int $width, int $height): int
 {
     $reply = Session::channel()->request('open', $screen, $title, (string) $width, (string) $height);

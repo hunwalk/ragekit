@@ -62,4 +62,14 @@ final class RecordingBackend implements Backend
     {
         $this->calls[] = "error $line";
     }
+
+    public function startTimer(int $id, int $milliseconds, bool $repeat): void
+    {
+        $this->calls[] = "timer-start $id $milliseconds " . ($repeat ? '1' : '0');
+    }
+
+    public function stopTimer(int $id): void
+    {
+        $this->calls[] = "timer-stop $id";
+    }
 }

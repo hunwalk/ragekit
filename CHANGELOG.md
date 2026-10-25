@@ -11,6 +11,21 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+### Added
+
+- **Timers.** `RageKit\Timer::every(5, fn() => …)` runs a function every 5 seconds until
+  `stop()`, `Timer::after(0.5, fn() => …)` once. Ticks run on the UI thread like clicks: the
+  windows show the new values afterwards, and an uncaught exception goes to
+  `App::uncaughtException()`. They work in normal and Nano builds and in `ragekit dev`. See
+  docs/state.md, "Timers: polling and delays".
+
+### Changed
+
+- **Backends:** `RageKit\Backend` gains `startTimer(int $id, int $milliseconds, bool $repeat)`
+  and `stopTimer(int $id)`; ticks come back as `Events::deliver('@timer', $id, 'tick', '')`. The
+  Slint bridge exports `rk_timer_start` / `rk_timer_stop`, and the dev protocol has `timer-start` /
+  `timer-stop` (plus a headless-only `advance <ms>` control, since the testing backend mocks time).
+
 ## [0.6.0] - 2026-10-25
 
 Lists of objects in templates (`RageKit\Collection`) with an image per row, TypePHP 0.9.5, and

@@ -35,6 +35,7 @@ abstract class App
     public function __construct()
     {
         $this->backend = \ragekit_backend();
+        Timer::attach($this->backend);
         if (self::$base === '') {
             self::$base = $this->backend->appDir();
         }

@@ -13,6 +13,7 @@
 #endif
 
 #include <atomic>
+#include <chrono>
 #include <cstdlib>
 #include <functional>
 #include <map>
@@ -61,6 +62,11 @@ void platformIsReady()
         slint::invoke_from_event_loop(std::move(job));
     }
 }
+// Timers by id. A stopped one is parked and destroyed on the next event-loop turn: PHP may stop a
+// timer from inside its own tick.
+std::map<int64_t, std::unique_ptr<slint::Timer>> timers;
+std::vector<std::unique_ptr<slint::Timer>> parkedTimers;
+
 int64_t nextWindow = 1;
 std::map<int64_t, bool> maximized; // last maximised state reported to PHP, per frameless window
 
@@ -347,9 +353,36 @@ RK_API void rk_window_set_maximized(int64_t window, int maximized)
     }
 }
 
+RK_API void rk_timer_start(int64_t id, int64_t milliseconds, int repeat)
+{
+    rk_timer_stop(id);
+    auto timer = std::make_unique<slint::Timer>();
+    timer->start(repeat != 0 ? slint::TimerMode::Repeated : slint::TimerMode::SingleShot,
+                 std::chrono::milliseconds(milliseconds), [id] {
+                     if (eventDispatcher != nullptr) {
+                         eventDispatcher("@timer", 6, id, "tick", 4, "", 0);
+                     }
+                 });
+    timers[id] = std::move(timer);
+}
+
+RK_API void rk_timer_stop(int64_t id)
+{
+    auto it = timers.find(id);
+    if (it == timers.end()) {
+        return;
+    }
+    it->second->stop();
+    parkedTimers.push_back(std::move(it->second));
+    timers.erase(it);
+    deliver([] { parkedTimers.clear(); });
+}
+
 RK_API void rk_run(void)
 {
     slint::run_event_loop(slint::EventLoopMode::RunUntilQuit);
+    timers.clear();
+    parkedTimers.clear();
     rk_modules_reset(); // stop module threads (e.g. audio) while everything they use still exists
     parked.clear();
     windows.clear();

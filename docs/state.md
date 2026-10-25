@@ -222,6 +222,47 @@ The window never waits: the request runs on a worker thread, and its callback (t
 call" a saga would wait for) runs on the UI thread, after which every window shows the new values.
 (`Image` takes only file paths for now, so the example shows the user's name, not their picture.)
 
+## Timers: polling and delays
+
+`RageKit\Timer` runs a function later, once or again and again. Like an HTTP callback it runs on
+the UI thread, and every window shows the new values after it:
+
+```php
+use RageKit\Timer;
+
+final class InboxStore extends Store
+{
+    public int $unread = 0;
+
+    private ?Timer $poll = null;
+
+    public function startPolling(): void
+    {
+        $this->poll = Timer::every(5, fn() => RefreshInbox::run());   // every 5 seconds
+    }
+
+    public function stopPolling(): void
+    {
+        $this->poll?->stop();
+    }
+}
+
+Timer::after(2, fn() => $this->hint = '');   // once, in 2 seconds
+```
+
+- `every($seconds, $fn)` takes more than 0 seconds; `after($seconds, $fn)` also takes 0, which
+  means "on the event loop's next turn". Fractions work (`0.25`); the native timer counts whole
+  milliseconds.
+- `stop()` may be called from inside `$fn`, and more than once. `active()` says whether it will
+  still run: false after `stop()`, and for `after()` as soon as it fires.
+- An exception `$fn` doesn't catch goes to `App::uncaughtException()`, like a click handler's; a
+  repeating timer keeps running.
+- Timers need the App's backend, so start them in `createStore()`, `start()` or later, not before
+  `new MyApp()`. They fire only while the app runs. A tick never interrupts a running handler:
+  it waits for the UI thread like a click.
+- In `ragekit dev` the dev shell runs the timers. A PHP restart stops them, and the new PHP's
+  `start()` starts its own (a Timer in a property isn't kept across restarts).
+
 ## Tests
 
 A root store is a plain object: no App, no window and no backend needed. Creating one replaces the

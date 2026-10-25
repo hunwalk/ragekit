@@ -38,8 +38,9 @@ public:
     void initPlatform(); // before startPhp(): reader threads need Slint's platform
     void loadModules();  // after initPlatform(): module events hop to the UI thread
     void resetModules();
+    void stopTimers(); // the PHP that started them is gone
     bool startPhp();     // starts (or, after restartPhp(), restarts) the PHP child
-    void control(const std::string &line); // a line from stdin: reload, restart-php, stop, click
+    void control(const std::string &line); // a line from stdin: reload, restart-php, stop, click, advance
     bool anyFrameless() const;             // a screen has a layout (after load())
     int exitCode() const { return exitCode_; }
 
@@ -77,6 +78,11 @@ private:
     std::map<std::string, slint::interpreter::ComponentDefinition> defs_;
     std::map<int64_t, Win> windows_;
     std::set<std::string> warned_;
+    // RageKit\Timer's timers by id; stopped ones are parked until the next event-loop turn (a tick
+    // may stop its own timer).
+    std::map<int64_t, std::unique_ptr<slint::Timer>> timers_;
+    std::vector<std::unique_ptr<slint::Timer>> parkedTimers_;
+    void stopTimer(int64_t id);
     int64_t next_ = 1;
     bool ready_ = false;   // PHP sent `run`: events are delivered
     bool running_ = false; // a PHP child is alive

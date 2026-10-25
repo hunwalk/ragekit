@@ -81,6 +81,12 @@ typedef void (*rk_module_event_fn)(const char *module, size_t module_len, int64_
 RK_API void rk_set_event_dispatcher(rk_module_event_fn fn);
 /** Thread-safe: queues a module event for the UI thread (matches ragekit_module.h's rk_post_fn). */
 RK_API void rk_post_event(const char *module, int64_t handle, const char *kind, const char *data, size_t data_len);
+/**
+ * Timers (RageKit\Timer): timer `id` fires after `milliseconds`, again and again if `repeat`, as the
+ * module event "@timer" / id / "tick" on the UI thread. Starting an id that runs restarts it.
+ */
+RK_API void rk_timer_start(int64_t id, int64_t milliseconds, int repeat);
+RK_API void rk_timer_stop(int64_t id);
 RK_API void rk_run(void);
 RK_API void rk_quit(void);
 

@@ -176,6 +176,32 @@ final class SlintRuntimeTest extends TestCase
         \RageKit\Events::off('audio', 1);
     }
 
+    public function testTimerTicksResyncWindows(): void
+    {
+        $screen = new CounterScreen();
+        $this->app->open($screen, title: 'Counter');
+        FakeHost::$calls = [];
+        $timer = \RageKit\Timer::every(2, function () use ($screen): void {
+            $screen->count++;
+        });
+        self::assertSame(["timer-start $timer->id 2000 1"], FakeHost::$calls);
+        FakeHost::$calls = [];
+        (FakeHost::$eventDispatcher)('@timer', $timer->id, 'tick', '');
+        self::assertSame(['int 1 1 1'], FakeHost::$calls);
+        $timer->stop();
+    }
+
+    public function testUncaughtExceptionInATimerKeepsTheAppRunning(): void
+    {
+        $this->runApp();
+        $timer = \RageKit\Timer::after(1, function (): void {
+            throw new \LogicException('bad tick');
+        });
+        (FakeHost::$eventDispatcher)('@timer', $timer->id, 'tick', '');
+        self::assertSame(['bad tick'], array_map(fn(\Throwable $e) => $e->getMessage(), $this->app->uncaught));
+        self::assertFalse($timer->active());
+    }
+
     public function testAppResolve(): void
     {
         self::assertSame('/app/assets/a.wav', App::resolve('assets/a.wav'));

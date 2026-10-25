@@ -164,6 +164,34 @@ final class ShellTest extends TestCase
         ], file($log, FILE_IGNORE_NEW_LINES));
     }
 
+    /** Headless, Slint's time is mocked: `advance <ms>` on stdin moves it on. */
+    public function testTimers(): void
+    {
+        [$shell, $entries] = $this->buildShellAndEntries();
+        $log = "$this->dir/app.log";
+        $proc = $this->start($shell, $entries, $log, 'timer');
+        $this->waitFor("$this->dir/shell.log", "php ready\n");
+        fwrite($this->stdin, "advance 0\n");
+        $this->waitFor($log, "module-event @timer 2 tick \n");
+        for ($i = 1; $i <= 3; $i++) {
+            fwrite($this->stdin, "advance 20\n");
+            $this->waitFor($log, "module-event @timer 1 tick \n", $i);
+        }
+        $this->waitFor("$this->dir/shell.log", "timer 1 stopped\n");
+        fwrite($this->stdin, "advance 100\nrestart-php\n");
+        $this->waitFor("$this->dir/shell.log", "php ready\n", 2);
+        fwrite($this->stdin, "stop\n");
+        fclose($this->stdin);
+        self::assertSame(0, proc_close($proc));
+        $lines = file($log, FILE_IGNORE_NEW_LINES);
+        self::assertSame(1, count(array_keys($lines, 'module-event @timer 2 tick ', true)), 'the one-shot fired once');
+        self::assertNotContains('module-event @timer 3 tick ', $lines, 'stopped before it fired');
+        self::assertSame(3, count(array_keys($lines, 'module-event @timer 1 tick ', true)), 'nothing after stop');
+        $shellLog = (string) file_get_contents("$this->dir/shell.log");
+        self::assertStringContainsString("timer 1 started\n", $shellLog);
+        self::assertSame(2, substr_count($shellLog, 'timer 1 started'), 'the restarted PHP started its own');
+    }
+
     /** The demo test module's library (tests/fixtures/modules/demo), built once. */
     private function buildDemoModule(): string
     {

@@ -2,7 +2,8 @@
 // Fake app for ShellTest: speaks the dev protocol over the shell's loopback connection like
 // src/Slint/Dev does and logs every reply/message it receives to $argv[1]. Modes ($argv[2]): normal, nope, exit3,
 // open-exit3 (opens a window, closes it, exits 3), module, framed (a Window subclass's window: maximize, minimize),
-// view (page 1, a list), rows (page 2: set-rows for a collection and a list shown as images).
+// view (page 1, a list), rows (page 2: set-rows for a collection and a list shown as images),
+// timer (a repeating timer stopped after its third tick, a one-shot, a one-shot stopped before it fires).
 require dirname(__DIR__, 3) . '/src/Slint/Dev/Protocol.php';
 require dirname(__DIR__, 3) . '/src/Slint/Dev/Channel.php';
 
@@ -28,6 +29,21 @@ if ($mode === 'module') {
         $received('|');
     }
     $shell->send('quit');
+    exit(0);
+}
+if ($mode === 'timer') {
+    // No window: ticks are logged; after timer 1's third tick it is stopped.
+    $shell->send('timer-start', '1', '20', '1');
+    $shell->send('timer-start', '2', '0', '0');
+    $shell->send('timer-start', '3', '30', '0');
+    $shell->send('timer-stop', '3');
+    $shell->send('run');
+    $ticks = 0;
+    while (($message = $received(' ')) !== null) {
+        if ($message === ['module-event', '@timer', '1', 'tick', ''] && ++$ticks === 3) {
+            $shell->send('timer-stop', '1');
+        }
+    }
     exit(0);
 }
 // S and V share the window component rk-screens (pages 0 and 1); F is rk-screens-L (Window subclass L).

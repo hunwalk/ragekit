@@ -56,6 +56,11 @@ function slint_window_minimize(int $window): void {}
 
 function slint_window_set_maximized(int $window, bool $maximized): void {}
 
+/** Starts timer $id (RageKit\Timer): a "@timer" event every $milliseconds, or once. */
+function slint_timer_start(int $id, int $milliseconds, bool $repeat): void {}
+
+function slint_timer_stop(int $id): void {}
+
 /** Runs the Slint event loop until slint_quit(). */
 function slint_run(): void {}
 
