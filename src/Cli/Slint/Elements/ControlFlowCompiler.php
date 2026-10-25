@@ -95,13 +95,19 @@ final class ControlFlowCompiler implements ElementCompiler
         if ($as === 'assets' || $index === 'assets') {
             throw TemplateException::at($element, "\$assets is reserved for the app's assets; name the loop variable something else");
         }
-        $inner = $scope->with($as, $source->type === 'rows'
-            ? new Ref('row', $as, row: $source->row)
-            : new Ref((string) $source->itemType, $as, $source->itemType === 'list' ? 'string' : null));
+        // An item of a bound list keeps where the list comes from, and an index (a hidden one when
+        // the template names none), so an image can show the same list as images.
+        $inner = $scope->with($as, match (true) {
+            $source->type === 'rows' => new Ref('row', $as, row: $source->row),
+            $source->origin !== null && $source->itemType === 'string' => new Ref('string', $as, origin: $source->origin, index: $index ?? 'rk-i'),
+            default => new Ref((string) $source->itemType, $as, $source->itemType === 'list' ? 'string' : null),
+        });
         if ($index !== null) {
             $inner = $inner->with($index, new Ref('int', $index));
         }
-        return "for $as" . ($index === null ? '' : "[$index]") . " in {$source->slint} : " . $this->body($element->children[0], $inner, $axis);
+        $body = $this->body($element->children[0], $inner, $axis);
+        $indexName = $index ?? (str_contains($body, '[rk-i]') ? 'rk-i' : null);
+        return "for $as" . ($indexName === null ? '' : "[$indexName]") . " in {$source->slint} : " . $body;
     }
 
     /** @if / @elseif / @else: one Slint `if` per branch, each guarded by the earlier conditions being false. */
