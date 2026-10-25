@@ -48,6 +48,10 @@ foreach (array_keys($map) as $class) {
         $out[] = describeApp($reflection);
         continue;
     }
+    if (!$reflection->isAbstract() && $reflection->isSubclassOf('RageKit\\Collection')) {
+        $out[] = describeCollection($reflection);
+        continue;
+    }
     if ($reflection->isAbstract() || (!$reflection->isSubclassOf('RageKit\\Component') && !$state)) {
         continue;
     }
@@ -128,6 +132,45 @@ function declaredClasses(string $file): array
         }
     }
     return $classes;
+}
+
+/**
+ * A Collection subclass: its OF constant (the item class) and that class's public typed members,
+ * which templates read as {{ $item->member }}.
+ */
+function describeCollection(ReflectionClass $class): array
+{
+    $of = ltrim((string) $class->getConstant('OF'), '\\');
+    $found = $of !== '' && class_exists($of);
+    $props = [];
+    $computed = [];
+    if ($found) {
+        $item = new ReflectionClass($of);
+        foreach ($item->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+            if (!$property->isStatic()) {
+                $props[$property->getName()] = typeName($property->getType());
+            }
+        }
+        foreach ($item->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            if (!$method->isStatic() && !str_starts_with($method->getName(), '__') && $method->getNumberOfRequiredParameters() === 0) {
+                $computed[$method->getName()] = typeName($method->getReturnType());
+            }
+        }
+    }
+    return [
+        'name' => $class->getName(),
+        'short' => $class->getShortName(),
+        'file' => (string) $class->getFileName(),
+        'screen' => false,
+        'template' => '',
+        'props' => (object) $props,
+        'computed' => (object) $computed,
+        'handlers' => (object) [],
+        'constants' => (object) [],
+        'isCollection' => true,
+        'of' => $of,
+        'ofFound' => $found,
+    ];
 }
 
 function typeName(?ReflectionType $type): string
