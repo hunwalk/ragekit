@@ -19,6 +19,56 @@ foreach (['Protocol', 'Channel', 'Bindings', 'Session'] as $file) {
     require_once __DIR__ . "/../../src/Slint/Dev/$file.php";
 }
 
+class DevDevice
+{
+    public function __construct(public string $name = '', public string $image = '', public int $level = 0)
+    {
+    }
+
+    public function label(): string
+    {
+        return strtoupper($this->name);
+    }
+}
+
+final class DevDevices extends \RageKit\Collection
+{
+    public const OF = DevDevice::class;
+}
+
+final class DevSealed
+{
+    public function __construct(public readonly string $name, public float $battery = 0.0)
+    {
+    }
+}
+
+final class DevSealedList extends \RageKit\Collection
+{
+    public const OF = DevSealed::class;
+}
+
+final class DevSealedScreen extends \RageKit\Screen
+{
+    public DevSealedList $items;
+
+    public function __construct()
+    {
+        $this->items = new DevSealedList();
+    }
+}
+
+final class DevShelfScreen extends \RageKit\Screen
+{
+    public DevDevices $devices;
+    public array $photos = ['p.png'];
+
+    public function __construct()
+    {
+        $this->devices = new DevDevices([new DevDevice('a', 'x.png', 3)]);
+    }
+}
+
 final class DevFixtureScreen extends \RageKit\Screen
 {
     public int $count = 0;
@@ -153,6 +203,98 @@ final class RuntimeTest extends TestCase
     }
 
     /** Review Focus 1 in dev: another page's action does nothing. */
+    private const SHELF = '{"windows":[{"name":"rk-screens","window":null,"frameless":false,"values":[],"actions":[],"pages":['
+        . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevShelfScreen","name":"DevShelfScreen","page":0,"actions":[],"values":['
+        . '{"id":1,"owner":"screen","source":"property","name":"devices","type":"rows","row":{"item":"RageKit\\\\Tests\\\\Dev\\\\DevDevice","fields":['
+        . '{"member":"name","source":"property","type":"string","name":"f0"},{"member":"image","source":"property","type":"image","name":"f1"},'
+        . '{"member":"level","source":"property","type":"int","name":"f2"},{"member":"label","source":"method","type":"string","name":"f3"}]}},'
+        . '{"id":2,"owner":"screen","source":"property","name":"photos","type":"images"}]}]}]}';
+
+    public function testRowsInDev(): void
+    {
+        $b = Bindings::load(self::SHELF);
+        $n = $this->nav($b, new DevShelfScreen());
+        $values = $b->values($n->window());
+        self::assertInstanceOf(\RageKit\Slint\RowsValue::class, $values[1]);
+        self::assertEquals([['a', new \RageKit\Slint\ImageValue('x.png'), 3, 'A']], $values[1]->rows);
+        self::assertEquals([[new \RageKit\Slint\ImageValue('p.png')]], $values[2]->rows);
+        self::assertSame('rows', $b->type('rk-screens', 1));
+        self::assertSame('images', $b->type('rk-screens', 2));
+        self::assertSame('', $b->type('rk-screens', 9));
+    }
+
+    public function testCollectionSurvivesRestart(): void
+    {
+        $state = $this->tmp() . '/state.json';
+        Session::start($this->channel(), self::SHELF, $state, restart: false);
+        $s = new DevShelfScreen();
+        $s->devices->add(new DevDevice('b', 'y.png', 7));
+        Session::pending($s);
+        Session::opened(1, 'Main', 300, 200);
+        Session::markRunning();
+        Session::snapshot();
+        $data = json_decode((string) file_get_contents($state), true);
+        self::assertSame(DevDevices::class, $data['windows'][0]['props']['devices']['@collection']);
+        $data['windows'][0]['props']['devices']['items'][1]['level'] = 'not-an-int';
+        file_put_contents($state, json_encode($data));
+
+        Session::start($this->channel(), self::SHELF, $state, restart: true);
+        $fresh = new DevShelfScreen();
+        $fresh->devices->clear();
+        Session::restore($fresh);
+        self::assertCount(2, $fresh->devices);
+        self::assertSame(['a', 'b'], array_map(fn(DevDevice $d) => $d->name, $fresh->devices->all()));
+        self::assertSame(3, $fresh->devices->get(0)->level);
+        self::assertSame(0, $fresh->devices->get(1)->level, 'a field of the wrong type keeps its default');
+        self::assertSame('y.png', $fresh->devices->get(1)->image);
+    }
+
+    /** Final review: an item with a readonly (constructor-required) property survives a restart. */
+    public function testReadonlyItemSurvivesRestart(): void
+    {
+        $json = '{"windows":[{"name":"rk-screens","window":null,"frameless":false,"values":[],"actions":[],"pages":['
+            . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevSealedScreen","name":"DevSealedScreen","page":0,"actions":[],"values":[]}]}]}';
+        $state = $this->tmp() . '/state.json';
+        Session::start($this->channel(), $json, $state, restart: false);
+        $s = new DevSealedScreen();
+        $s->items->add(new DevSealed('mouse', 0.5));
+        Session::pending($s);
+        Session::opened(1, 'Main', 300, 200);
+        Session::markRunning();
+        Session::snapshot();
+
+        Session::start($this->channel(), $json, $state, restart: true);
+        $fresh = new DevSealedScreen();
+        Session::restore($fresh);
+        self::assertCount(1, $fresh->items);
+        self::assertSame('mouse', $fresh->items->get(0)->name);
+        self::assertSame(0.5, $fresh->items->get(0)->battery);
+    }
+
+    /** An item that can't be fully restored (a required readonly value of the wrong type) is left out, not half-built. */
+    public function testItemThatCantBeRebuiltIsSkipped(): void
+    {
+        $json = '{"windows":[{"name":"rk-screens","window":null,"frameless":false,"values":[],"actions":[],"pages":['
+            . '{"class":"RageKit\\\\Tests\\\\Dev\\\\DevSealedScreen","name":"DevSealedScreen","page":0,"actions":[],"values":[]}]}]}';
+        $state = $this->tmp() . '/state.json';
+        Session::start($this->channel(), $json, $state, restart: false);
+        $s = new DevSealedScreen();
+        $s->items->add(new DevSealed('mouse'));
+        $s->items->add(new DevSealed('keys'));
+        Session::pending($s);
+        Session::opened(1, 'Main', 300, 200);
+        Session::markRunning();
+        Session::snapshot();
+        $data = json_decode((string) file_get_contents($state), true);
+        $data['windows'][0]['props']['items']['items'][0]['name'] = 42;
+        file_put_contents($state, json_encode($data));
+
+        Session::start($this->channel(), $json, $state, restart: true);
+        $fresh = new DevSealedScreen();
+        Session::restore($fresh);
+        self::assertSame(['keys'], array_map(fn(DevSealed $d) => $d->name, $fresh->items->all()));
+    }
+
     public function testOtherPagesActionsAreIgnored(): void
     {
         $b = Bindings::load(self::JSON);

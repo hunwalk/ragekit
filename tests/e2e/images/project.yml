@@ -1,4 +1,5 @@
-# tests/e2e/images.sh's app: a registered asset, one switched by state, one from the web.
+# tests/e2e/images.sh's app: a registered asset, one switched by state, one from the web, and a
+# collection whose rows show an asset, the web image and a fallback.
 name: images
 sources:
   - main.php

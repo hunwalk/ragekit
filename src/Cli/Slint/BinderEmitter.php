@@ -38,6 +38,9 @@ final class BinderEmitter
                 $helpers[] = self::dispatchMethod($screen, $frame, $rootStore);
             }
         }
+        foreach (self::rowTypes($windows) as $row) {
+            $helpers[] = self::rowsMethod($row);
+        }
         return self::stub('binder', [
             'components' => implode("\n", $components),
             'pages' => implode("\n", $pages),
@@ -77,6 +80,12 @@ final class BinderEmitter
             if ($binding->type === 'image') {
                 $read = "new \\RageKit\\Slint\\ImageValue((string) $read)";
             }
+            if ($binding->type === 'images') {
+                $read = "self::images($read)";
+            }
+            if ($binding->type === 'rows') {
+                $read = "self::rows{$binding->row->struct}($read)";
+            }
             $entries[] = "{$binding->id} => $read,";
         }
         return self::stub('binder-values', [
@@ -86,6 +95,44 @@ final class BinderEmitter
             'root' => self::root($owners, $rootStore),
             'entries' => implode("\n", $entries),
         ]);
+    }
+
+    /**
+     * The row types the windows' bindings use, each once.
+     *
+     * @param list<WindowModel> $windows
+     * @return list<RowType>
+     */
+    private static function rowTypes(array $windows): array
+    {
+        $types = [];
+        foreach ($windows as $window) {
+            $bindings = array_values($window->bindings);
+            foreach ($window->pages as $page) {
+                $bindings = [...$bindings, ...array_values($page->bindings)];
+            }
+            foreach ($bindings as $binding) {
+                if ($binding->row !== null) {
+                    $types[$binding->row->struct] = $binding->row;
+                }
+            }
+        }
+        ksort($types);
+        return array_values($types);
+    }
+
+    /** rows<Struct>(): a collection's items as rows of cells, narrowed to the item class (TypePHP needs the type). */
+    private static function rowsMethod(RowType $row): string
+    {
+        $cells = [];
+        foreach ($row->fields() as $field) {
+            $read = '$item->' . $field->member . ($field->source === 'method' ? '()' : '');
+            $cells[] = match ($field->type) {
+                'image' => "new \\RageKit\\Slint\\ImageValue((string) $read)",
+                default => "({$field->type}) $read",
+            };
+        }
+        return rtrim(self::stub('binder-rows', ['item' => $row->item, 'struct' => $row->struct, 'cells' => implode(', ', $cells)]), "\n");
     }
 
     /** A page's actions: the window's (its own, top screen) and the page's; other pages' ids fall to default. */

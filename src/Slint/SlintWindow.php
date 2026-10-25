@@ -84,6 +84,15 @@ final class SlintWindow
     public function sync(): void
     {
         foreach ($this->values() as $id => $value) {
+            if ($value instanceof RowsValue) {
+                $shown = $this->shownRows($value);
+                if (array_key_exists($id, $this->sent) && $this->sent[$id] === $shown) {
+                    continue;
+                }
+                $this->pushRows($id, $value, $shown);
+                $this->sent[$id] = $shown;
+                continue;
+            }
             if ($value instanceof ImageValue) {
                 $state = Images::state($this->app->backend(), $value->source);
                 if (array_key_exists($id, $this->sent) && $this->sent[$id] === $state) {
@@ -99,6 +108,52 @@ final class SlintWindow
             self::push($this->id, $id, $value);
             $this->sent[$id] = $value;
         }
+    }
+
+    /**
+     * $rows as compared between syncs: an image cell becomes [its Images::state()].
+     *
+     * @return list<list<mixed>>
+     */
+    private function shownRows(RowsValue $rows): array
+    {
+        $out = [];
+        foreach ($rows->rows as $row) {
+            $cells = [];
+            foreach ($row as $cell) {
+                $cells[] = $cell instanceof ImageValue ? [Images::state($this->app->backend(), $cell->source)] : $cell;
+            }
+            $out[] = $cells;
+        }
+        return $out;
+    }
+
+    /** Sends every row of $rows; $shown holds the image cells' states. */
+    private function pushRows(int $id, RowsValue $rows, array $shown): void
+    {
+        \slint_rows_begin($this->id, $id);
+        foreach ($rows->rows as $r => $row) {
+            \slint_rows_next();
+            foreach ($row as $c => $cell) {
+                if ($cell instanceof ImageValue) {
+                    $state = (string) $shown[$r][$c][0];
+                    if (str_starts_with($state, 'asset:')) {
+                        \slint_rows_image_asset((int) substr($state, 6));
+                    } elseif (!\slint_rows_image_file(str_starts_with($state, 'file:') ? substr($state, 5) : '')) {
+                        Images::loadFailed($this->app->backend(), $cell->source);
+                    }
+                } elseif (is_bool($cell)) {
+                    \slint_rows_bool($cell);
+                } elseif (is_int($cell)) {
+                    \slint_rows_int($cell);
+                } elseif (is_float($cell)) {
+                    \slint_rows_float($cell);
+                } else {
+                    \slint_rows_string((string) $cell);
+                }
+            }
+        }
+        \slint_rows_end();
     }
 
     /** $state from Images::state(): 'none', 'asset:<index>' or 'file:<path>'. */

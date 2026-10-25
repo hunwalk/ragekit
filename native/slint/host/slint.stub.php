@@ -26,6 +26,29 @@ function slint_list_append(string $item): void {}
 
 function slint_list_end(): void {}
 
+/**
+ * Rows of a collection (or a list shown as images) are pushed as begin, then per row next() and
+ * one call per cell in field order, then end. An image cell is a registered image or a file
+ * ('' = none); image_file returns false if the file couldn't be loaded.
+ */
+function slint_rows_begin(int $window, int $id): void {}
+
+function slint_rows_next(): void {}
+
+function slint_rows_string(string $value): void {}
+
+function slint_rows_int(int $value): void {}
+
+function slint_rows_float(float $value): void {}
+
+function slint_rows_bool(bool $value): void {}
+
+function slint_rows_image_asset(int $index): void {}
+
+function slint_rows_image_file(string $path): bool {}
+
+function slint_rows_end(): void {}
+
 function slint_close(int $window): void {}
 
 /** Minimises a window (layouts' minimize()). */

@@ -15,6 +15,7 @@ sources:
   - src/Window.php
   - src/Navigator.php
   - src/Store.php
+  - src/Collection.php
   - src/RootStore.php
   - src/Events.php
   - src/Modules.php
@@ -22,6 +23,7 @@ sources:
   - src/Slint/SlintBackend.php
   - src/Slint/SlintWindow.php
   - src/Slint/ImageValue.php
+  - src/Slint/RowsValue.php
   - src/Slint/Images.php
   - src/Slint/backend.php
   - native/slint/host

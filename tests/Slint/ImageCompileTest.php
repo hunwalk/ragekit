@@ -140,9 +140,69 @@ final class ImageCompileTest extends TestCase
         $this->fails("expected a string, '\$count' is an int", [$this->screen('<Image source="{{ $count }}" />')]);
     }
 
-    public function testBoundSourceInForeach(): void
+    private function devices(): ClassInfo
     {
-        $this->fails("images in @foreach aren't supported yet", [$this->screen("<VStack>\n@foreach (\$photos as \$p)\n<Image source=\"{{ \$p }}\" />\n@endforeach\n</VStack>", ['photos' => 'list'])]);
+        return new ClassInfo('Demo\Devices', 'Devices', "$this->dir/Devices.php", false, '', isCollection: true, of: 'Demo\Device', ofFound: true,
+            props: ['name' => 'string', 'image' => 'string', 'battery' => 'float']);
+    }
+
+    public function testRowImageField(): void
+    {
+        $rk = "<VStack>\n@foreach (\$devices as \$d)\n<Image source=\"{{ \$d->image }}\" fallback=\"{{ \$assets->images->logo }}\" />\n@endforeach\n</VStack>";
+        $out = $this->compile([$this->devices(), $this->screen($rk, ['devices' => 'Demo\Devices'])], slint: true);
+        self::assertStringContainsString("export struct RkRowDevice {\n    f0: image,\n}", $out->slint);
+        self::assertStringContainsString("source: d.f0.width > 0 ? d.f0 : @image-url(\"$this->dir/assets/logo.png\");", $out->slint);
+    }
+
+    public function testRowMemberAsTextAndImage(): void
+    {
+        $rk = "<VStack>\n@foreach (\$devices as \$d)\n<VStack>\n<Label text=\"{{ \$d->image }}\" />\n<Image source=\"{{ \$d->image }}\" />\n</VStack>\n@endforeach\n</VStack>";
+        $out = $this->compile([$this->devices(), $this->screen($rk, ['devices' => 'Demo\Devices'])]);
+        self::assertStringContainsString("export struct RkRowDevice {\n    f0: string,\n    f1: image,\n}", $out->slint);
+    }
+
+    public function testListOfStringsAsImages(): void
+    {
+        $out = $this->compile([$this->screen("<VStack>\n@foreach (\$photos as \$p)\n<Image source=\"{{ \$p }}\" />\n@endforeach\n</VStack>", ['photos' => 'list'])], slint: true);
+        $page = $out->windows[0]->pages[0];
+        $list = $page->bindings['screen:property:photos']->slintName();
+        $images = $page->bindings['screen:property:photos:images'];
+        self::assertSame('images', $images->type);
+        self::assertStringContainsString("in property <[image]> {$images->slintName()};", $out->slint);
+        self::assertStringContainsString("for p[rk-i] in root.$list :", $out->slint);
+        self::assertStringContainsString("source: root.{$images->slintName()}[rk-i];", $out->slint);
+        $named = $this->compile([$this->screen("<VStack>\n@foreach (\$photos as \$i => \$p)\n<Image source=\"{{ \$p }}\" />\n@endforeach\n</VStack>", ['photos' => 'list'], short: 'Named')]);
+        self::assertStringContainsString('[i];', $named->slint);
+        self::assertStringNotContainsString('[rk-i]', $named->slint);
+        $plain = $this->compile([$this->screen("<VStack>\n@foreach (\$photos as \$p)\n<Label text=\"{{ \$p }}\" />\n@endforeach\n</VStack>", ['photos' => 'list'], short: 'Plain')]);
+        self::assertStringNotContainsString('[rk-i]', $plain->slint);
+    }
+
+    /** Final review: an outer item's image inside an inner loop keeps the outer loop's index. */
+    public function testNestedLoopsKeepTheirOwnIndex(): void
+    {
+        $rk = "<VStack>\n@foreach (\$urls as \$u)\n<VStack>\n@foreach (\$tags as \$t)\n<HStack>\n<Image source=\"{{ \$u }}\" />\n<Image source=\"{{ \$t }}\" />\n</HStack>\n@endforeach\n</VStack>\n@endforeach\n</VStack>";
+        $out = $this->compile([$this->screen($rk, ['urls' => 'list', 'tags' => 'list'])], slint: true);
+        $page = $out->windows[0]->pages[0];
+        $urls = $page->bindings['screen:property:urls:images']->slintName();
+        $tags = $page->bindings['screen:property:tags:images']->slintName();
+        self::assertStringContainsString('for u[rk-i] in', $out->slint);
+        self::assertStringContainsString('for t[rk-i2] in', $out->slint);
+        self::assertStringContainsString("source: root.{$urls}[rk-i];", $out->slint);
+        self::assertStringContainsString("source: root.{$tags}[rk-i2];", $out->slint);
+    }
+
+    public function testImagesInConstantLoop(): void
+    {
+        $screen = new ClassInfo('Demo\Home', 'Home', "$this->dir/Home.php", true, "$this->dir/Home.rk", constants: ['PHOTOS' => ['a.png']]);
+        file_put_contents("$this->dir/Home.rk", "<VStack>\n@foreach (self::PHOTOS as \$p)\n<Image source=\"{{ \$p }}\" />\n@endforeach\n</VStack>");
+        $this->fails("images in a loop over a constant aren't supported; use a property or method", [$screen]);
+    }
+
+    public function testRowImageNeedsString(): void
+    {
+        $rk = "<VStack>\n@foreach (\$devices as \$d)\n<Image source=\"{{ \$d->battery }}\" />\n@endforeach\n</VStack>";
+        $this->fails('$d->battery is a float; image sources need a string', [$this->devices(), $this->screen($rk, ['devices' => 'Demo\Devices'])]);
     }
 
     public function testChildComponents(): void

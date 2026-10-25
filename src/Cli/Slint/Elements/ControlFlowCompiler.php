@@ -16,6 +16,9 @@ use RageKit\Cli\Templates\TemplateException;
 /** @foreach and @if (rk-foreach / rk-if after Rageblade), and the older each= / when= attributes. */
 final class ControlFlowCompiler implements ElementCompiler
 {
+    /** How many @foreach loops enclose the one being compiled: each depth has its own hidden index. */
+    private int $depth = 0;
+
     public function __construct(private readonly CompileContext $context)
     {
     }
@@ -81,8 +84,8 @@ final class ControlFlowCompiler implements ElementCompiler
     {
         $raw = $element->attributes['source'] ?? '';
         $source = $this->context->expressions->compile(Parser::parse($raw, $element->file, $element->line), $scope, $element);
-        if ($source->type !== 'list') {
-            throw TemplateException::at($element, "@foreach needs a list; $raw is a {$source->type}");
+        if ($source->type !== 'list' && $source->type !== 'rows') {
+            throw TemplateException::at($element, "@foreach needs a list or a collection; $raw is a {$source->type}");
         }
         if (count($element->children) !== 1) {
             throw new OneChildRequired($element, '@foreach');
@@ -95,11 +98,26 @@ final class ControlFlowCompiler implements ElementCompiler
         if ($as === 'assets' || $index === 'assets') {
             throw TemplateException::at($element, "\$assets is reserved for the app's assets; name the loop variable something else");
         }
-        $inner = $scope->with($as, new Ref((string) $source->itemType, $as, $source->itemType === 'list' ? 'string' : null));
+        // An item of a bound list keeps where the list comes from, and an index (a hidden one when
+        // the template names none: rk-i, rk-i2 in a loop inside it, …), so an image can show the
+        // same list as images.
+        $hidden = 'rk-i' . ($this->depth === 0 ? '' : $this->depth + 1);
+        $inner = $scope->with($as, match (true) {
+            $source->type === 'rows' => new Ref('row', $as, row: $source->row),
+            $source->origin !== null && $source->itemType === 'string' => new Ref('string', $as, origin: $source->origin, index: $index ?? $hidden),
+            default => new Ref((string) $source->itemType, $as, $source->itemType === 'list' ? 'string' : null),
+        });
         if ($index !== null) {
             $inner = $inner->with($index, new Ref('int', $index));
         }
-        return "for $as" . ($index === null ? '' : "[$index]") . " in {$source->slint} : " . $this->body($element->children[0], $inner, $axis);
+        $this->depth++;
+        try {
+            $body = $this->body($element->children[0], $inner, $axis);
+        } finally {
+            $this->depth--;
+        }
+        $indexName = $index ?? (str_contains($body, "[$hidden]") ? $hidden : null);
+        return "for $as" . ($indexName === null ? '' : "[$indexName]") . " in {$source->slint} : " . $body;
     }
 
     /** @if / @elseif / @else: one Slint `if` per branch, each guarded by the earlier conditions being false. */

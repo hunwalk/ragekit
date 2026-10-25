@@ -19,6 +19,7 @@ final class GlueEmitter
         'bool' => 'set_bool(int id, bool value)',
         'list' => 'set_list(int id, std::vector<slint::SharedString> value)',
         'image' => 'set_image(int id, const slint::Image &value)',
+        'rows' => 'set_rows(int id, const rk::Rows &rows)',
     ];
 
     /**
@@ -60,8 +61,18 @@ final class GlueEmitter
         }
         usort($bindings, fn(Binding $a, Binding $b) => $a->id <=> $b->id);
         // Slint's `int` is 32-bit and `float` is f32, so the bridge's int64/double narrow here.
+        $members = [];
         foreach ($bindings as $binding) {
             $setter = 'handle_->set_' . $binding->slintName();
+            if ($binding->type === 'rows' || $binding->type === 'images') {
+                // One model per property, updated in place (rk::update_model): unchanged rows stay.
+                $model = 'model_' . $binding->slintName() . '_';
+                $type = $binding->type === 'rows' ? $binding->row->struct : 'slint::Image';
+                $members[] = "std::shared_ptr<slint::VectorModel<$type>> $model;";
+                $make = $binding->type === 'rows' ? self::makeRow($binding->row) : '[](const rk::Row &r) { return rk::cell_image(r, 0); }';
+                $cases['rows'][] = "case {$binding->id}: if (rk::update_model($model, rows, $make)) { $setter($model); } break;";
+                continue;
+            }
             $cases[$binding->type][] = "case {$binding->id}: " . match ($binding->type) {
                 'string' => "$setter(slint::SharedString(value));",
                 'int' => "$setter(static_cast<int>(value));",
@@ -81,7 +92,18 @@ final class GlueEmitter
             'windowCommands' => $framed ? self::stub('glue-window-commands', []) : '',
             'frameless' => $framed ? self::stub('glue-frameless', []) : '',
             'setters' => $setters . ($assets ? self::stub('glue-asset', []) : ''),
+            'members' => implode("\n", $members),
         ]);
+    }
+
+    /** The lambda making a row struct from a pushed row's cells, field by field. */
+    private static function makeRow(RowType $row): string
+    {
+        $fields = '';
+        foreach ($row->fields() as $i => $field) {
+            $fields .= " v.{$field->name} = rk::cell_{$field->type}(r, $i);";
+        }
+        return "[](const rk::Row &r) { {$row->struct} v;$fields return v; }";
     }
 
     /** @param array<string, string> $values */

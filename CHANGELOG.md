@@ -11,6 +11,19 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+### Added
+
+- **Lists of objects in templates.** A `RageKit\Collection` subclass names its item class in
+  `const OF`; `@foreach ($devices as $device)` then reads the items' typed members:
+  `{{ $device->name }}`, `{{ $device->label() }}`, in text, attributes, `@if` and handler
+  arguments, checked at build time. Collections work as screen, window and store members;
+  `count($devices)` counts them. Change them with `add()`, `[] =`, `set()`, `remove()`, `clear()`.
+  Only rows that changed are redrawn. `ragekit dev` keeps collections across PHP restarts.
+- **Images inside `@foreach`.** `<Image source="{{ $device->image }}">` and
+  `@foreach ($photos as $photo) <Image source="{{ $photo }}" />` show each row's own image,
+  resolved like single bound images (registered assets, files, web images downloaded once and
+  cached), with `fallback` per row.
+
 ### Changed
 
 - **TypePHP 0.9.5.** `ragekit setup` now installs TypePHP v0.9.5 (was v0.9.4 plus 8 commits); run

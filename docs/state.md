@@ -108,6 +108,10 @@ Templates of screens and windows read the stores as `$store->name->member`, the 
   attributes, like a screen's own.
 - **Handlers:** `onClick="$store->session->signIn($name)"` calls the store's method; arguments work
   as in any handler.
+- **Lists of objects:** a store member that is a collection (`public Devices $devices;`, see
+  [Lists of objects](templates.md#lists-of-objects-collections)) is looped like a screen's:
+  `@foreach ($store->devices->devices as $device)`. Every window showing it follows changes to it
+  and to its items.
 - **Two-way inputs** may bind a store property: `checked="{{ $store->settings->darkMode }}"`. The
   user's edits go straight into the store.
 - **Every window follows it.** Two windows showing `$store->session->userName` both update after

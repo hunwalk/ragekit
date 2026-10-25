@@ -51,6 +51,15 @@ namespace {
     function slint_list_begin(int $window, int $id): void { FakeHost::$calls[] = "list $window $id"; }
     function slint_list_append(string $item): void { FakeHost::$calls[] = "  item $item"; }
     function slint_list_end(): void { FakeHost::$calls[] = 'list end'; }
+    function slint_rows_begin(int $window, int $id): void { FakeHost::$calls[] = "rows $window $id"; }
+    function slint_rows_next(): void { FakeHost::$calls[] = '  row'; }
+    function slint_rows_string(string $value): void { FakeHost::$calls[] = "  s $value"; }
+    function slint_rows_int(int $value): void { FakeHost::$calls[] = "  i $value"; }
+    function slint_rows_float(float $value): void { FakeHost::$calls[] = "  f $value"; }
+    function slint_rows_bool(bool $value): void { FakeHost::$calls[] = '  b ' . ($value ? '1' : '0'); }
+    function slint_rows_image_asset(int $index): void { FakeHost::$calls[] = "  asset $index"; }
+    function slint_rows_image_file(string $path): bool { FakeHost::$calls[] = "  file $path"; return !str_contains($path, 'broken') && !in_array($path, FakeHost::$unloadable, true); }
+    function slint_rows_end(): void { FakeHost::$calls[] = 'rows end'; }
     function slint_close(int $window): void { FakeHost::$calls[] = "close $window"; }
     function slint_window_minimize(int $window): void { FakeHost::$calls[] = "minimize $window"; }
     function slint_window_set_maximized(int $window, bool $maximized): void { FakeHost::$calls[] = "maximize $window " . ($maximized ? '1' : '0'); }

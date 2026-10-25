@@ -1,0 +1,10 @@
+# A collection with images per row, and a list shown as images: built by tests/Slint/RowsNativeTest.php.
+name: rows
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software

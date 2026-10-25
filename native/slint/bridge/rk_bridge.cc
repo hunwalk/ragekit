@@ -247,6 +247,79 @@ RK_API int rk_set_image_file(int64_t window, int32_t id, const char *path, size_
     return loaded ? 1 : 0;
 }
 
+namespace {
+// The rows being pushed (rk_rows_begin … rk_rows_end); PHP pushes one list at a time on the UI thread.
+int64_t rowsWindow = 0;
+int32_t rowsId = 0;
+rk::Rows rows;
+
+void add_cell(rk::Cell cell)
+{
+    if (rows.empty()) {
+        rows.emplace_back();
+    }
+    rows.back().push_back(std::move(cell));
+}
+} // namespace
+
+RK_API void rk_rows_begin(int64_t window, int32_t id)
+{
+    rowsWindow = window;
+    rowsId = id;
+    rows.clear();
+}
+
+RK_API void rk_rows_next(void)
+{
+    rows.emplace_back();
+}
+
+RK_API void rk_rows_string(const char *value, size_t len)
+{
+    add_cell(slint::SharedString(std::string_view(value, len)));
+}
+
+RK_API void rk_rows_int(int64_t value)
+{
+    add_cell(value);
+}
+
+RK_API void rk_rows_float(double value)
+{
+    add_cell(value);
+}
+
+RK_API void rk_rows_bool(int value)
+{
+    add_cell(value != 0);
+}
+
+RK_API void rk_rows_image_asset(int32_t index)
+{
+    auto *instance = find(rowsWindow);
+    add_cell(instance == nullptr ? slint::Image() : instance->asset(index).value_or(slint::Image()));
+}
+
+RK_API int rk_rows_image_file(const char *path, size_t len)
+{
+    if (len == 0) {
+        add_cell(slint::Image());
+        return 1;
+    }
+    auto image = slint::Image::load_from_path(slint::SharedString(std::string_view(path, len)));
+    bool loaded = image.size().width > 0;
+    add_cell(loaded ? image : slint::Image());
+    return loaded ? 1 : 0;
+}
+
+RK_API void rk_rows_end(void)
+{
+    if (auto *instance = find(rowsWindow)) {
+        instance->set_rows(rowsId, rows);
+    }
+    rows.clear();
+}
+
 RK_API void rk_close(int64_t window)
 {
     auto it = windows.find(window);

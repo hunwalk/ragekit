@@ -4,5 +4,14 @@
         <Image source="{{ $state }}" width="64" height="64" />
         <Image source="{{ $web }}" fallback="{{ $assets->images->blue }}" width="64" height="64" />
     </HStack>
-    <Button text="Toggle" onClick="toggle" />
+    <View style="rows">
+        @foreach ($devices as $device)
+            <Image source="{{ $device->image }}" fallback="{{ $assets->images->blue }}" width="64" height="64" />
+        @endforeach
+    </View>
+    <HStack>
+        <Button text="Toggle" onClick="toggle" />
+        <Button text="Clear" onClick="clear" />
+        <Button text="Add" onClick="add" />
+    </HStack>
 </VStack>

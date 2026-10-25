@@ -390,19 +390,89 @@ final class Session
     }
 
     /** @return array<string, mixed> */
-    private static function props(object $component): array
+    private static function props(object $component, bool $readonly = false): array
     {
         $props = [];
         foreach ((new \ReflectionObject($component))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-            if ($property->isStatic() || $property->isReadOnly() || !$property->isInitialized($component)) {
+            if ($property->isStatic() || ($property->isReadOnly() && !$readonly) || !$property->isInitialized($component)) {
                 continue;
             }
             $value = $property->getValue($component);
-            if (self::plain($value)) {
+            if ($value instanceof \RageKit\Collection) {
+                $props[$property->getName()] = self::collection($value);
+            } elseif (self::plain($value)) {
                 $props[$property->getName()] = $value;
             }
         }
         return $props;
+    }
+
+    /**
+     * A collection as state.json keeps it: its class and each item's class and plain public
+     * properties.
+     *
+     * @return array{'@collection': string, items: list<array<string, mixed>>}
+     */
+    private static function collection(\RageKit\Collection $collection): array
+    {
+        $items = [];
+        foreach ($collection->all() as $item) {
+            // Readonly properties too: an item built without its constructor needs them back.
+            $items[] = ['@class' => get_class($item)] + self::props($item, readonly: true);
+        }
+        return ['@collection' => get_class($collection), 'items' => $items];
+    }
+
+    /** A saved collection rebuilt; an item property that no longer fits keeps its default. */
+    private static function rebuild(array $saved): ?\RageKit\Collection
+    {
+        $class = (string) ($saved['@collection'] ?? '');
+        if (!class_exists($class) || !is_subclass_of($class, \RageKit\Collection::class)) {
+            return null;
+        }
+        $collection = (new \ReflectionClass($class))->newInstanceWithoutConstructor();
+        foreach ((array) ($saved['items'] ?? []) as $data) {
+            $itemClass = (string) ($data['@class'] ?? '');
+            if (!class_exists($itemClass)) {
+                continue;
+            }
+            // Built without its constructor and given every saved property (readonly ones too); if
+            // one is still missing (its type changed), the constructor's defaults fill in when it
+            // needs no arguments, else the item is left out rather than half-built.
+            $reflection = new \ReflectionClass($itemClass);
+            unset($data['@class']);
+            $item = $reflection->newInstanceWithoutConstructor();
+            foreach ($data as $name => $value) {
+                self::assign($item, (string) $name, $value, readonly: true);
+            }
+            if (!self::complete($item)) {
+                $constructor = $reflection->getConstructor();
+                if ($constructor !== null && $constructor->getNumberOfRequiredParameters() > 0) {
+                    continue;
+                }
+                $item = $reflection->newInstance();
+                foreach ($data as $name => $value) {
+                    self::assign($item, (string) $name, $value);
+                }
+            }
+            try {
+                $collection->add($item);
+            } catch (\InvalidArgumentException) {
+                // OF changed: the item no longer belongs here.
+            }
+        }
+        return $collection;
+    }
+
+    /** Whether every typed property of $object has a value. */
+    private static function complete(object $object): bool
+    {
+        foreach ((new \ReflectionObject($object))->getProperties() as $property) {
+            if (!$property->isStatic() && $property->hasType() && !$property->isInitialized($object)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static function plain(mixed $value): bool
@@ -419,17 +489,26 @@ final class Session
     }
 
     /** @return string|null why the value can't be restored */
-    private static function assign(object $component, string $name, mixed $value): ?string
+    /** $readonly: a readonly property may be set while it is still uninitialized (a rebuilt item). */
+    private static function assign(object $component, string $name, mixed $value, bool $readonly = false): ?string
     {
         $class = new \ReflectionObject($component);
         if (!$class->hasProperty($name)) {
             return 'no longer declared';
         }
         $property = $class->getProperty($name);
-        if (!$property->isPublic() || $property->isStatic() || $property->isReadOnly()) {
+        if (!$property->isPublic() || $property->isStatic() || ($property->isReadOnly() && (!$readonly || $property->isInitialized($component)))) {
             return 'no longer a public property';
         }
         $type = $property->getType();
+        if (is_array($value) && isset($value['@collection'])) {
+            $collection = self::rebuild($value);
+            if ($collection === null || !($type instanceof \ReflectionNamedType) || !is_a($collection, $type->getName())) {
+                return 'its type changed';
+            }
+            $property->setValue($component, $collection);
+            return null;
+        }
         if ($type instanceof \ReflectionNamedType && !($value === null && $type->allowsNull())) {
             $ok = match ($type->getName()) {
                 'int' => is_int($value),

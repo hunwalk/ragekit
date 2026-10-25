@@ -34,9 +34,34 @@ final class ValueCompiler
 
     private ?AssetRegistry $assets = null;
 
+    private RowTypes $rows;
+
     /** @param string $projectRoot what image paths in templates are relative to */
     public function __construct(private readonly string $projectRoot = '')
     {
+        $this->rows = new RowTypes();
+    }
+
+    /** The app's Collection subclasses, for @foreach over them. */
+    public function useCollections(RowTypes $rows): void
+    {
+        $this->rows = $rows;
+    }
+
+    /** The rows of $type when it is a Collection subclass, else null. */
+    public function rowsOf(string $type, Element $at): ?RowType
+    {
+        return $this->rows->for($type, $at);
+    }
+
+    /** A collection shown in a template: a binding of type 'rows'. */
+    private function rowsRef(string $source, string $name, string $owner, RowType $row, Scope $scope, Element $at): Ref
+    {
+        if ($scope->model === null) {
+            throw TemplateException::at($at, "child components can't show collections yet; loop over them in the screen's template");
+        }
+        $binding = $scope->model->bind($source, $name, 'rows', $owner, $row);
+        return new Ref('rows', 'root.' . $binding->slintName(), row: $row, origin: [$source, $name, $owner]);
     }
 
     /**
@@ -71,9 +96,13 @@ final class ValueCompiler
         if (!$call && $isMethod) {
             throw TemplateException::at($at, "$path is a method: write $path()");
         }
+        $row = $this->rowsOf((string) ($call ? ($class->computed[$member] ?? '') : ($class->props[$member] ?? '')), $at);
+        if ($row !== null) {
+            return $this->rowsRef($call ? 'method' : 'property', "$store.$member", 'store', $row, $scope, $at);
+        }
         if (!$call && isset($class->props[$member])) {
             $type = $this->valueType($class->props[$member], $at, $path);
-            return new Ref($type, 'root.' . $scope->model->bind('property', "$store.$member", $type, 'store')->slintName(), $type === 'list' ? 'string' : null);
+            return new Ref($type, 'root.' . $scope->model->bind('property', "$store.$member", $type, 'store')->slintName(), $type === 'list' ? 'string' : null, origin: ['property', "$store.$member", 'store']);
         }
         if (!$isMethod) {
             throw TemplateException::at($at, "$path: '$member' is not a property or method of {$class->short} (it has: " . self::members($class) . ')');
@@ -87,7 +116,7 @@ final class ValueCompiler
                 ? "$path() has no return type; give it one (string, int, float, bool or array) to show it in a template"
                 : "$path() returns $type; templates can show string, int, float, bool or array (a list of strings)");
         }
-        return new Ref($type, 'root.' . $scope->model->bind('method', "$store.$member", $type, 'store')->slintName(), $type === 'list' ? 'string' : null);
+        return new Ref($type, 'root.' . $scope->model->bind('method', "$store.$member", $type, 'store')->slintName(), $type === 'list' ? 'string' : null, origin: ['method', "$store.$member", 'store']);
     }
 
     /** The Store class behind $store->$name, checked: templates of screens and windows only, the root and the store exist. */
@@ -261,11 +290,26 @@ final class ValueCompiler
         if ($node === null || $node->kind === 'assets') {
             return $this->staticImage($raw, $element, $attribute);
         }
+        if ($node->kind === 'member') {
+            // A @foreach item's member: an image field of its row.
+            [$var, $member, $call] = $node->value;
+            $item = $scope->item($var);
+            if ($item === null || $item->row === null) {
+                throw TemplateException::at($element, "$attribute=\"$raw\": \$$var is not an object; ->member works on @foreach items of a collection");
+            }
+            return "$var." . $item->row->field($var, $member, $call, true, $element)->name;
+        }
         if (!in_array($node->kind, ['var', 'call', 'store'], true) || ($node->kind !== 'var' && $node->children !== [])) {
             throw TemplateException::at($element, "$attribute=\"$raw\": image sources take one property, method or \$store value; for anything else add a method");
         }
-        if ($node->kind === 'var' && $scope->item((string) $node->value) !== null) {
-            throw TemplateException::at($element, "$attribute=\"$raw\": images in @foreach aren't supported yet");
+        $item = $node->kind === 'var' ? $scope->item((string) $node->value) : null;
+        if ($item !== null) {
+            // An item of a bound list of strings: the same list again, shown as images, by index.
+            if ($item->origin === null || $item->index === null || $scope->model === null) {
+                throw TemplateException::at($element, "$attribute=\"$raw\": images in a loop over a constant aren't supported; use a property or method");
+            }
+            [$source, $name, $owner] = $item->origin;
+            return 'root.' . $scope->model->bind($source, $name, 'images', $owner)->slintName() . "[{$item->index}]";
         }
         if ($scope->model === null) {
             throw TemplateException::at($element, "$attribute=\"$raw\": child components can't show images bound to PHP values yet");
@@ -511,17 +555,21 @@ final class ValueCompiler
         if (array_key_exists($name, $class->constants)) {
             return $this->constant($class->constants[$name], $name, $at);
         }
+        $row = $this->rowsOf((string) ($class->props[$name] ?? $class->computed[$name] ?? ''), $at);
+        if ($row !== null) {
+            return $this->rowsRef(isset($class->props[$name]) ? 'property' : 'method', $name, $scope->owner, $row, $scope, $at);
+        }
         if (isset($class->props[$name])) {
             $type = $this->valueType($class->props[$name], $at, "property \$$name");
             $slint = $scope->model === null ? "root.rk-$name" : 'root.' . $scope->model->bind('property', $name, $type, $scope->owner)->slintName();
-            return new Ref($type, $slint, $type === 'list' ? 'string' : null);
+            return new Ref($type, $slint, $type === 'list' ? 'string' : null, origin: $scope->model === null ? null : ['property', $name, $scope->owner]);
         }
         if (isset($class->computed[$name]) && in_array($class->computed[$name], array_keys(self::TYPES), true)) {
             if ($scope->model === null) {
                 throw TemplateException::at($at, "'$name' is a method; child components can only show their properties (computed values in children aren't supported yet)");
             }
             $type = $class->computed[$name];
-            return new Ref($type, 'root.' . $scope->model->bind('method', $name, $type, $scope->owner)->slintName(), $type === 'list' ? 'string' : null);
+            return new Ref($type, 'root.' . $scope->model->bind('method', $name, $type, $scope->owner)->slintName(), $type === 'list' ? 'string' : null, origin: ['method', $name, $scope->owner]);
         }
         if (isset($class->computed[$name])) {
             $type = $class->computed[$name];
@@ -549,7 +597,7 @@ final class ValueCompiler
                 ? "'$member()' has no return type in $interface; give it one (string, int, float, bool or array) to show it in a template"
                 : "'$member()' returns $type; templates can show string, int, float, bool or array (a list of strings)");
         }
-        return new Ref($type, 'root.' . $scope->model->bind('method', $member, $type, 'context')->slintName(), $type === 'list' ? 'string' : null);
+        return new Ref($type, 'root.' . $scope->model->bind('method', $member, $type, 'context')->slintName(), $type === 'list' ? 'string' : null, origin: ['method', $member, 'context']);
     }
 
     /** @return array{return: string, params: list<string>, required: int} */

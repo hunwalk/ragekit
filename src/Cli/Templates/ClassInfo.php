@@ -28,6 +28,9 @@ final class ClassInfo
      *                                              or ($templateDefault) templates/<path under src/>.rk
      * @param list<array{group: string, class: string, found: bool, constants: array<string, mixed>}> $assets
      *                                              $isApp: what the App subclass's assets() registers
+     * @param string                     $of        $isCollection: the OF constant (the item class; '' if unset);
+     *                                              props/computed are then the item class's members,
+     *                                              $ofFound whether that class exists
      */
     public function __construct(
         public readonly string $name,
@@ -52,6 +55,9 @@ final class ClassInfo
         public readonly bool $templateDefault = false,
         public readonly bool $isApp = false,
         public readonly array $assets = [],
+        public readonly bool $isCollection = false,
+        public readonly string $of = '',
+        public readonly bool $ofFound = false,
     ) {
     }
 
@@ -81,6 +87,9 @@ final class ClassInfo
             (bool) ($row['templateDefault'] ?? false),
             (bool) ($row['isApp'] ?? false),
             array_map(fn(array $g) => ['group' => (string) $g['group'], 'class' => (string) $g['class'], 'found' => (bool) $g['found'], 'constants' => (array) $g['constants']], (array) ($row['assets'] ?? [])),
+            (bool) ($row['isCollection'] ?? false),
+            (string) ($row['of'] ?? ''),
+            (bool) ($row['ofFound'] ?? false),
         );
     }
 }

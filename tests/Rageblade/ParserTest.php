@@ -22,6 +22,7 @@ final class ParserTest extends TestCase
             'const' => 'self::' . $n->value,
             'call' => $n->value . '(' . implode(', ', array_map(self::show(...), $n->children)) . ')',
             'context' => '$context->' . $n->value . '(' . implode(', ', array_map(self::show(...), $n->children)) . ')',
+            'member' => '$' . $n->value[0] . '->' . $n->value[1] . ($n->value[2] ? '(' . implode(', ', array_map(self::show(...), $n->children)) . ')' : ''),
             'store' => '$store->' . $n->value[0] . '->' . $n->value[1] . ($n->value[2] ? '(' . implode(', ', array_map(self::show(...), $n->children)) . ')' : ''),
             'not' => '!' . self::show($n->children[0]),
             'neg' => '-' . self::show($n->children[0]),
@@ -87,7 +88,28 @@ final class ParserTest extends TestCase
         yield 'bare name' => ['LIMIT', 'T.rk:3: LIMIT: write constants as self::LIMIT and methods with ()'];
         yield 'empty' => ['', 'T.rk:3: empty expression'];
         yield 'store alone' => ['$store', 'T.rk:3: $store on its own isn\'t supported; read a store\'s member: $store->session->userName'];
+        yield 'two levels' => ['$a->b->c', 'T.rk:3: $a->b->c: only one level is supported, e.g. $a->b'];
         yield 'store only' => ['$store->session', 'T.rk:3: $store->session: read one of its members, e.g. $store->session->userName'];
+    }
+
+    public function testMemberAccess(): void
+    {
+        $node = Parser::parse('$device->name', 'T.rk', 3);
+        self::assertSame('member', $node->kind);
+        self::assertSame(['device', 'name', false], $node->value);
+    }
+
+    public function testMemberCall(): void
+    {
+        $node = Parser::parse('$device->label()', 'T.rk', 3);
+        self::assertSame(['device', 'label', true], $node->value);
+        self::assertSame([], $node->children);
+        self::assertSame('$d->rename(1)', self::p('$d->rename(1)'));
+    }
+
+    public function testMemberInExpression(): void
+    {
+        self::assertSame('(($d->level > 0.5) && $d->online)', self::p('$d->level > 0.5 && $d->online'));
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('errors')]

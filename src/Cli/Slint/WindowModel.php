@@ -53,10 +53,10 @@ final class WindowModel
         return ++$this->actionIds;
     }
 
-    public function bind(string $source, string $name, string $type, string $owner): Binding
+    public function bind(string $source, string $name, string $type, string $owner, ?RowType $row = null): Binding
     {
-        $key = "$owner:$source:$name" . ($type === 'image' ? ':image' : '');
-        return $this->bindings[$key] ??= new Binding($this->nextBindingId(), $source, $name, $type, false, $owner);
+        $key = "$owner:$source:$name" . (in_array($type, ['image', 'images'], true) ? ":$type" : '');
+        return $this->bindings[$key] ??= new Binding($this->nextBindingId(), $source, $name, $type, false, $owner, $row);
     }
 
     /**

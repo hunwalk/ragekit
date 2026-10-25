@@ -194,6 +194,20 @@ final class Parser
         if ($name === 'this') {
             throw $this->error('$this on its own isn\'t supported; call a method: $this->name()');
         }
+        if ($this->isOp('->')) {
+            // $item->member / $item->member(): a @foreach item's property or method.
+            $this->at++;
+            [$kind, $member] = $this->take();
+            if ($kind !== 'ident') {
+                throw $this->error("unexpected \"$member\" after \$$name->");
+            }
+            $call = $this->isOp('(');
+            $args = $call ? $this->arguments() : [];
+            if ($this->isOp('->')) {
+                throw $this->error("\$$name->$member->" . ($this->tokens[$this->at + 1][1] ?? '') . ": only one level is supported, e.g. \$$name->$member");
+            }
+            return new Node('member', [$name, $member, $call], $args);
+        }
         return new Node('var', $name);
     }
 

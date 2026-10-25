@@ -66,7 +66,7 @@ final class KitElementCompiler implements ElementCompiler
             if ($prop->type === 'image' && isset($element->attributes['fallback'])) {
                 // Shown while a bound image is empty: loading, failed, or ''.
                 $fallback = $this->context->values->staticImage($element->attributes['fallback'], $element, 'fallback');
-                if (str_starts_with($value, 'root.')) {
+                if (!str_starts_with($value, '@image-url(')) {
                     $value = "$value.width > 0 ? $value : $fallback";
                 }
             }

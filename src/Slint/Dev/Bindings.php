@@ -17,15 +17,22 @@ final class Bindings
 {
     /**
      * @param array<string, array> $pages by screen class: the page, plus 'window' (its window entry)
+     * @param array<string, array<int, string>> $types by window component: each value id's type
      */
-    private function __construct(private readonly array $pages)
+    private function __construct(private readonly array $pages, private readonly array $types = [])
     {
     }
 
     public static function load(string $json): self
     {
         $pages = [];
+        $types = [];
         foreach (json_decode($json, true, flags: JSON_THROW_ON_ERROR)['windows'] as $window) {
+            foreach ([$window, ...$window['pages']] as $entry) {
+                foreach ($entry['values'] as $value) {
+                    $types[$window['name']][$value['id']] = $value['type'];
+                }
+            }
             $window['actions'] = self::byId($window['actions']);
             foreach ($window['pages'] as $page) {
                 $page['actions'] = self::byId($page['actions']);
@@ -34,7 +41,13 @@ final class Bindings
                 $pages[$page['class']] = $page;
             }
         }
-        return new self($pages);
+        return new self($pages, $types);
+    }
+
+    /** The type of value $id in window component $component ('' if it has none). */
+    public function type(string $component, int $id): string
+    {
+        return $this->types[$component][$id] ?? '';
     }
 
     /** @param list<array> $actions @return array<int, array> */
@@ -84,11 +97,37 @@ final class Bindings
             $values[$value['id']] = match ($value['type']) {
                 'list' => array_map('strval', array_values((array) $read)),
                 'image' => new \RageKit\Slint\ImageValue((string) $read),
+                'images' => new \RageKit\Slint\RowsValue(array_map(fn($item) => [new \RageKit\Slint\ImageValue((string) $item)], array_values((array) $read))),
+                'rows' => self::rows($read, $value['row']),
                 default => $read,
             };
         }
         ksort($values);
         return $values;
+    }
+
+    /** A collection's items as rows, field by field (as the generated rows helpers do). */
+    private static function rows(mixed $collection, array $row): \RageKit\Slint\RowsValue
+    {
+        $rows = [];
+        foreach ($collection instanceof \RageKit\Collection ? $collection->all() : [] as $item) {
+            if (!$item instanceof $row['item']) {
+                continue;
+            }
+            $cells = [];
+            foreach ($row['fields'] as $field) {
+                $read = $field['source'] === 'method' ? $item->{$field['member']}() : $item->{$field['member']};
+                $cells[] = match ($field['type']) {
+                    'image' => new \RageKit\Slint\ImageValue((string) $read),
+                    'int' => (int) $read,
+                    'float' => (float) $read,
+                    'bool' => (bool) $read,
+                    default => (string) $read,
+                };
+            }
+            $rows[] = $cells;
+        }
+        return new \RageKit\Slint\RowsValue($rows);
     }
 
     /**

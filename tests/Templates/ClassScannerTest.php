@@ -238,4 +238,53 @@ final class ClassScannerTest extends TestCase
         self::assertSame('', $classes['App\Screens\HomeScreen']->template);
         self::assertFalse($classes['App\Screens\HomeScreen']->templateDefault);
     }
+
+    /** @param array<string, string> $files name => PHP body (namespace App) @return array<string, \RageKit\Cli\Templates\ClassInfo> */
+    private function scanApp(array $files): array
+    {
+        $dir = sys_get_temp_dir() . '/rk-coll-' . uniqid();
+        mkdir($dir);
+        foreach ($files as $name => $body) {
+            file_put_contents("$dir/$name.php", "<?php\nnamespace App;\n$body\n");
+        }
+        try {
+            return ClassScanner::scan(SourceFiles::php([$dir]), (string) realpath(__DIR__ . '/../..'), '/proj');
+        } finally {
+            array_map('unlink', glob($dir . '/*.php'));
+            rmdir($dir);
+        }
+    }
+
+    public function testCollectionDescribesItsItemClass(): void
+    {
+        $classes = $this->scanApp([
+            'Devices' => "final class Devices extends \\RageKit\\Collection { public const OF = Device::class; }",
+            'Device' => "final class Device { public string \$name = ''; public float \$battery = 0.0; public array \$tags = []; private string \$secret = ''; public static int \$n = 0;\n"
+                . "public function label(): string { return \$this->name; } public function rename(string \$n): void {} }",
+        ]);
+        $devices = $classes['App\Devices'];
+        self::assertTrue($devices->isCollection);
+        self::assertSame('App\Device', $devices->of);
+        self::assertTrue($devices->ofFound);
+        self::assertSame(['name' => 'string', 'battery' => 'float', 'tags' => 'list'], $devices->props);
+        self::assertSame(['label' => 'string'], $devices->computed);
+        self::assertFalse($devices->isScreen);
+        self::assertArrayNotHasKey('App\Device', $classes);
+    }
+
+    public function testCollectionWithoutOf(): void
+    {
+        $devices = $this->scanApp(['Devices' => 'final class Devices extends \RageKit\Collection {}'])['App\Devices'];
+        self::assertTrue($devices->isCollection);
+        self::assertSame('', $devices->of);
+        self::assertFalse($devices->ofFound);
+        self::assertSame([], $devices->props);
+    }
+
+    public function testCollectionOfUnknownClass(): void
+    {
+        $devices = $this->scanApp(['Devices' => "final class Devices extends \\RageKit\\Collection { public const OF = 'App\\\\Nope'; }"])['App\Devices'];
+        self::assertSame('App\Nope', $devices->of);
+        self::assertFalse($devices->ofFound);
+    }
 }
