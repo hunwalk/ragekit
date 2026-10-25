@@ -147,6 +147,7 @@ What an expression can use:
 | You write | Means |
 |---|---|
 | `$name` | a public property (or a `@foreach` variable) |
+| `$device->name`, `$device->label()` | a member of a `@foreach` item from a collection (see below) |
 | `greeting()` or `$this->greeting()` | a public method without required parameters (a computed value) |
 | `self::LIMIT` | a class constant |
 | `count($items)` | the number of items in a list |
@@ -189,8 +190,9 @@ Properties and computed methods must use one of these types:
 | `float` | number (32-bit float in the UI: precision is lower than PHP's) |
 | `bool` | `true` / `false` |
 | `array` | a list of texts (values are shown as strings) |
+| a `RageKit\Collection` subclass | a list of objects for `@foreach` (see [Lists of objects](#lists-of-objects-collections)) |
 
-Nullable types (`?string`), untyped properties, objects and enums can't be shown. Constants can be
+Nullable types (`?string`), untyped properties, other objects and enums can't be shown. Constants can be
 strings, numbers, bools, lists of values, or lists of lists of values.
 
 On a screen, properties and methods that no template refers to can have any type. On a child
@@ -280,6 +282,82 @@ Inputs write the user's changes straight back into a property:
   shown only sometimes); all elements of that `@if`/`@foreach` must then be absolute.
 - `@if` conditions must be bools.
 - Both are live: when the list or the condition changes, the window updates.
+
+### Lists of objects: collections
+
+To loop over objects, keep them in a collection: a class extending `RageKit\Collection` whose
+`OF` constant names the item class. Templates then read the items' members, checked when you build:
+
+```php
+final class Device
+{
+    public function __construct(
+        public string $name,
+        public string $image = '',
+        public float $battery = 0.0,
+    ) {
+    }
+
+    public function label(): string
+    {
+        return $this->name . ' (' . round($this->battery * 100) . ' %)';
+    }
+}
+
+final class Devices extends \RageKit\Collection
+{
+    public const OF = Device::class;
+}
+
+final class DevicesScreen extends Screen
+{
+    public Devices $devices;
+
+    public function __construct()
+    {
+        $this->devices = new Devices();
+    }
+
+    public function scan(): void
+    {
+        $this->devices->clear();
+        foreach (Hardware::found() as $name) {
+            $this->devices[] = new Device($name);
+        }
+    }
+
+    public function pick(string $name): void
+    {
+    }
+}
+```
+
+```blade
+@foreach ($devices as $i => $device)
+    <Card title="{{ $device->label() }}">
+        <Image source="{{ $device->image }}" fallback="{{ $assets->images->device }}" width="64" height="64" />
+        <Progress value="{{ $device->battery }}" />
+        <Button text="Pick" onClick="pick($device->name)" />
+    </Card>
+@endforeach
+<Label text="{{ count($devices) }} devices" />
+```
+
+- A collection can be a screen's or window's property, a method's return type, or a store's member
+  (`@foreach ($store->devices->devices as $device)`).
+- `$device->name` reads a public property of the item class, `$device->label()` a public method
+  without parameters. Members shown in templates must be `string`, `int`, `float` or `bool` (not
+  nullable). They work everywhere expressions do: text, attributes, `@if`, handler arguments.
+- Change a collection with `add($item)` or `$c[] = $item`, `set($i, $item)` or `$c[$i] = $item`,
+  `remove($i)` or `unset($c[$i])` (later items move up), and `clear()`; read it with `foreach`,
+  `count()`, `get($i)` or `$c[$i]`, `all()` and `isEmpty()`. Adding an object that isn't an `OF`
+  (or a subclass of it) throws `InvalidArgumentException`; an index that doesn't exist throws
+  `OutOfRangeException`.
+- Changing an item's property (`$device->image = $url;` when an API answers) updates its row with
+  the next update, like any other value. Only rows that changed are redrawn.
+- A misspelled member, an array or nullable member, or a collection without `OF` stops the build
+  with the line and what the item class has, e.g.
+  `DevicesScreen.rk:3: $device->nmae: Device has no public property or method 'nmae' (it has: name, image, battery, label())`.
 
 ## Layout
 
@@ -592,9 +670,16 @@ While an image is loading, or if it can't be loaded, it shows nothing, unless yo
 ```
 
 A problem prints one line, e.g. `ragekit: image https://example.com/a.png: HTTP 404`, and that
-source isn't tried again until the app restarts. Not supported yet: bound images inside
-`@foreach` and in child components (a fixed path or `$assets->…` works there), expiring the cache,
-request headers for image downloads.
+source isn't tried again until the app restarts.
+
+**Inside `@foreach`**, each row shows its own image, resolved the same way: a string member of a
+collection's items (`source="{{ $device->image }}"`, see
+[Lists of objects](#lists-of-objects-collections)), or the item of a list of strings
+(`@foreach ($photos as $photo) <Image source="{{ $photo }}" />`). `fallback` works per row. A
+loop over a constant (`self::PHOTOS`) can't show images; use a property or method.
+
+Not supported yet: bound images in child components (a fixed path or `$assets->…` works there),
+expiring the cache, request headers for image downloads.
 
 ### Tabs
 
