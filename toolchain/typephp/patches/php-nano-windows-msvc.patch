@@ -1,0 +1,48 @@
+diff --git a/vendor/swoole/php-nano/ext/reflection/php_reflection.c b/vendor/swoole/php-nano/ext/reflection/php_reflection.c
+index 39f5340..d2302e9 100644
+--- a/vendor/swoole/php-nano/ext/reflection/php_reflection.c
++++ b/vendor/swoole/php-nano/ext/reflection/php_reflection.c
+@@ -7810,6 +7810,7 @@ ZEND_METHOD(ReflectionEnumBackedCase, getBackingValue)
+ 	ZVAL_COPY_OR_DUP(return_value, member_p);
+ }
+ 
++#ifndef PHP_NANO /* Nano has no fibers (zend_fibers.c); the class isn't registered there either. */
+ /* {{{ proto ReflectionFiber::__construct(Fiber $fiber) */
+ ZEND_METHOD(ReflectionFiber, __construct)
+ {
+@@ -7933,6 +7934,7 @@ ZEND_METHOD(ReflectionFiber, getCallable)
+ 
+ 	RETURN_COPY(&fiber->fci.function_name);
+ }
++#endif /* PHP_NANO */
+ 
+ /* {{{ _reflection_write_property */
+ static zval *_reflection_write_property(zend_object *object, zend_string *name, zval *value, void **cache_slot)
+diff --git a/vendor/swoole/php-nano/ext/standard/crc32_x86.h b/vendor/swoole/php-nano/ext/standard/crc32_x86.h
+index c46775f..4929b85 100644
+--- a/vendor/swoole/php-nano/ext/standard/crc32_x86.h
++++ b/vendor/swoole/php-nano/ext/standard/crc32_x86.h
+@@ -37,7 +37,8 @@ typedef enum {
+ PHP_MINIT_FUNCTION(crc32_x86_intrin);
+ #endif
+ 
+-#if defined(ZEND_INTRIN_SSE4_2_PCLMUL_NATIVE) || defined(ZEND_INTRIN_SSE4_2_PCLMUL_RESOLVER)
++/* Nano doesn't build crc32_x86.c: the portable path only (MSVC enables the resolver on x64). */
++#if !defined(PHP_NANO) && (defined(ZEND_INTRIN_SSE4_2_PCLMUL_NATIVE) || defined(ZEND_INTRIN_SSE4_2_PCLMUL_RESOLVER))
+ /* Return the size processed by SIMD routine */
+ size_t crc32_x86_simd_update(X86_CRC32_TYPE type, uint32_t *crc, const unsigned char *p, size_t nr);
+ #else
+diff --git a/vendor/swoole/php-nano/main/config.w32.h b/vendor/swoole/php-nano/main/config.w32.h
+index 71bbe25..c7f37d7 100644
+--- a/vendor/swoole/php-nano/main/config.w32.h
++++ b/vendor/swoole/php-nano/main/config.w32.h
+@@ -22,6 +22,9 @@
+ #define PHP_PREFIX ""
+ #define PHP_SYSCONFDIR ""
+ 
++/* As main/php_config.h on the other targets: PHP's portable C SHA-3 (no bundled KeccakHash). */
++#define HAVE_SLOW_HASH3 1
++
+ /* PHP Runtime Configuration */
+ #define DEFAULT_SHORT_OPEN_TAG "1"
+ 

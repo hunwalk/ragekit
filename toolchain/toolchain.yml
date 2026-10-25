@@ -19,7 +19,11 @@ typephp:
     - typephp/patches/php-nano-core-dependency.patch
   platforms:
     windows-x86_64:
-      # The Nano link fix for MSVC (NanoSourceComposer) goes here once it's exported as a patch.
+      patches:
+        # MSVC builds of php-nano (found 2026-10-25; GNU ld's --gc-sections hides the link errors on
+        # Linux): HAVE_SLOW_HASH3 in config.w32.h (php_config.h has it), no SSE4.2 CRC32 resolver
+        # (crc32_x86.c isn't built), no ReflectionFiber methods (no fibers). To be reported upstream.
+        - typephp/patches/php-nano-windows-msvc.patch
       downloads:
         # PHP's import libraries and DLLs for normal builds (PHP_HOME): TypePHP's v0.9.5 release.
         - url: https://github.com/swoole/typephp/releases/download/v0.9.5/tpc_v0.9.5_windows_x64_php8.5.11-zts.zip
