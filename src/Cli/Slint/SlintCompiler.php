@@ -37,12 +37,24 @@ final class SlintCompiler
     ) {
     }
 
+    /** A binding's Slint property type. */
+    private static function slintType(Binding $binding): string
+    {
+        return match ($binding->type) {
+            'image' => 'image',
+            'images' => '[image]',
+            'rows' => '[' . $binding->row->struct . ']',
+            default => ValueCompiler::TYPES[$binding->type],
+        };
+    }
+
     /** @param array<string, ClassInfo> $classes by class name */
     public function compile(array $classes): CompiledViews
     {
         $owners = [];
         $root = null;
         $stores = [];
+        $collections = [];
         $this->assets = AssetRegistry::fromClasses($classes, $this->projectRoot);
         foreach ($classes as $name => $class) {
             if ($class->isApp) {
@@ -59,6 +71,10 @@ final class SlintCompiler
             }
             if ($class->isStore) {
                 $stores[$class->name] = $class;
+                unset($classes[$name]);
+            }
+            if ($class->isCollection) {
+                $collections[$class->name] = $class;
                 unset($classes[$name]);
             }
         }
@@ -91,6 +107,8 @@ final class SlintCompiler
         $this->values = new ValueCompiler($this->projectRoot);
         $this->values->useStores($root, $stores);
         $this->values->useAssets($this->assets);
+        $rows = new RowTypes($collections);
+        $this->values->useCollections($rows);
         $this->elements = new ElementDispatcher($this->kits, $this->activeKit, $this->children, $this->values);
         $window = $this->windowComponent();
         $definitions = [];
@@ -124,6 +142,10 @@ final class SlintCompiler
         }
         if ($this->assets->paths() !== []) {
             array_unshift($definitions, $this->assetsGlobal());
+        }
+        // Row structs last: every template has added the fields it reads by now.
+        if ($rows->all() !== []) {
+            array_unshift($definitions, $rows->slint());
         }
         return new CompiledViews(
             Code::stub('app', ['imports' => implode("\n", $imports), 'components' => implode("\n", $definitions)]),
@@ -286,7 +308,7 @@ final class SlintCompiler
         }
         usort($bindings, fn(Binding $a, Binding $b) => $a->id <=> $b->id);
         foreach ($bindings as $binding) {
-            $properties[] = ($binding->twoWay ? 'in-out' : 'in') . ' property <' . ($binding->type === 'image' ? 'image' : ValueCompiler::TYPES[$binding->type]) . '> ' . $binding->slintName() . ';';
+            $properties[] = ($binding->twoWay ? 'in-out' : 'in') . ' property <' . self::slintType($binding) . '> ' . $binding->slintName() . ';';
         }
         return Code::stub('window', [
             'name' => $model->name,

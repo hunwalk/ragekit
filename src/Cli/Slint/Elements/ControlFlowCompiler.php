@@ -81,8 +81,8 @@ final class ControlFlowCompiler implements ElementCompiler
     {
         $raw = $element->attributes['source'] ?? '';
         $source = $this->context->expressions->compile(Parser::parse($raw, $element->file, $element->line), $scope, $element);
-        if ($source->type !== 'list') {
-            throw TemplateException::at($element, "@foreach needs a list; $raw is a {$source->type}");
+        if ($source->type !== 'list' && $source->type !== 'rows') {
+            throw TemplateException::at($element, "@foreach needs a list or a collection; $raw is a {$source->type}");
         }
         if (count($element->children) !== 1) {
             throw new OneChildRequired($element, '@foreach');
@@ -95,7 +95,9 @@ final class ControlFlowCompiler implements ElementCompiler
         if ($as === 'assets' || $index === 'assets') {
             throw TemplateException::at($element, "\$assets is reserved for the app's assets; name the loop variable something else");
         }
-        $inner = $scope->with($as, new Ref((string) $source->itemType, $as, $source->itemType === 'list' ? 'string' : null));
+        $inner = $scope->with($as, $source->type === 'rows'
+            ? new Ref('row', $as, row: $source->row)
+            : new Ref((string) $source->itemType, $as, $source->itemType === 'list' ? 'string' : null));
         if ($index !== null) {
             $inner = $inner->with($index, new Ref('int', $index));
         }

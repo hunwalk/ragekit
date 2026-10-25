@@ -34,9 +34,34 @@ final class ValueCompiler
 
     private ?AssetRegistry $assets = null;
 
+    private RowTypes $rows;
+
     /** @param string $projectRoot what image paths in templates are relative to */
     public function __construct(private readonly string $projectRoot = '')
     {
+        $this->rows = new RowTypes();
+    }
+
+    /** The app's Collection subclasses, for @foreach over them. */
+    public function useCollections(RowTypes $rows): void
+    {
+        $this->rows = $rows;
+    }
+
+    /** The rows of $type when it is a Collection subclass, else null. */
+    public function rowsOf(string $type, Element $at): ?RowType
+    {
+        return $this->rows->for($type, $at);
+    }
+
+    /** A collection shown in a template: a binding of type 'rows'. */
+    private function rowsRef(string $source, string $name, string $owner, RowType $row, Scope $scope, Element $at): Ref
+    {
+        if ($scope->model === null) {
+            throw TemplateException::at($at, "child components can't show collections yet; loop over them in the screen's template");
+        }
+        $binding = $scope->model->bind($source, $name, 'rows', $owner, $row);
+        return new Ref('rows', 'root.' . $binding->slintName(), row: $row, origin: [$source, $name, $owner]);
     }
 
     /**
@@ -70,6 +95,10 @@ final class ValueCompiler
         }
         if (!$call && $isMethod) {
             throw TemplateException::at($at, "$path is a method: write $path()");
+        }
+        $row = $this->rowsOf((string) ($call ? ($class->computed[$member] ?? '') : ($class->props[$member] ?? '')), $at);
+        if ($row !== null) {
+            return $this->rowsRef($call ? 'method' : 'property', "$store.$member", 'store', $row, $scope, $at);
         }
         if (!$call && isset($class->props[$member])) {
             $type = $this->valueType($class->props[$member], $at, $path);
@@ -510,6 +539,10 @@ final class ValueCompiler
         $class = $scope->class;
         if (array_key_exists($name, $class->constants)) {
             return $this->constant($class->constants[$name], $name, $at);
+        }
+        $row = $this->rowsOf((string) ($class->props[$name] ?? $class->computed[$name] ?? ''), $at);
+        if ($row !== null) {
+            return $this->rowsRef(isset($class->props[$name]) ? 'property' : 'method', $name, $scope->owner, $row, $scope, $at);
         }
         if (isset($class->props[$name])) {
             $type = $this->valueType($class->props[$name], $at, "property \$$name");

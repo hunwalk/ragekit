@@ -35,13 +35,13 @@ final class ScreenModel
         $this->window->pages[] = $this;
     }
 
-    public function bind(string $source, string $name, string $type, string $owner = 'screen'): Binding
+    public function bind(string $source, string $name, string $type, string $owner = 'screen', ?RowType $row = null): Binding
     {
         if ($owner !== 'screen') {
-            return $this->window->bind($source, $name, $type, $owner);
+            return $this->window->bind($source, $name, $type, $owner, $row);
         }
-        $key = "$owner:$source:$name" . ($type === 'image' ? ':image' : '');
-        return $this->bindings[$key] ??= new Binding($this->window->nextBindingId(), $source, $name, $type, false, $owner);
+        $key = "$owner:$source:$name" . (in_array($type, ['image', 'images'], true) ? ":$type" : '');
+        return $this->bindings[$key] ??= new Binding($this->window->nextBindingId(), $source, $name, $type, false, $owner, $row);
     }
 
     /**

@@ -39,6 +39,8 @@ final class ExpressionCompiler
                 return $this->constant((string) $node->value, $scope, $at);
             case 'call':
                 return $this->call($node, $scope, $at);
+            case 'member':
+                return $this->member($node, $scope, $at);
             case 'context':
                 if ($node->children !== []) {
                     throw TemplateException::at($at, "\$context->{$node->value}(): methods shown in templates can't take arguments");
@@ -80,8 +82,8 @@ final class ExpressionCompiler
             $offset = $match[0][1] + strlen($match[0][0]);
             if (isset($match[2]) && $match[2][1] >= 0) {
                 $ref = $this->values->resolve($match[2][0], $scope, $at);
-                if ($ref->type === 'list') {
-                    throw TemplateException::at($at, "'{$match[2][0]}' is a list; show its items with @foreach");
+                if ($ref->type === 'list' || $ref->type === 'rows') {
+                    throw TemplateException::at($at, "'{$match[2][0]}' is a " . ($ref->type === 'rows' ? 'collection' : 'list') . '; show its items with @foreach');
                 }
                 $out .= $ref->type === 'bool' ? '\{(' . $ref->slint . ' ? "true" : "false")}' : '\{' . $ref->slint . '}';
                 continue;
@@ -122,6 +124,24 @@ final class ExpressionCompiler
         return $this->values->resolve($name, $scope, $at);
     }
 
+    /** $item->member / $item->member() of a @foreach item over a collection: a field of its row. */
+    private function member(Node $node, Scope $scope, Element $at): Ref
+    {
+        [$var, $member, $call] = $node->value;
+        $item = $scope->item($var);
+        if ($item === null && !isset($scope->class->props[$var]) && !isset($scope->class->computed[$var])) {
+            throw TemplateException::at($at, "'$var' is not a property, method or constant of {$scope->class->short}");
+        }
+        if ($item === null || $item->type !== 'row' || $item->row === null) {
+            throw TemplateException::at($at, "\$$var is not an object; ->member works on @foreach items of a collection");
+        }
+        if ($node->children !== []) {
+            throw TemplateException::at($at, "\$$var->$member(): methods shown in templates can't take arguments");
+        }
+        $field = $item->row->field($var, $member, $call, false, $at);
+        return new Ref($field->type, "$var.{$field->name}");
+    }
+
     private function constant(string $name, Scope $scope, Element $at): Ref
     {
         if (!array_key_exists($name, $scope->class->constants)) {
@@ -139,7 +159,7 @@ final class ExpressionCompiler
                 throw TemplateException::at($at, 'count() takes one list');
             }
             $list = $this->compile($node->children[0], $scope, $at);
-            if ($list->type !== 'list') {
+            if ($list->type !== 'list' && $list->type !== 'rows') {
                 throw TemplateException::at($at, 'count() takes a list, not ' . self::article($list->type));
             }
             return new Ref('int', $list->slint . '.length');
@@ -168,7 +188,7 @@ final class ExpressionCompiler
         $right = $this->compile($node->children[1], $scope, $at);
         if (in_array($op, ['===', '==', '!==', '!='], true)) {
             $numbers = in_array($left->type, ['int', 'float'], true) && in_array($right->type, ['int', 'float'], true);
-            if (($left->type !== $right->type && !$numbers) || $left->type === 'list') {
+            if (($left->type !== $right->type && !$numbers) || in_array($left->type, ['list', 'rows', 'row'], true)) {
                 throw TemplateException::at($at, "$op compares " . self::article($left->type) . ' with ' . self::article($right->type));
             }
             $slintOp = $op[0] === '!' ? '!=' : '==';
@@ -224,8 +244,11 @@ final class ExpressionCompiler
             $what = self::describe($node);
             throw TemplateException::at($at, "can't join a bool to text; use a ternary, e.g. ($what ? 'yes' : 'no')");
         }
-        if ($ref->type === 'list') {
-            throw TemplateException::at($at, self::describe($node) . ' is a list; show its items with @foreach');
+        if ($ref->type === 'list' || $ref->type === 'rows') {
+            throw TemplateException::at($at, self::describe($node) . ' is a ' . ($ref->type === 'rows' ? 'collection' : 'list') . '; show its items with @foreach');
+        }
+        if ($ref->type === 'row') {
+            throw TemplateException::at($at, self::describe($node) . ' is an object; show one of its members, e.g. ' . self::describe($node) . '->name');
         }
         return '\{' . $ref->slint . '}';
     }
@@ -254,6 +277,7 @@ final class ExpressionCompiler
     {
         return match ($node->kind) {
             'var' => '$' . $node->value,
+            'member' => '$' . $node->value[0] . '->' . $node->value[1] . ($node->value[2] ? '()' : ''),
             'call' => $node->value . '()',
             'context' => '$context->' . $node->value . '()',
             'store' => '$store->' . $node->value[0] . '->' . $node->value[1] . ($node->value[2] ? '()' : ''),
