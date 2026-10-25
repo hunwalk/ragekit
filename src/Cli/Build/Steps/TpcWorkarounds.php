@@ -9,7 +9,7 @@ use RageKit\Cli\Build\Step;
 use RageKit\Cli\Toolchain\Platform;
 
 /**
- * Workarounds for tpc 0.9.4 bugs — delete each one once a fixed tpc ships.
+ * Workarounds for tpc bugs (still in 0.9.5) — delete each one once a fixed tpc ships.
  */
 final class TpcWorkarounds implements Step
 {
@@ -21,10 +21,7 @@ final class TpcWorkarounds implements Step
     public function run(BuildContext $context): string
     {
         $buildDir = $context->buildDir();
-        $applied = ['output dir'];
-
-        // tpc doesn't create the output dir itself (fixed upstream in f394d6a8).
-        @mkdir("$buildDir/cache", 0777, true);
+        $applied = [];
 
         // tpc doesn't recognise absolute Windows paths for `manifest` (its regex in Translator.php
         // escapes the `|`), so copy it next to the generated tpc.yml and use the file name.
@@ -36,6 +33,6 @@ final class TpcWorkarounds implements Step
             $context->config['manifest'] = 'app.manifest';
             $applied[] = 'manifest path';
         }
-        return implode(', ', $applied);
+        return $applied === [] ? 'none needed' : implode(', ', $applied);
     }
 }

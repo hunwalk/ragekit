@@ -11,6 +11,13 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+### Changed
+
+- **TypePHP 0.9.5.** `ragekit setup` now installs TypePHP v0.9.5 (was v0.9.4 plus 8 commits); run
+  `ragekit setup` again after updating. Among its fixes: writes through a property to an
+  `ArrayAccess` object (`$this->items[] = $x`) now call `offsetSet()` instead of replacing the
+  object with an array, and tpc creates the output folder itself.
+
 ## [0.5.1] - 2026-10-24
 
 The dev shell on Windows: `ragekit dev` (hot reload) now works there too. Nothing changes for
