@@ -26,6 +26,13 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ### Fixed
 
+- **A wrapping `<View>` (`flexWrap: 'wrap'`) no longer caps the window at one child's width.**
+  Slint's wrapping flexbox reported a maximum width of about one item, so a list of 440 px cards
+  kept a 940 px window at 472 px. A wrapping View without a `width`/`maxWidth` of its own now grows
+  with the window; the `maxWidth: 10000` workaround can go.
+- **Nano builds on Windows (MSVC) link again** with TypePHP 0.9.5: `ragekit setup` applies a php-nano
+  patch on Windows (SHA-3 config, CRC32 and ReflectionFiber code Nano doesn't build). Run
+  `ragekit setup` again.
 - **Windows normal builds copy PHP's DLLs next to the executable** (`php8ts.dll`, `phpx.dll`,
   `libmpdec`, `gmp`, `mpfr`) from the installed TypePHP release, on every build. The app now starts
   without PHP on PATH, and a copy left from an older TypePHP no longer wins over the new one (that

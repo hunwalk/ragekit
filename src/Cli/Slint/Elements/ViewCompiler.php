@@ -57,6 +57,12 @@ final class ViewCompiler implements ElementCompiler
             $lines[] = 'height: parent.height;';
         } else {
             $lines[] = $this->context->stretch($element, $axis);
+            // Slint's wrapping FlexboxLayout reports a maximum width of about one child, which
+            // capped the whole window there (min of its children's maximums); a View without a width
+            // of its own may grow like any block (React Native's default).
+            if ($layout['flex-wrap'] !== 'no-wrap' && preg_match('/^(max-)?width:/m', implode("\n", $lines)) !== 1) {
+                $lines[] = 'max-width: 100000px;';
+            }
         }
         $box = Code::block('FlexboxLayout', CompileContext::styleLines($style, $layout), $flow);
         return $this->context->withMargin(Code::block('Rectangle', $lines, $box . $placed), $style, $element, $axis);
