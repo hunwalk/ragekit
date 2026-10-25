@@ -21,6 +21,8 @@ final class ViewTest extends TestCase
         'corner' => ['position' => 'absolute', 'top' => 8, 'right' => 8],
         'bottomLeft' => ['position' => 'absolute', 'bottom' => 4, 'left' => 4, 'width' => 40],
         'centered' => ['alignSelf' => 'center'],
+        'sized' => ['flexDirection' => 'row', 'flexWrap' => 'wrap', 'width' => 300],
+        'capped' => ['flexDirection' => 'row', 'flexWrap' => 'wrap', 'maxWidth' => 500],
     ];
     private string $dir;
 
@@ -45,6 +47,19 @@ final class ViewTest extends TestCase
             self::assertStringContainsString($line, $out->slint);
         }
         self::assertStringContainsString('FlexboxLayout {', $out->slint);
+    }
+
+    /**
+     * A wrapping View reports no width limit of its own: Slint's wrapping FlexboxLayout reports a
+     * maximum of about one child's width, which capped the whole window there (glite: 472 px of 940).
+     */
+    public function testWrappingViewHasNoWidthLimit(): void
+    {
+        $wrapping = $this->compile("<VStack><View style=\"tags\">\n@foreach (\$items as \$i)\n<Badge text=\"{{ \$i }}\" />\n@endforeach\n</View></VStack>")->slint;
+        self::assertMatchesRegularExpression('/Rectangle \{\s+vertical-stretch: 0;\s+max-width: 100000px;\s+FlexboxLayout \{\s+flex-direction: row;\s+flex-wrap: wrap;/', $wrapping);
+        self::assertStringNotContainsString('max-width: 100000px', $this->compile('<VStack><View><Label text="a" /></View></VStack>')->slint, 'no wrap: unchanged');
+        self::assertStringNotContainsString('max-width: 100000px', $this->compile('<VStack><View style="sized"><Label text="a" /></View></VStack>')->slint, 'its own width wins');
+        self::assertStringNotContainsString('max-width: 100000px', $this->compile('<VStack><View style="capped"><Label text="a" /></View></VStack>')->slint, 'its own maxWidth wins');
     }
 
     public function testDefaultsAreReactNatives(): void
