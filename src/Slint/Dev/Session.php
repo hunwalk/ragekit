@@ -390,11 +390,11 @@ final class Session
     }
 
     /** @return array<string, mixed> */
-    private static function props(object $component): array
+    private static function props(object $component, bool $readonly = false): array
     {
         $props = [];
         foreach ((new \ReflectionObject($component))->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-            if ($property->isStatic() || $property->isReadOnly() || !$property->isInitialized($component)) {
+            if ($property->isStatic() || ($property->isReadOnly() && !$readonly) || !$property->isInitialized($component)) {
                 continue;
             }
             $value = $property->getValue($component);
@@ -417,7 +417,8 @@ final class Session
     {
         $items = [];
         foreach ($collection->all() as $item) {
-            $items[] = ['@class' => get_class($item)] + self::props($item);
+            // Readonly properties too: an item built without its constructor needs them back.
+            $items[] = ['@class' => get_class($item)] + self::props($item, readonly: true);
         }
         return ['@collection' => get_class($collection), 'items' => $items];
     }
@@ -435,13 +436,24 @@ final class Session
             if (!class_exists($itemClass)) {
                 continue;
             }
-            // The constructor when it needs no arguments: promoted properties get their defaults.
+            // Built without its constructor and given every saved property (readonly ones too); if
+            // one is still missing (its type changed), the constructor's defaults fill in when it
+            // needs no arguments, else the item is left out rather than half-built.
             $reflection = new \ReflectionClass($itemClass);
-            $constructor = $reflection->getConstructor();
-            $item = $constructor === null || $constructor->getNumberOfRequiredParameters() === 0 ? $reflection->newInstance() : $reflection->newInstanceWithoutConstructor();
             unset($data['@class']);
+            $item = $reflection->newInstanceWithoutConstructor();
             foreach ($data as $name => $value) {
-                self::assign($item, (string) $name, $value);
+                self::assign($item, (string) $name, $value, readonly: true);
+            }
+            if (!self::complete($item)) {
+                $constructor = $reflection->getConstructor();
+                if ($constructor !== null && $constructor->getNumberOfRequiredParameters() > 0) {
+                    continue;
+                }
+                $item = $reflection->newInstance();
+                foreach ($data as $name => $value) {
+                    self::assign($item, (string) $name, $value);
+                }
             }
             try {
                 $collection->add($item);
@@ -450,6 +462,17 @@ final class Session
             }
         }
         return $collection;
+    }
+
+    /** Whether every typed property of $object has a value. */
+    private static function complete(object $object): bool
+    {
+        foreach ((new \ReflectionObject($object))->getProperties() as $property) {
+            if (!$property->isStatic() && $property->hasType() && !$property->isInitialized($object)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static function plain(mixed $value): bool
@@ -466,14 +489,15 @@ final class Session
     }
 
     /** @return string|null why the value can't be restored */
-    private static function assign(object $component, string $name, mixed $value): ?string
+    /** $readonly: a readonly property may be set while it is still uninitialized (a rebuilt item). */
+    private static function assign(object $component, string $name, mixed $value, bool $readonly = false): ?string
     {
         $class = new \ReflectionObject($component);
         if (!$class->hasProperty($name)) {
             return 'no longer declared';
         }
         $property = $class->getProperty($name);
-        if (!$property->isPublic() || $property->isStatic() || $property->isReadOnly()) {
+        if (!$property->isPublic() || $property->isStatic() || ($property->isReadOnly() && (!$readonly || $property->isInitialized($component)))) {
             return 'no longer a public property';
         }
         $type = $property->getType();
