@@ -175,7 +175,8 @@ function slint_rows_image_file(string $path): bool
 
 /**
  * One line: set-rows, window, property, struct|images (a collection, or a list shown as images),
- * the column count and types, then the cells row by row.
+ * the row and column counts, the column types, then the cells row by row (rows may have no
+ * columns: a loop that reads no members).
  */
 function slint_rows_end(): void
 {
@@ -190,7 +191,7 @@ function slint_rows_end(): void
             $cells[] = $text;
         }
     }
-    Session::channel()->send('set-rows', (string) $window, Session::property($id), $mode, (string) count($types), ...$types, ...$cells);
+    Session::channel()->send('set-rows', (string) $window, Session::property($id), $mode, (string) count($rows), (string) count($types), ...$types, ...$cells);
 }
 
 function slint_close(int $window): void

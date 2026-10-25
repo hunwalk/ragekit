@@ -394,23 +394,24 @@ void Shell::onPhpExit(unsigned generation, int code)
     log("php stopped " + std::to_string(code));
 }
 
-// set-rows <window> <property> struct|images <columns> <type>… <cell>…: a collection's rows (a struct
-// per row, fields f0…) or a list shown as images, brought into the property's model in place.
+// set-rows <window> <property> struct|images <rows> <columns> <type>… <cell>…: a collection's rows (a
+// struct per row, fields f0…; possibly none) or a list shown as images, brought into the property's
+// model in place.
 bool Shell::setRows(Win &win, const std::string &property, const std::vector<std::string> &f)
 {
     using slint::interpreter::Value;
-    if (f.size() < 5) {
+    if (f.size() < 6) {
         return false;
     }
     bool images = f[3] == "images";
-    size_t columns = std::strtoul(f[4].c_str(), nullptr, 10);
-    size_t first = 5 + columns;
-    if (f.size() < first) {
+    size_t count = std::strtoul(f[4].c_str(), nullptr, 10);
+    size_t columns = std::strtoul(f[5].c_str(), nullptr, 10);
+    size_t first = 6 + columns;
+    if (f.size() < first + count * columns || (images && count > 0 && columns != 1)) {
         return false;
     }
-    size_t count = columns == 0 ? 0 : (f.size() - first) / columns;
     auto cell = [&](size_t row, size_t column) -> Value {
-        const std::string &type = f[5 + column];
+        const std::string &type = f[6 + column];
         const std::string &text = f[first + row * columns + column];
         if (type == "s") {
             return Value(slint::SharedString(text));

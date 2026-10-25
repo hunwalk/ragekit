@@ -181,6 +181,14 @@ final class CollectionCompileTest extends TestCase
         $this->fails("Devices::OF names Demo\\Nope, which doesn't exist", [$this->collection(of: 'Demo\Nope', found: false), $this->screen($this->loop('<Label text="x" />'))]);
     }
 
+    /** Final review: a loop that reads no members still gets a (field-less) struct and its rows. */
+    public function testLoopReadingNoMembers(): void
+    {
+        $out = $this->compile([$this->collection(), $this->screen($this->loop('<Label text="row {{ $i }}" />'))], slint: true);
+        self::assertStringContainsString("export struct RkRowDevice {\n}", $out->slint);
+        self::assertSame([], $out->windows[0]->pages[0]->bindings['screen:property:devices']->row->fields());
+    }
+
     public function testStructNameClash(): void
     {
         $out = $this->compile([

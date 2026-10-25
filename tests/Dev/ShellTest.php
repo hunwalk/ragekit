@@ -90,12 +90,12 @@ final class ShellTest extends TestCase
         $log = "$this->dir/app.log";
         $proc = $this->start($shell, $entries, $log, 'rows');
         $this->waitFor($log, "opened 1\n");
-        $this->waitFor("$this->dir/shell.log", "rows 1 p5 1\n");
+        $this->waitFor("$this->dir/shell.log", "rows 1 p6 3\n");
         fwrite($this->stdin, "stop\n");
         fclose($this->stdin);
         self::assertSame(0, proc_close($proc));
         $shellLog = (string) file_get_contents("$this->dir/shell.log");
-        self::assertStringContainsString("rows 1 p3 2\nrows 1 p3 1\nrows 1 p5 1\n", $shellLog);
+        self::assertStringContainsString("rows 1 p3 2\nrows 1 p3 1\nrows 1 p5 1\nrows 1 p5 0\nrows 1 p6 3\n", $shellLog);
         self::assertStringNotContainsString('error', strtolower($shellLog));
     }
 
@@ -231,7 +231,10 @@ final class ShellTest extends TestCase
         $devices = new ClassInfo('Demo\\Devices', 'Devices', "$project/Devices.php", false, '', isCollection: true, of: 'Demo\\Device', ofFound: true,
             props: ['name' => 'string', 'image' => 'string', 'level' => 'float']);
         $rows = new ClassInfo('Demo\\W', 'W', "$project/W.php", true, "$project/W.rk", ['devices' => 'Demo\\Devices', 'photos' => 'list']);
-        $classes = ['Demo\\S' => $class, 'Demo\\F' => $framed, 'Demo\\L' => $frame, 'Demo\\V' => $view, 'Demo\\Devices' => $devices, 'Demo\\W' => $rows];
+        $things = new ClassInfo('Demo\\Things', 'Things', "$project/Things.php", false, '', isCollection: true, of: 'Demo\\Thing', ofFound: true, props: ['name' => 'string']);
+        $empty = new ClassInfo('Demo\\X', 'X', "$project/X.php", true, "$project/X.rk", ['things' => 'Demo\\Things']);
+        file_put_contents("$project/X.rk", "<VStack>\n@foreach (\$things as \$i => \$t)\n<Label text=\"row {{ \$i }}\" />\n@endforeach\n</VStack>");
+        $classes = ['Demo\\Things' => $things, 'Demo\\X' => $empty, 'Demo\\S' => $class, 'Demo\\F' => $framed, 'Demo\\L' => $frame, 'Demo\\V' => $view, 'Demo\\Devices' => $devices, 'Demo\\W' => $rows];
         $out = DevViews::write(new ViewProject($classes, $kits, 'material', "$project/build/dev", $project), "$project/build/dev");
         return self::$built = [$shell, $out->entries];
     }

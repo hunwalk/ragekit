@@ -106,6 +106,7 @@ final class DevAppTest extends TestCase
                         ['member' => 'image', 'source' => 'property', 'type' => 'image', 'name' => 'f2'],
                     ]]],
                     ['id' => 2, 'owner' => 'screen', 'source' => 'property', 'name' => 'photos', 'type' => 'images'],
+                    ['id' => 3, 'owner' => 'screen', 'source' => 'property', 'name' => 'devices', 'type' => 'rows', 'row' => ['item' => 'App\\Device', 'fields' => []]],
                 ],
             ]],
         ]]]));
@@ -128,8 +129,9 @@ final class DevAppTest extends TestCase
         self::assertSame('open', $read()[0]);
         fwrite($shell, Protocol::encode('opened', '1'));
         self::assertSame(['set-int', '1', 'rk-page', '0'], $read());
-        self::assertSame(['set-rows', '1', 'p1', 'struct', '3', 's', 'b', 'img', "a\tb", '1', '/abs/x.png', 'c', '0', ''], $read());
-        self::assertSame(['set-rows', '1', 'p2', 'images', '1', 'img', '/abs/p.png'], $read());
+        self::assertSame(['set-rows', '1', 'p1', 'struct', '2', '3', 's', 'b', 'img', "a\tb", '1', '/abs/x.png', 'c', '0', ''], $read());
+        self::assertSame(['set-rows', '1', 'p2', 'images', '1', '1', 'img', '/abs/p.png'], $read());
+        self::assertSame(['set-rows', '1', 'p3', 'struct', '2', '0'], $read(), 'a loop reading no members still has its rows');
         self::assertSame(['run'], $read());
         fwrite($shell, Protocol::encode('event', '1', '0', ''));
         self::assertSame(['close', '1'], $read());

@@ -50,9 +50,13 @@ if ($mode === 'rows') {
     // Page 2 (W): a collection (p3: name, image, level) and a list shown as images (p5; p4 is the list itself).
     $png = dirname(__DIR__, 3) . '/tests/e2e/images/assets/red.png';
     $shell->send('set-int', $reply[1], 'rk-page', '2');
-    $shell->send('set-rows', $reply[1], 'p3', 'struct', '3', 's', 'img', 'f', 'a', $png, '0.5', 'b', '', '1');
-    $shell->send('set-rows', $reply[1], 'p3', 'struct', '3', 's', 'img', 'f', 'a2', $png, '0.25');
-    $shell->send('set-rows', $reply[1], 'p5', 'images', '1', 'img', $png);
+    $shell->send('set-rows', $reply[1], 'p3', 'struct', '2', '3', 's', 'img', 'f', 'a', $png, '0.5', 'b', '', '1');
+    $shell->send('set-rows', $reply[1], 'p3', 'struct', '1', '3', 's', 'img', 'f', 'a2', $png, '0.25');
+    $shell->send('set-rows', $reply[1], 'p5', 'images', '1', '1', 'img', $png);
+    $shell->send('set-rows', $reply[1], 'p5', 'images', '0', '0');
+    // Page 3 (X): a loop that reads no members — rows without columns.
+    $shell->send('set-int', $reply[1], 'rk-page', '3');
+    $shell->send('set-rows', $reply[1], 'p6', 'struct', '3', '0');
 } elseif ($mode === 'view') {
     $shell->send('set-int', $reply[1], 'rk-page', '1');
     $shell->send('set-list', $reply[1], 'p2', 'php', 'slint', 'desktop');
