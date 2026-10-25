@@ -24,6 +24,13 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
   resolved like single bound images (registered assets, files, web images downloaded once and
   cached), with `fallback` per row.
 
+### Fixed
+
+- **Windows normal builds copy PHP's DLLs next to the executable** (`php8ts.dll`, `phpx.dll`,
+  `libmpdec`, `gmp`, `mpfr`) from the installed TypePHP release, on every build. The app now starts
+  without PHP on PATH, and a copy left from an older TypePHP no longer wins over the new one (that
+  showed as a missing entry point such as `?empty_string@php@@…` after updating).
+
 ### Changed
 
 - **TypePHP 0.9.5.** `ragekit setup` now installs TypePHP v0.9.5 (was v0.9.4 plus 8 commits); run
