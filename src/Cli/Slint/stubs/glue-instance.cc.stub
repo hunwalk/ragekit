@@ -20,4 +20,5 @@ public:
 
 private:
     slint::ComponentHandle<{{ name }}> handle_;
+    {{ members }}
 };

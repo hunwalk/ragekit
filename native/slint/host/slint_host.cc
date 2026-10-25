@@ -108,6 +108,51 @@ void php_slint_list_end()
     listItems.clear();
 }
 
+void php_slint_rows_begin(Int window, Int id)
+{
+    rk_rows_begin(window, static_cast<int32_t>(id));
+}
+
+void php_slint_rows_next()
+{
+    rk_rows_next();
+}
+
+void php_slint_rows_string(String value)
+{
+    rk_rows_string(value.data(), value.length());
+}
+
+void php_slint_rows_int(Int value)
+{
+    rk_rows_int(value);
+}
+
+void php_slint_rows_float(Float value)
+{
+    rk_rows_float(value);
+}
+
+void php_slint_rows_bool(Bool value)
+{
+    rk_rows_bool(value ? 1 : 0);
+}
+
+void php_slint_rows_image_asset(Int index)
+{
+    rk_rows_image_asset(static_cast<int32_t>(index));
+}
+
+Bool php_slint_rows_image_file(String path)
+{
+    return rk_rows_image_file(path.data(), path.length()) != 0;
+}
+
+void php_slint_rows_end()
+{
+    rk_rows_end();
+}
+
 void php_slint_close(Int window)
 {
     rk_close(window);

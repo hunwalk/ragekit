@@ -36,6 +36,18 @@ RK_API void rk_set_list(int64_t window, int32_t id, const char *const *items, co
 RK_API void rk_set_image_asset(int64_t window, int32_t id, int32_t index);
 /** Loads the image file at path (UTF-8) into image property `id`; len 0 clears it. 0 = couldn't load it. */
 RK_API int rk_set_image_file(int64_t window, int32_t id, const char *path, size_t len);
+/* Rows of a collection (or a list shown as images) into property `id`: begin, then per row next()
+ * and one call per cell in field order, then end. An image cell is a registered image or a file
+ * (len 0 = none); rk_rows_image_file returns 0 if the file couldn't be loaded. */
+RK_API void rk_rows_begin(int64_t window, int32_t id);
+RK_API void rk_rows_next(void);
+RK_API void rk_rows_string(const char *value, size_t len);
+RK_API void rk_rows_int(int64_t value);
+RK_API void rk_rows_float(double value);
+RK_API void rk_rows_bool(int value);
+RK_API void rk_rows_image_asset(int32_t index);
+RK_API int rk_rows_image_file(const char *path, size_t len);
+RK_API void rk_rows_end(void);
 RK_API void rk_close(int64_t window);
 /** Window controls for layouts (frameless windows); see native/slint/window. */
 RK_API void rk_window_minimize(int64_t window);

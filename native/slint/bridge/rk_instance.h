@@ -8,9 +8,61 @@
 #include <memory>
 #include <optional>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 namespace rk {
+
+/** One cell of a pushed row (rk_rows_*): what the generated glue reads into a struct field. */
+using Cell = std::variant<std::monostate, slint::SharedString, int64_t, double, bool, slint::Image>;
+using Row = std::vector<Cell>;
+using Rows = std::vector<Row>;
+
+/** Cell `i` of `row` as a field of that type; a missing cell or another type gives the default. */
+template <class T>
+T cell(const Row &row, size_t i)
+{
+    if (i < row.size()) {
+        if (auto *value = std::get_if<T>(&row[i])) {
+            return *value;
+        }
+    }
+    return T();
+}
+
+inline slint::SharedString cell_string(const Row &row, size_t i) { return cell<slint::SharedString>(row, i); }
+// Slint's `int` is 32-bit and `float` is f32: narrowed here, like single values.
+inline int cell_int(const Row &row, size_t i) { return static_cast<int>(cell<int64_t>(row, i)); }
+inline float cell_float(const Row &row, size_t i) { return static_cast<float>(cell<double>(row, i)); }
+inline bool cell_bool(const Row &row, size_t i) { return cell<bool>(row, i); }
+inline slint::Image cell_image(const Row &row, size_t i) { return cell<slint::Image>(row, i); }
+
+/**
+ * Brings `model` to `rows` (each made into a T by `make`) in place: only rows that differ are
+ * replaced, then rows are added or removed at the end, so unchanged rows keep their Slint items.
+ * Returns true when the model was just created (the caller sets the property to it once).
+ */
+template <class T, class Make>
+bool update_model(std::shared_ptr<slint::VectorModel<T>> &model, const Rows &rows, Make make)
+{
+    bool created = model == nullptr;
+    if (created) {
+        model = std::make_shared<slint::VectorModel<T>>();
+    }
+    size_t count = model->row_count();
+    for (size_t i = 0; i < rows.size(); ++i) {
+        T value = make(rows[i]);
+        if (i >= count) {
+            model->push_back(std::move(value));
+        } else if (!(*model->row_data(i) == value)) {
+            model->set_row_data(i, std::move(value));
+        }
+    }
+    while (model->row_count() > rows.size()) {
+        model->erase(model->row_count() - 1);
+    }
+    return created;
+}
 
 class Instance {
 public:
@@ -25,6 +77,8 @@ public:
     virtual void set_bool(int id, bool value) = 0;
     virtual void set_list(int id, std::vector<slint::SharedString> value) = 0;
     virtual void set_image(int id, const slint::Image &value) = 0;
+    /** A collection's rows (or a list shown as images); see update_model(). */
+    virtual void set_rows(int, const Rows &) {}
     /** A registered image (App::assets()), embedded in the RkAssets global; nullopt if none. */
     virtual std::optional<slint::Image> asset(int) { return std::nullopt; }
     /** Screens with a layout: frameless windows with an app-drawn title bar. */

@@ -1,0 +1,15 @@
+<VStack>
+    @foreach ($devices as $i => $device)
+        <HStack>
+            <Image source="{{ $device->image }}" />
+            <Label text="{{ $device->label() }}" />
+            <Progress value="{{ $device->level }}" />
+            <Checkbox text="{{ $device->name }}" checked="{{ $device->on }}" />
+            <Button text="Pick" onClick="pick($device->name)" />
+        </HStack>
+    @endforeach
+    @foreach ($photos as $photo)
+        <Image source="{{ $photo }}" />
+    @endforeach
+    <Label text="{{ count($devices) }} devices" />
+</VStack>

@@ -7,6 +7,8 @@ namespace RageKit\Tests\Slint;
 use PHPUnit\Framework\TestCase;
 use RageKit\Cli\Slint\BinderEmitter;
 use RageKit\Cli\Slint\GlueEmitter;
+use RageKit\Cli\Slint\RowType;
+use RageKit\Cli\Templates\Element;
 use RageKit\Cli\Slint\ScreenModel;
 use RageKit\Cli\Slint\WindowModel;
 use RageKit\Cli\Templates\ClassInfo;
@@ -82,6 +84,26 @@ final class EmitterTest extends TestCase
         self::assertStringContainsString("if (screen == \"rk-screens\") {\n        return std::make_unique<rk_screensInstance>(window);", $cc);
         // Property id 0 picks the page (the screen on top of the window's navigator).
         self::assertStringContainsString('case 0: handle_->set_rk_page(static_cast<int>(value)); break;', $cc);
+    }
+
+    public function testGlueSetsRows(): void
+    {
+        $devices = new ClassInfo('Demo\\Devices', 'Devices', '/D.php', false, '', isCollection: true, of: 'Demo\\Device', ofFound: true,
+            props: ['name' => 'string', 'image' => 'string', 'level' => 'float', 'count' => 'int', 'on' => 'bool']);
+        $row = new RowType($devices, 'Demo\\Device', 'RkRowDevice');
+        $at = new Element('Label', null, [], [], 1, 'x.rk');
+        foreach ([['name', false], ['image', true], ['level', false], ['count', false], ['on', false]] as [$member, $image]) {
+            $row->field('d', $member, false, $image, $at);
+        }
+        $model = new ScreenModel(new ClassInfo('Demo\\Shelf', 'Shelf', '/S.php', true, '/S.rk', props: ['devices' => 'Demo\\Devices', 'photos' => 'list']));
+        $model->bind('property', 'devices', 'rows', 'screen', $row);   // p1
+        $model->bind('property', 'photos', 'images');                 // p2
+        $cc = GlueEmitter::emit([$model->window]);
+        self::assertStringContainsString('void set_rows(int id, const rk::Rows &rows) override', $cc);
+        self::assertStringContainsString('std::shared_ptr<slint::VectorModel<RkRowDevice>> model_p1_;', $cc);
+        self::assertStringContainsString('std::shared_ptr<slint::VectorModel<slint::Image>> model_p2_;', $cc);
+        self::assertStringContainsString('case 1: if (rk::update_model(model_p1_, rows, [](const rk::Row &r) { RkRowDevice v; v.f0 = rk::cell_string(r, 0); v.f1 = rk::cell_image(r, 1); v.f2 = rk::cell_float(r, 2); v.f3 = rk::cell_int(r, 3); v.f4 = rk::cell_bool(r, 4); return v; })) { handle_->set_p1(model_p1_); } break;', $cc);
+        self::assertStringContainsString('case 2: if (rk::update_model(model_p2_, rows, [](const rk::Row &r) { return rk::cell_image(r, 0); })) { handle_->set_p2(model_p2_); } break;', $cc);
     }
 
     /** Two screens of one window class: a window with two pages, window-level bindings and actions. */
