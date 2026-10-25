@@ -11,6 +11,14 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-25
+
+Lists of objects in templates (`RageKit\Collection`) with an image per row, TypePHP 0.9.5, and
+Windows fixes. Nothing changes for 0.5 apps, except: run `ragekit setup` again (new TypePHP), and
+remove a `maxWidth` you added to wrapping Views as a workaround (it still works, it's just not
+needed). Bridges and kits: `rk::Instance` gained `set_rows()` (a no-op by default) and the bridge
+exports `rk_rows_*`.
+
 ### Added
 
 - **Lists of objects in templates.** A `RageKit\Collection` subclass names its item class in
