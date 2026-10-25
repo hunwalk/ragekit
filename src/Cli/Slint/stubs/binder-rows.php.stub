@@ -1,0 +1,11 @@
+/** {{ item }} rows of a collection, in {{ struct }}'s field order. */
+private static function rows{{ struct }}(\RageKit\Collection $c): \RageKit\Slint\RowsValue
+{
+    $rows = [];
+    foreach ($c->all() as $item) {
+        if ($item instanceof \{{ item }}) {
+            $rows[] = [{{ cells }}];
+        }
+    }
+    return new \RageKit\Slint\RowsValue($rows);
+}

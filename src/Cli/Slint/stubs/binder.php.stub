@@ -77,6 +77,16 @@ final class Screens
         return $index < count($parts) ? $parts[$index] : '';
     }
 
+    /** A list of strings shown as images: one image cell per row. */
+    private static function images(array $items): \RageKit\Slint\RowsValue
+    {
+        $rows = [];
+        foreach ($items as $item) {
+            $rows[] = [new \RageKit\Slint\ImageValue((string) $item)];
+        }
+        return new \RageKit\Slint\RowsValue($rows);
+    }
+
     /** @return list<string> */
     private static function strings(array $items): array
     {

@@ -46,7 +46,14 @@ final class ScreensJson
     {
         $values = [];
         foreach ($bindings as $binding) {
-            $values[] = ['id' => $binding->id, 'owner' => $binding->owner, 'source' => $binding->source, 'name' => $binding->name, 'type' => $binding->type];
+            $value = ['id' => $binding->id, 'owner' => $binding->owner, 'source' => $binding->source, 'name' => $binding->name, 'type' => $binding->type];
+            if ($binding->row !== null) {
+                $value['row'] = [
+                    'item' => $binding->row->item,
+                    'fields' => array_map(fn(RowField $f) => ['member' => $f->member, 'source' => $f->source, 'type' => $f->type, 'name' => $f->name], $binding->row->fields()),
+                ];
+            }
+            $values[] = $value;
         }
         return $values;
     }

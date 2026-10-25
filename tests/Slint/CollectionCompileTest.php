@@ -6,6 +6,8 @@ namespace RageKit\Tests\Slint;
 
 use PHPUnit\Framework\TestCase;
 use RageKit\Cli\Kits\KitRegistry;
+use RageKit\Cli\Slint\BinderEmitter;
+use RageKit\Cli\Slint\ScreensJson;
 use RageKit\Cli\Slint\CompiledViews;
 use RageKit\Cli\Slint\SlintCompiler;
 use RageKit\Cli\Templates\ClassInfo;
@@ -189,5 +191,78 @@ final class CollectionCompileTest extends TestCase
         ], slint: true);
         self::assertStringContainsString('export struct RkRowDevice {', $out->slint);
         self::assertStringContainsString('export struct RkRowDevice2 {', $out->slint);
+    }
+
+    private function rowsTemplate(): string
+    {
+        return $this->loop("<VStack>\n<Label text=\"{{ \$d->name }} {{ \$d->label() }}\" />\n<Image source=\"{{ \$d->image }}\" />\n<Progress value=\"{{ \$d->battery }}\" />\n</VStack>");
+    }
+
+    public function testBinderReadsRows(): void
+    {
+        $out = $this->compile([$this->collection(), $this->screen($this->rowsTemplate())]);
+        $php = BinderEmitter::emit($out->windows);
+        self::assertStringContainsString('self::rowsRkRowDevice($s->devices)', $php);
+        self::assertStringContainsString('private static function rowsRkRowDevice(\RageKit\Collection $c): \RageKit\Slint\RowsValue', $php);
+        self::assertStringContainsString('if ($item instanceof \Demo\Device) {', $php);
+        self::assertStringContainsString('(string) $item->name, (string) $item->label(), new \RageKit\Slint\ImageValue((string) $item->image), (float) $item->battery', $php);
+        $file = "$this->dir/binder.php";
+        file_put_contents($file, $php);
+        exec(escapeshellarg(PHP_BINARY) . ' -l ' . escapeshellarg($file), $lines, $code);
+        self::assertSame(0, $code, implode("\n", $lines));
+    }
+
+    public function testBinderReadsImageLists(): void
+    {
+        $screen = $this->screen("<VStack>\n@foreach (\$photos as \$p)\n<Image source=\"{{ \$p }}\" />\n@endforeach\n</VStack>", ['photos' => 'list']);
+        $out = $this->compile([$screen]);
+        $images = $out->windows[0]->pages[0]->bindings['screen:property:photos:images']->id;
+        self::assertStringContainsString("$images => self::images(\$s->photos),", BinderEmitter::emit($out->windows));
+    }
+
+    /** Review Focus 1: an item of a subclass of OF is a row like any other; other objects are skipped. */
+    public function testSubclassItemsShow(): void
+    {
+        $out = $this->compile([$this->collection(), $this->screen($this->rowsTemplate())]);
+        file_put_contents("$this->dir/binder.php", BinderEmitter::emit($out->windows));
+        $root = (string) realpath(self::ROOT);
+        file_put_contents("$this->dir/run.php", <<<PHP
+            <?php
+            namespace {
+                require '$root/vendor/autoload.php';
+            }
+            namespace Demo {
+                class Device { public string \$name = 'n'; public string \$image = 'a.png'; public float \$battery = 0.5; public function label(): string { return 'L'; } }
+                final class Headset extends Device {}
+                final class Devices extends \\RageKit\\Collection { public const OF = Device::class; }
+            }
+            namespace {
+                require '$this->dir/binder.php';
+                \$c = new \\Demo\\Devices([new \\Demo\\Device(), new \\Demo\\Headset()]);
+                \$m = new \\ReflectionMethod(\\RageKit\\Generated\\Screens::class, 'rowsRkRowDevice');
+                \$rows = \$m->invoke(null, \$c)->rows;
+                echo count(\$rows), ' ', \$rows[1][0], ' ', \$rows[1][1], ' ', \$rows[1][2]->source, ' ', \$rows[1][3];
+            }
+            PHP);
+        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg("$this->dir/run.php") . ' 2>&1', $lines, $code);
+        self::assertSame(0, $code, implode("\n", $lines));
+        self::assertSame('2 n L a.png 0.5', implode("\n", $lines));
+    }
+
+    public function testScreensJsonRow(): void
+    {
+        $out = $this->compile([$this->collection(), $this->screen($this->rowsTemplate())]);
+        $json = json_decode(ScreensJson::emit($out->windows), true);
+        $value = $json['windows'][0]['pages'][0]['values'][0];
+        self::assertSame('rows', $value['type']);
+        self::assertSame([
+            'item' => 'Demo\Device',
+            'fields' => [
+                ['member' => 'name', 'source' => 'property', 'type' => 'string', 'name' => 'f0'],
+                ['member' => 'label', 'source' => 'method', 'type' => 'string', 'name' => 'f1'],
+                ['member' => 'image', 'source' => 'property', 'type' => 'image', 'name' => 'f2'],
+                ['member' => 'battery', 'source' => 'property', 'type' => 'float', 'name' => 'f3'],
+            ],
+        ], $value['row']);
     }
 }
