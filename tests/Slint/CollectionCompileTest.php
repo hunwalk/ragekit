@@ -189,6 +189,16 @@ final class CollectionCompileTest extends TestCase
         self::assertSame([], $out->windows[0]->pages[0]->bindings['screen:property:devices']->row->fields());
     }
 
+    /** Final review: a property and a method with the same name are two fields. */
+    public function testPropertyAndMethodOfOneName(): void
+    {
+        $c = new ClassInfo('Demo\Devices', 'Devices', "$this->dir/Devices.php", false, '', isCollection: true, of: 'Demo\Device', ofFound: true,
+            props: ['name' => 'string'], computed: ['name' => 'string']);
+        $out = $this->compile([$c, $this->screen($this->loop('<Label text="{{ $d->name }} {{ $d->name() }}" />'))]);
+        $fields = $out->windows[0]->pages[0]->bindings['screen:property:devices']->row->fields();
+        self::assertSame([['name', 'property'], ['name', 'method']], array_map(fn($f) => [$f->member, $f->source], $fields));
+    }
+
     public function testStructNameClash(): void
     {
         $out = $this->compile([

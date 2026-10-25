@@ -18,7 +18,7 @@ final class RowType
     /** Member types a row can show. */
     private const SCALARS = ['string', 'int', 'float', 'bool'];
 
-    /** @var array<string, RowField> by member (+ ':image' for an image field) */
+    /** @var array<string, RowField> by member (+ '()' for a method, ':image' for an image field) */
     private array $fields = [];
 
     /** @param ClassInfo $collection a collection of the item class (its props/computed are the item's members) */
@@ -42,7 +42,7 @@ final class RowType
      */
     public function field(string $var, string $member, bool $call, bool $image, Element $at): RowField
     {
-        $key = $member . ($image ? ':image' : '');
+        $key = $member . ($call ? '()' : '') . ($image ? ':image' : '');
         $label = "\$$var->$member" . ($call ? '()' : '');
         $props = $this->collection->props;
         $computed = $this->collection->computed;
