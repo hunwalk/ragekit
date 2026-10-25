@@ -115,7 +115,7 @@ vendor/bin/ragekit doctor
 
 ```
   ✓ PHP           8.4.26 (/usr/bin/php8.4)
-  ✓ TypePHP       53a67017 + 1 patch (~/.local/share/ragekit/toolchains/270ccbcac5ec/typephp)
+  ✓ TypePHP       5ba93766 + 1 patch (~/.local/share/ragekit/toolchains/270ccbcac5ec/typephp)
   ✓ Slint         1.18.1 (~/.local/share/ragekit/toolchains/270ccbcac5ec/slint)
   ✓ C++ compiler  g++ (Debian 14.2.0-19) 14.2.0
   ✓ git           /usr/bin/git
