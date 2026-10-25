@@ -178,6 +178,20 @@ final class ImageCompileTest extends TestCase
         self::assertStringNotContainsString('[rk-i]', $plain->slint);
     }
 
+    /** Final review: an outer item's image inside an inner loop keeps the outer loop's index. */
+    public function testNestedLoopsKeepTheirOwnIndex(): void
+    {
+        $rk = "<VStack>\n@foreach (\$urls as \$u)\n<VStack>\n@foreach (\$tags as \$t)\n<HStack>\n<Image source=\"{{ \$u }}\" />\n<Image source=\"{{ \$t }}\" />\n</HStack>\n@endforeach\n</VStack>\n@endforeach\n</VStack>";
+        $out = $this->compile([$this->screen($rk, ['urls' => 'list', 'tags' => 'list'])], slint: true);
+        $page = $out->windows[0]->pages[0];
+        $urls = $page->bindings['screen:property:urls:images']->slintName();
+        $tags = $page->bindings['screen:property:tags:images']->slintName();
+        self::assertStringContainsString('for u[rk-i] in', $out->slint);
+        self::assertStringContainsString('for t[rk-i2] in', $out->slint);
+        self::assertStringContainsString("source: root.{$urls}[rk-i];", $out->slint);
+        self::assertStringContainsString("source: root.{$tags}[rk-i2];", $out->slint);
+    }
+
     public function testImagesInConstantLoop(): void
     {
         $screen = new ClassInfo('Demo\Home', 'Home', "$this->dir/Home.php", true, "$this->dir/Home.rk", constants: ['PHOTOS' => ['a.png']]);
