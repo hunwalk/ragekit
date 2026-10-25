@@ -16,7 +16,9 @@ use RageKit\Cli\Toolchain\TypePhp;
  * the private PHP tpc's php-builder compiles (MergeConfig chose). For the host's, prepares tpc's
  * PHP_HOME and libphpx.so, and puts libphp.so and libphpx.so next to the executable, which finds
  * them through its $ORIGIN rpath. On Windows, a TypePHP checkout links PHPX from the release
- * (PHP_HOME) that `ragekit setup` installs next to it.
+ * (PHP_HOME) that `ragekit setup` installs next to it, and the release's PHP DLLs are copied next
+ * to the executable on every build (Windows loads DLLs from the exe's folder first, so a copy left
+ * from an older TypePHP would otherwise win).
  */
 final class PrepareHostPhp implements Step
 {
@@ -70,6 +72,29 @@ final class PrepareHostPhp implements Step
             return "as tpc finds it (no TypePHP release with PHPX in $phpHome)";
         }
         $context->toolchain->usePhpxHome($phpx);
-        return "PHP and PHPX from $phpHome";
+        $copied = self::copyWindowsPhpDlls($phpHome, $context->buildDir());
+        return "PHP and PHPX from $phpHome → " . ($copied === [] ? 'no DLLs found' : implode(', ', $copied));
+    }
+
+    /** The DLLs a normal build's exe loads: PHP, PHPX and their dependencies. */
+    private const WINDOWS_DLLS = ['php8ts.dll', 'phpx.dll', 'libmpdec-*.dll', 'libmpdec++-*.dll', 'gmp-*.dll', 'mpfr-*.dll'];
+
+    /**
+     * Copies the release's PHP DLLs into $buildDir, replacing older copies.
+     *
+     * @return list<string> the files copied, sorted
+     */
+    public static function copyWindowsPhpDlls(string $phpHome, string $buildDir): array
+    {
+        $copied = [];
+        foreach (self::WINDOWS_DLLS as $pattern) {
+            foreach (glob("$phpHome/$pattern") ?: [] as $file) {
+                Paths::copyRecursive($file, "$buildDir/" . basename($file));
+                $copied[] = basename($file);
+            }
+        }
+        $copied = array_values(array_unique($copied));
+        sort($copied);
+        return $copied;
     }
 }
