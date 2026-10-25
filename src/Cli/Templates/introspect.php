@@ -24,6 +24,7 @@ $map = [
     'RageKit\\Navigator' => "$root/src/Navigator.php",
     'RageKit\\Store' => "$root/src/Store.php",
     'RageKit\\RootStore' => "$root/src/RootStore.php",
+    'RageKit\\Collection' => "$root/src/Collection.php",
 ];
 foreach ($input['files'] as $file) {
     foreach (declaredClasses($file) as $class) {
