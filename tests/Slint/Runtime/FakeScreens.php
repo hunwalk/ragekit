@@ -158,6 +158,13 @@ namespace RageKit\Tests\Slint\Runtime {
         public string $icon = '';
     }
 
+    /** Shows rows (id 8): each [name, image source], as a collection binding would. */
+    final class ShelfScreen extends Screen
+    {
+        /** @var list<array{0: string, 1: string}> */
+        public array $rows = [];
+    }
+
     interface Titled
     {
         public function title(): string;
@@ -209,6 +216,7 @@ namespace RageKit\Generated {
     use RageKit\Tests\Slint\Runtime\WrongPushScreen;
     use RageKit\Tests\Slint\Runtime\FakeHost;
     use RageKit\Tests\Slint\Runtime\PictureScreen;
+    use RageKit\Tests\Slint\Runtime\ShelfScreen;
     use RageKit\Window;
 
     /**
@@ -233,6 +241,9 @@ namespace RageKit\Generated {
             }
             if ($screen instanceof PictureScreen) {
                 return 4;
+            }
+            if ($screen instanceof ShelfScreen) {
+                return 5;
             }
             return $screen instanceof WrongPushScreen ? 3 : 0;
         }
@@ -259,6 +270,13 @@ namespace RageKit\Generated {
             }
             if ($s instanceof PictureScreen) {
                 return [6 => new \RageKit\Slint\ImageValue($s->cover), 7 => new \RageKit\Slint\ImageValue($s->icon)];
+            }
+            if ($s instanceof ShelfScreen) {
+                $rows = [];
+                foreach ($s->rows as [$name, $image]) {
+                    $rows[] = [$name, new \RageKit\Slint\ImageValue($image)];
+                }
+                return [8 => new \RageKit\Slint\RowsValue($rows)];
             }
             if ($s instanceof FramedScreen) {
                 if ($w instanceof FrameWindow) {
