@@ -333,7 +333,9 @@ void Shell::set(Win &win, const std::string &kind, const std::string &property, 
 {
     using slint::interpreter::Value;
     bool ok = false;
-    if (kind == "set-list") {
+    if (kind == "set-rows") {
+        ok = setRows(win, property, f);
+    } else if (kind == "set-list") {
         auto model = std::make_shared<slint::VectorModel<Value>>();
         for (size_t i = 3; i < f.size(); ++i) {
             model->push_back(Value(slint::SharedString(f[i])));
@@ -392,6 +394,69 @@ void Shell::onPhpExit(unsigned generation, int code)
     log("php stopped " + std::to_string(code));
 }
 
+// set-rows <window> <property> struct|images <columns> <type>… <cell>…: a collection's rows (a struct
+// per row, fields f0…) or a list shown as images, brought into the property's model in place.
+bool Shell::setRows(Win &win, const std::string &property, const std::vector<std::string> &f)
+{
+    using slint::interpreter::Value;
+    if (f.size() < 5) {
+        return false;
+    }
+    bool images = f[3] == "images";
+    size_t columns = std::strtoul(f[4].c_str(), nullptr, 10);
+    size_t first = 5 + columns;
+    if (f.size() < first) {
+        return false;
+    }
+    size_t count = columns == 0 ? 0 : (f.size() - first) / columns;
+    auto cell = [&](size_t row, size_t column) -> Value {
+        const std::string &type = f[5 + column];
+        const std::string &text = f[first + row * columns + column];
+        if (type == "s") {
+            return Value(slint::SharedString(text));
+        }
+        if (type == "i" || type == "f") {
+            return Value(std::strtod(text.c_str(), nullptr));
+        }
+        if (type == "b") {
+            return Value(text == "1");
+        }
+        auto image = text.empty() ? slint::Image() : slint::Image::load_from_path(slint::SharedString(text));
+        if (!text.empty() && image.size().width == 0) {
+            std::fprintf(stderr, "ragekit: image %s: couldn't be loaded\n", text.c_str());
+        }
+        return Value(image);
+    };
+    auto &model = win.models[property];
+    bool created = model == nullptr;
+    if (created) {
+        model = std::make_shared<slint::VectorModel<Value>>();
+    }
+    for (size_t row = 0; row < count; ++row) {
+        Value value;
+        if (images) {
+            value = cell(row, 0);
+        } else {
+            slint::interpreter::Struct fields;
+            for (size_t column = 0; column < columns; ++column) {
+                fields.set_field("f" + std::to_string(column), cell(row, column));
+            }
+            value = Value(fields);
+        }
+        if (row >= model->row_count()) {
+            model->push_back(value);
+        } else if (!(*model->row_data(row) == value)) {
+            model->set_row_data(row, value);
+        }
+    }
+    while (model->row_count() > count) {
+        model->erase(model->row_count() - 1);
+    }
+    bool ok = !created || win.instance->set_property(property, Value(std::shared_ptr<slint::Model<Value>>(model)));
+    log("rows " + f[1] + " " + property + " " + std::to_string(count));
+    return ok;
+}
+
 void Shell::reload()
 {
     if (!load()) {
@@ -409,6 +474,7 @@ void Shell::reload()
         show(fresh, win.screen);
         win.instance->hide();
         win.instance = fresh;
+        win.models.clear();
     }
     log("reloaded");
     status("reloaded");

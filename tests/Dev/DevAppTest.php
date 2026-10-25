@@ -90,6 +90,55 @@ final class DevAppTest extends TestCase
         self::assertSame(0, proc_close($proc), $stderr);
     }
 
+    /** A collection and a list shown as images: one set-rows line each, with column types. */
+    public function testRowsOverTheProtocol(): void
+    {
+        $dir = sys_get_temp_dir() . '/rk-devrows-' . uniqid();
+        mkdir($dir);
+        file_put_contents("$dir/screens.json", json_encode(['windows' => [[
+            'name' => 'rk-screens', 'window' => null, 'frameless' => false, 'values' => [], 'actions' => [],
+            'pages' => [[
+                'class' => 'App\\Shelf', 'name' => 'Shelf', 'page' => 0, 'actions' => [],
+                'values' => [
+                    ['id' => 1, 'owner' => 'screen', 'source' => 'property', 'name' => 'devices', 'type' => 'rows', 'row' => ['item' => 'App\\Device', 'fields' => [
+                        ['member' => 'name', 'source' => 'property', 'type' => 'string', 'name' => 'f0'],
+                        ['member' => 'on', 'source' => 'property', 'type' => 'bool', 'name' => 'f1'],
+                        ['member' => 'image', 'source' => 'property', 'type' => 'image', 'name' => 'f2'],
+                    ]]],
+                    ['id' => 2, 'owner' => 'screen', 'source' => 'property', 'name' => 'photos', 'type' => 'images'],
+                ],
+            ]],
+        ]]]));
+        file_put_contents("$dir/Shelf.php", "<?php\nnamespace App;\n"
+            . "final class Device { public function __construct(public string \$name = '', public bool \$on = false, public string \$image = '') {} }\n"
+            . "final class Devices extends \\RageKit\\Collection { public const OF = Device::class; }\n"
+            . "final class Shelf extends \\RageKit\\Screen { public Devices \$devices; public array \$photos = ['/abs/p.png'];\n"
+            . "    public function __construct() { \$this->devices = new Devices([new Device(\"a\\tb\", true, '/abs/x.png'), new Device('c')]); } }\n"
+            . "final class ShelfApp extends \\RageKit\\App {\n"
+            . "    protected function firstScreen(): \\RageKit\\Screen { return new Shelf(); }\n"
+            . "    protected function title(): string { return 'S'; }\n"
+            . "}\n");
+        file_put_contents("$dir/main.php", "<?php\nfunction main(): void { (new App\\ShelfApp())->run(); }\n");
+        $root = dirname(__DIR__, 2);
+        $runtime = "$root/src/Slint/Dev";
+        $php = [...glob("$runtime/*.php"), "$root/src/App.php", "$root/src/Backend.php", "$root/src/Component.php", "$root/src/Screen.php", "$root/src/Window.php", "$root/src/Navigator.php", "$root/src/Store.php", "$root/src/RootStore.php", "$root/src/Collection.php", "$root/src/Events.php", "$root/src/Modules.php", "$root/src/ModuleUnavailable.php", "$root/src/Slint/SlintBackend.php", "$root/src/Slint/SlintWindow.php", "$root/src/Slint/ImageValue.php", "$root/src/Slint/RowsValue.php", "$root/src/Slint/Images.php", "$root/src/Slint/backend.php", "$dir/Shelf.php", "$dir/main.php"];
+        Bootstrap::write("$dir/boot.php", $php, ["$runtime/functions.php", "$root/src/Slint/backend.php", "$dir/main.php"]);
+
+        [$proc, $pipes, $read, $shell] = $this->start($dir, restart: false);
+        self::assertSame('open', $read()[0]);
+        fwrite($shell, Protocol::encode('opened', '1'));
+        self::assertSame(['set-int', '1', 'rk-page', '0'], $read());
+        self::assertSame(['set-rows', '1', 'p1', 'struct', '3', 's', 'b', 'img', "a\tb", '1', '/abs/x.png', 'c', '0', ''], $read());
+        self::assertSame(['set-rows', '1', 'p2', 'images', '1', 'img', '/abs/p.png'], $read());
+        self::assertSame(['run'], $read());
+        fwrite($shell, Protocol::encode('event', '1', '0', ''));
+        self::assertSame(['close', '1'], $read());
+        self::assertSame(['quit'], $read());
+        fclose($shell);
+        $stderr = (string) stream_get_contents($pipes[2]);
+        self::assertSame(0, proc_close($proc), $stderr);
+    }
+
     /** @return array{0: resource, 1: array<int, resource>, 2: \Closure(): list<string>, 3: resource} */
     private function start(string $dir, bool $restart): array
     {

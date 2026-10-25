@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -50,6 +51,8 @@ private:
         Instance instance;
         bool orphan = false;
         bool maximized = false; // last state reported to PHP (frameless windows)
+        // set-rows models by property, updated in place; a rebuilt window starts without them.
+        std::map<std::string, std::shared_ptr<slint::VectorModel<slint::interpreter::Value>>> models;
     };
 
     void onPhpLine(unsigned generation, const std::string &line);
@@ -60,6 +63,7 @@ private:
     Instance create(int64_t id, const std::string &screen, const std::string &title);
     void emit(int64_t window, int action, const std::string &arg);
     void set(Win &win, const std::string &kind, const std::string &property, const std::vector<std::string> &fields);
+    bool setRows(Win &win, const std::string &property, const std::vector<std::string> &fields);
     void closeWindow(int64_t id);
     void windowCommand(int64_t id, const std::string &command);
     bool frameless(const std::string &screen) const;

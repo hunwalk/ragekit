@@ -398,11 +398,58 @@ final class Session
                 continue;
             }
             $value = $property->getValue($component);
-            if (self::plain($value)) {
+            if ($value instanceof \RageKit\Collection) {
+                $props[$property->getName()] = self::collection($value);
+            } elseif (self::plain($value)) {
                 $props[$property->getName()] = $value;
             }
         }
         return $props;
+    }
+
+    /**
+     * A collection as state.json keeps it: its class and each item's class and plain public
+     * properties.
+     *
+     * @return array{'@collection': string, items: list<array<string, mixed>>}
+     */
+    private static function collection(\RageKit\Collection $collection): array
+    {
+        $items = [];
+        foreach ($collection->all() as $item) {
+            $items[] = ['@class' => get_class($item)] + self::props($item);
+        }
+        return ['@collection' => get_class($collection), 'items' => $items];
+    }
+
+    /** A saved collection rebuilt; an item property that no longer fits keeps its default. */
+    private static function rebuild(array $saved): ?\RageKit\Collection
+    {
+        $class = (string) ($saved['@collection'] ?? '');
+        if (!class_exists($class) || !is_subclass_of($class, \RageKit\Collection::class)) {
+            return null;
+        }
+        $collection = (new \ReflectionClass($class))->newInstanceWithoutConstructor();
+        foreach ((array) ($saved['items'] ?? []) as $data) {
+            $itemClass = (string) ($data['@class'] ?? '');
+            if (!class_exists($itemClass)) {
+                continue;
+            }
+            // The constructor when it needs no arguments: promoted properties get their defaults.
+            $reflection = new \ReflectionClass($itemClass);
+            $constructor = $reflection->getConstructor();
+            $item = $constructor === null || $constructor->getNumberOfRequiredParameters() === 0 ? $reflection->newInstance() : $reflection->newInstanceWithoutConstructor();
+            unset($data['@class']);
+            foreach ($data as $name => $value) {
+                self::assign($item, (string) $name, $value);
+            }
+            try {
+                $collection->add($item);
+            } catch (\InvalidArgumentException) {
+                // OF changed: the item no longer belongs here.
+            }
+        }
+        return $collection;
     }
 
     private static function plain(mixed $value): bool
@@ -430,6 +477,14 @@ final class Session
             return 'no longer a public property';
         }
         $type = $property->getType();
+        if (is_array($value) && isset($value['@collection'])) {
+            $collection = self::rebuild($value);
+            if ($collection === null || !($type instanceof \ReflectionNamedType) || !is_a($collection, $type->getName())) {
+                return 'its type changed';
+            }
+            $property->setValue($component, $collection);
+            return null;
+        }
         if ($type instanceof \ReflectionNamedType && !($value === null && $type->allowsNull())) {
             $ok = match ($type->getName()) {
                 'int' => is_int($value),

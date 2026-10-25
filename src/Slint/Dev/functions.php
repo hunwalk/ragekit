@@ -44,6 +44,7 @@ function slint_open(string $screen, string $title, int $width, int $height): int
 {
     $reply = Session::channel()->request('open', $screen, $title, (string) $width, (string) $height);
     $window = (int) ($reply[1] ?? 0);
+    $GLOBALS['__ragekit_dev_components'][$window] = $screen;
     Session::opened($window, $title, $width, $height);
     Session::snapshot();
     return $window;
@@ -115,6 +116,81 @@ function slint_list_end(): void
     [$window, $id, $items] = $GLOBALS['__ragekit_dev_list'];
     $GLOBALS['__ragekit_dev_list'] = null;
     Session::channel()->send('set-list', (string) $window, Session::property($id), ...$items);
+}
+
+/** @var array<int, string> window id => its window component (rows need its value types) */
+$GLOBALS['__ragekit_dev_components'] = [];
+
+/** @var array{0: int, 1: int, 2: list<list<array{0: string, 1: string}>>}|null the rows being pushed: window, id, rows of [type, text] cells */
+$GLOBALS['__ragekit_dev_rows'] = null;
+
+function slint_rows_begin(int $window, int $id): void
+{
+    $GLOBALS['__ragekit_dev_rows'] = [$window, $id, []];
+}
+
+function slint_rows_next(): void
+{
+    $GLOBALS['__ragekit_dev_rows'][2][] = [];
+}
+
+function ragekit_dev_cell(string $type, string $text): void
+{
+    $rows = &$GLOBALS['__ragekit_dev_rows'][2];
+    $rows[count($rows) - 1][] = [$type, $text];
+}
+
+function slint_rows_string(string $value): void
+{
+    ragekit_dev_cell('s', $value);
+}
+
+function slint_rows_int(int $value): void
+{
+    ragekit_dev_cell('i', (string) $value);
+}
+
+function slint_rows_float(float $value): void
+{
+    ragekit_dev_cell('f', sprintf('%.17g', $value));
+}
+
+function slint_rows_bool(bool $value): void
+{
+    ragekit_dev_cell('b', $value ? '1' : '0');
+}
+
+/** Dev mode never embeds registered images (assetIndex() is -1 there): never called. */
+function slint_rows_image_asset(int $index): void
+{
+    ragekit_dev_cell('img', '');
+}
+
+/** The shell loads the file and reports one it can't decode. */
+function slint_rows_image_file(string $path): bool
+{
+    ragekit_dev_cell('img', $path);
+    return true;
+}
+
+/**
+ * One line: set-rows, window, property, struct|images (a collection, or a list shown as images),
+ * the column count and types, then the cells row by row.
+ */
+function slint_rows_end(): void
+{
+    [$window, $id, $rows] = $GLOBALS['__ragekit_dev_rows'];
+    $GLOBALS['__ragekit_dev_rows'] = null;
+    $component = $GLOBALS['__ragekit_dev_components'][$window] ?? '';
+    $mode = Session::bindings()->type($component, $id) === 'images' ? 'images' : 'struct';
+    $types = array_map(fn(array $cell) => $cell[0], $rows[0] ?? []);
+    $cells = [];
+    foreach ($rows as $row) {
+        foreach ($row as [, $text]) {
+            $cells[] = $text;
+        }
+    }
+    Session::channel()->send('set-rows', (string) $window, Session::property($id), $mode, (string) count($types), ...$types, ...$cells);
 }
 
 function slint_close(int $window): void
