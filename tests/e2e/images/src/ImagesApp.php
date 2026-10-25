@@ -30,6 +30,6 @@ final class ImagesApp extends App
 
     protected function height(): int
     {
-        return 160;
+        return 260;
     }
 }
