@@ -11,11 +11,13 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
-Planned as 0.7.0: what a real desktop app needs around its UI, driven by a dev-null.sh client.
+## [0.7.0] - 2026-10-26
+
+What a real desktop app needs around its UI, driven by a dev-null.sh client.
 Signed API requests with a key kept in the OS keyring, a browser sign-in that comes back through an
 app link, a chat view that scrolls like a messaging app, desktop notifications and a tray icon.
-Linux is tested; on Windows timers, links, the app icon, hide/show, crypto, keyring, uploads and
-recording are tested too (notifications and the tray are Linux only for now); macOS isn't supported.
+Tested on Linux (Xvfb, and by hand on GNOME 48) and Windows (notifications and the tray are Linux
+only for now); macOS isn't supported.
 Nothing changes for 0.6 apps. Custom backends and kits: see "Changed".
 
 ### Added
