@@ -50,7 +50,7 @@ final class PressableTest extends TestCase
         $slint = $this->compile("<VStack>\n@foreach (\$items as \$i)\n<View onPress=\"open(\$i)\" onHoverIn=\"hover\" onHoverOut=\"leave\"><Label text=\"{{ \$i }}\" /></View>\n@endforeach\n</VStack>")->slint;
         self::assertMatchesRegularExpression('/Rectangle \{.*?TouchArea \{\s+width: 100%;\s+height: 100%;\s+mouse-cursor: pointer;\s+clicked => \{\s+root\.action\(\d+, "\\\{i\}"\);/s', $slint);
         self::assertMatchesRegularExpression('/changed has-hover => \{\s+if \(self\.has-hover\) \{\s+root\.action\(\d+, ""\);\s+\} else \{\s+root\.action\(\d+, ""\);/', $slint);
-        self::assertMatchesRegularExpression('/TouchArea \{.*?FlexboxLayout \{/s', $slint, 'the layout is inside the TouchArea');
+        self::assertMatchesRegularExpression('/TouchArea \{.*?(FlexboxLayout|VerticalLayout) \{/s', $slint, 'the layout is inside the TouchArea');
         self::assertStringNotContainsString('TouchArea', $this->compile('<View><Label text="a" /></View>')->slint, 'a plain View stays as it was');
     }
 

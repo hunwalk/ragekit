@@ -478,6 +478,19 @@ public const STYLES = [
   measures what is under an `if` without its width, so wrapping text counted as one line. Hidden,
   its text is empty, and an empty `<Text>` takes no room (`gap` still applies around it).
 
+### Layout limits
+
+Slint lays out `<View>`s with its flexbox, which has two known limits (Slint 1.18):
+
+- **Wrapping text on both sides of a horizontal split.** A window template with a sidebar of
+  `<View>`s holding `<Text>`, next to screens whose `<View>`s hold `<Text>` too, makes the sizes
+  depend on each other; slint-compiler reports a binding loop and the build stops with a hint.
+  Use `<Label>` (it doesn't wrap) in the sidebar, as `demo/kitchen-sink` does.
+- **Repeated column Views.** slint-compiler crashed on a column `<View>` repeated by `@foreach`
+  inside another `<View>`, with wrapping text in it (a list of cards). RageKit lays out such a
+  repeated View as a plain column instead, which looks the same; one with `alignItems` (other than
+  stretch), `columnGap`, `flexWrap` or children with `alignSelf` stays a flexbox and may still hit it.
+
 ### ScrollView: lists longer than the window
 
 `<ScrollView>` stacks its children in a column, like a `VStack`, and scrolls when they don't fit:

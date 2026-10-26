@@ -114,6 +114,20 @@ final class ViewTest extends TestCase
         self::assertMatchesRegularExpression('/if root\.p\d+ : ShadText \{/', $plain, 'outside a View: unchanged');
     }
 
+    /**
+     * slint-compiler 1.18 overflows its stack on a column FlexboxLayout repeated inside another with
+     * wrapping text: a plain column View in a @foreach is a VerticalLayout instead.
+     */
+    public function testRepeatedColumnViewIsAVerticalLayout(): void
+    {
+        $rk = "<VStack><View>\n@foreach (\$items as \$i)\n<View style=\"card\"><Text>{{ \$i }}</Text></View>\n@endforeach\n</View></VStack>";
+        $slint = $this->compile($rk)->slint;
+        self::assertMatchesRegularExpression('/for i in root\.p\d+ : Rectangle \{.*?VerticalLayout \{\s+padding-top: 16px;.*?alignment: start;/s', $slint);
+        self::assertStringContainsString('FlexboxLayout {', $slint, 'the View around the loop stays a flexbox');
+        $centred = $this->compile(str_replace('style="card"', 'style="tags"', $rk))->slint;
+        self::assertDoesNotMatchRegularExpression('/for i in root\.p\d+ : Rectangle \{\s+[^{}]*\s+VerticalLayout/s', $centred, 'a row (or one with alignItems) stays a flexbox');
+    }
+
     public function testRootViewFillsTheWindow(): void
     {
         $out = $this->compile('<View style="card"><Label text="a" /></View>');

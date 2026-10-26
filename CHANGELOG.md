@@ -20,6 +20,15 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
   open window (normal and Nano builds, `ragekit dev`). See docs/state.md, "Clipboard". Backends gain
   `copyText()`/`pasteText()`; the bridge exports `rk_clipboard_set`/`rk_clipboard_get`.
 
+### Fixed
+
+- **slint-compiler no longer crashes on a list of cards**: a column `<View>` repeated by `@foreach`
+  inside another `<View>`, with wrapping text, made it overflow its stack. Such a View is now laid
+  out as a plain column (same look).
+- **Readable layout errors**: when slint-compiler finds a binding loop (sizes depending on each
+  other) or crashes, the build shows a few of its errors and a hint instead of dozens. See
+  docs/templates.md, "Layout limits".
+
 ## [0.7.1] - 2026-10-26
 
 A Windows build fix for larger apps, and a new kitchen sink. Nothing changes for 0.7.0 apps.

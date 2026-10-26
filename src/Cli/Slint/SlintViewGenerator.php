@@ -52,10 +52,39 @@ final class SlintViewGenerator implements ViewGenerator
             array_push($command, '-L', "$name=$path");
         }
         if ($context->exec($command, $out, 'slint-compiler: app.slint → app.h') !== 0) {
-            throw new RageKitException('slint-compiler rejected the generated build/' . $context->backend->name . '/generated/app.slint');
+            $hint = self::hint($context->capturedOutput);
+            $context->capturedOutput = self::shortened($context->capturedOutput);
+            throw new RageKitException('slint-compiler rejected the generated build/' . $context->backend->name . '/generated/app.slint' . $hint);
         }
 
         return $this->result($project, $compiled, $binder, false);
+    }
+
+    /** Plain words for the Slint failures templates can run into (docs/templates.md, "Layout limits"). */
+    private static function hint(string $output): string
+    {
+        if (str_contains($output, 'overflowed its stack')) {
+            return "\n  slint-compiler crashed (stack overflow) on this UI. Nested <View>s inside @foreach with wrapping"
+                . "\n  text are a known trigger; try flexDirection: 'row' on the inner View, or <VStack> for it.";
+        }
+        if (str_contains($output, 'binding loop') && str_contains($output, 'error')) {
+            return "\n  The layout's sizes depend on each other (a binding loop), which Slint can't solve. A known"
+                . "\n  trigger: wrapping <Text> in <View>s on both sides of a horizontal split, e.g. a sidebar next"
+                . "\n  to the screens in a window's template. Use <Label> (it doesn't wrap) on one side."
+                . "\n  See docs/templates.md, \"Layout limits\".";
+        }
+        return '';
+    }
+
+    /** A binding loop is reported once per property in it: the first few errors are enough. */
+    private static function shortened(string $output): string
+    {
+        $errors = preg_split('/(?=^\S*error\S*: )/m', $output) ?: [$output];
+        $loops = array_values(array_filter($errors, fn(string $e) => str_contains($e, 'binding loop')));
+        if (count($loops) <= 3) {
+            return $output;
+        }
+        return implode('', array_slice($loops, 0, 3)) . '… and ' . (count($loops) - 3) . " more binding-loop errors\n";
     }
 
     /**

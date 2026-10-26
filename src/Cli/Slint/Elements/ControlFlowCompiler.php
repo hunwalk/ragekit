@@ -112,7 +112,7 @@ final class ControlFlowCompiler implements ElementCompiler
         }
         $this->depth++;
         try {
-            $body = $this->body($element->children[0], $inner, $axis);
+            $body = $this->context->loop(fn() => $this->body($element->children[0], $inner, $axis));
         } finally {
             $this->depth--;
         }

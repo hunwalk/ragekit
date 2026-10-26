@@ -76,9 +76,47 @@ final class ViewCompiler implements ElementCompiler
                 $lines[] = 'max-width: 100000px;';
             }
         }
-        $box = Code::block('FlexboxLayout', CompileContext::styleLines($style, $layout), $flow);
+        $box = $this->repeatedColumn($element, $style, $layout, $flow)
+            ?? Code::block('FlexboxLayout', CompileContext::styleLines($style, $layout), $flow);
         $box = $this->pressable($element, $scope, $box, $menu);
         return $this->context->withMargin(Code::block('Rectangle', $lines, $box . $placed), $style, $element, $axis);
+    }
+
+    /**
+     * A plain column View that a @foreach repeats, as a VerticalLayout: slint-compiler 1.18 overflows
+     * its stack on a column FlexboxLayout repeated inside another one with wrapping text in it (a
+     * list of cards). A column without wrapping, cross-axis alignment or alignSelf children lays out
+     * the same way. Null: keep the FlexboxLayout.
+     *
+     * @param array<string, string> $layout
+     */
+    private function repeatedColumn(Element $element, StyleResult $style, array $layout, string $flow): ?string
+    {
+        if (!$this->context->inLoop() || $layout['flex-direction'] !== 'column' || $layout['flex-wrap'] !== 'no-wrap') {
+            return null;
+        }
+        $lines = [];
+        foreach ($layout as $property => $value) {
+            if ($property === 'flex-direction' || $property === 'flex-wrap') {
+                continue;
+            }
+            if ($property === 'cross-axis-alignment' && $value === 'stretch') {
+                continue; // what a VerticalLayout does anyway
+            }
+            if (!in_array($property, ['alignment', 'spacing', 'spacing-vertical', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left'], true)) {
+                return null; // cross-axis alignment, column gaps: flexbox only
+            }
+            $lines[$property === 'spacing-vertical' ? 'spacing' : $property] = $value;
+        }
+        $lines['alignment'] ??= 'start'; // a flexbox's start, not a VerticalLayout's stretch
+        foreach ($element->children as $child) {
+            foreach (ControlFlowCompiler::leaves($child) as $leaf) {
+                if (isset($this->context->resolved($leaf)?->box['cross-axis-self-alignment'])) {
+                    return null;
+                }
+            }
+        }
+        return Code::block('VerticalLayout', CompileContext::styleLines($style, $lines), $flow);
     }
 
     /** The layout inside a TouchArea when the View has events or a context menu; else as it is. */

@@ -51,6 +51,9 @@ final class CompileContext
     /** How many for/if (directives, each=, when=) the element being compiled is inside. */
     private int $guarded = 0;
 
+    /** How many @foreach loops enclose the element being compiled (see loop()). */
+    private int $loops = 0;
+
     /** Makes element ids unique within the generated component (see nextId()). */
     private int $ids = 0;
 
@@ -251,6 +254,22 @@ final class CompileContext
     public function pageGuard(): string
     {
         return $this->pageGuard;
+    }
+
+    /** Compiles a loop's body (@foreach): what it compiles knows it's repeated (inLoop()). */
+    public function loop(\Closure $compile): string
+    {
+        $this->loops++;
+        try {
+            return $compile();
+        } finally {
+            $this->loops--;
+        }
+    }
+
+    public function inLoop(): bool
+    {
+        return $this->loops > 0;
     }
 
     /** A fresh element id, e.g. rk-menu-3. */
