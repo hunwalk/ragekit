@@ -1,0 +1,12 @@
+# A device key kept in the OS keyring (crypto + keyring modules), as dev-null's sign-in needs it:
+# tests/e2e/keyring.sh runs it twice in a throwaway keyring (normal and --nano).
+name: devicekey
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software
+  modules: [crypto, keyring]

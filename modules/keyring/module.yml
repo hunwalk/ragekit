@@ -1,0 +1,20 @@
+# RageKit's keyring module: secrets in the OS's credential store. Linux: the Secret Service
+# (GNOME Keyring, KWallet) through libsecret, loaded at runtime, so building needs no -dev package
+# and an app without libsecret still starts. Windows: Credential Manager. macOS: not yet.
+name: keyring
+php: [src]
+library:
+  sources: [native]
+  include-paths: [native]
+  platforms:
+    linux: { link-libs: [dl] }
+    windows: { link-libs: [advapi32] }
+functions:
+  # '' when the store can be used, otherwise why not.
+  keyring_available: { returns: string }
+  # '' on success, otherwise the error.
+  keyring_set:       { params: { service: string, account: string, secret: string }, returns: string }
+  # "+<secret as hex>" found, "-" not found, "!<error>".
+  keyring_get:       { params: { service: string, account: string }, returns: string }
+  # '' on success (also when there was nothing to delete), otherwise the error.
+  keyring_delete:    { params: { service: string, account: string }, returns: string }

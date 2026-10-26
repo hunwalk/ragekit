@@ -1,0 +1,11 @@
+# The crypto module in a built app: tests/e2e/crypto.sh runs it under Xvfb (normal and --nano).
+name: cryptoapp
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software
+  modules: [crypto]

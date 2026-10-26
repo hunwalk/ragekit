@@ -1,0 +1,33 @@
+# RageKit's crypto module: Ed25519 signatures, SHA-256/512 and OS randomness, via Monocypher 4.0.2
+# (BSD-2-Clause OR CC0-1.0) plus a small SHA-256 of its own. Module results can't hold NUL bytes,
+# so binary results come back as lowercase hex; arguments are raw bytes.
+name: crypto
+php: [src]
+fetch:
+  - url: https://raw.githubusercontent.com/LoupVaillant/Monocypher/4.0.2/src/monocypher.c
+    sha256: 02174117935699d418443c75a558a287deb06ef8cf7c1adced61d9047d2f323d
+    to: native/third_party/monocypher/monocypher.c
+  - url: https://raw.githubusercontent.com/LoupVaillant/Monocypher/4.0.2/src/monocypher.h
+    sha256: fcaf6ed771358bb4f40fba016f6518ae86ec02b1b877d2cc35ad92d3a26fd7b3
+    to: native/third_party/monocypher/monocypher.h
+  - url: https://raw.githubusercontent.com/LoupVaillant/Monocypher/4.0.2/src/optional/monocypher-ed25519.c
+    sha256: 97d581639dfa72be08a6d57deb7d79b736be001cb416819cab196d22559d242b
+    to: native/third_party/monocypher/monocypher-ed25519.c
+  - url: https://raw.githubusercontent.com/LoupVaillant/Monocypher/4.0.2/src/optional/monocypher-ed25519.h
+    sha256: 3a3035181f991a158d0e1c7567258f0bae8ba0f1f23c5512b4a1db1b3c9730ce
+    to: native/third_party/monocypher/monocypher-ed25519.h
+library:
+  sources: [native]
+  include-paths: [native, native/third_party/monocypher]
+  platforms:
+    windows: { link-libs: [bcrypt] }
+functions:
+  # bytes: 1..65536. Returns them as hex ('' if out of range or the OS failed).
+  crypto_random:         { params: { bytes: int }, returns: string }
+  crypto_sha256:         { params: { data: string }, returns: string }
+  crypto_sha512:         { params: { data: string }, returns: string }
+  # seed: the 32-byte private key. Returns the 32-byte public key as hex ('' for a bad seed).
+  crypto_ed25519_public: { params: { seed: string }, returns: string }
+  # Returns the 64-byte signature as hex ('' for a bad seed).
+  crypto_ed25519_sign:   { params: { seed: string, message: string }, returns: string }
+  crypto_ed25519_verify: { params: { key: string, message: string, signature: string }, returns: bool }
