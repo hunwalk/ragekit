@@ -20,3 +20,14 @@ functions:
   audio_duration: { params: { sound: int }, returns: float }
   audio_playing:  { params: { sound: int }, returns: bool }
   audio_unload:   { params: { sound: int } }
+  # Playback speed (1 = normal); miniaudio resamples, so the pitch changes with it.
+  audio_speed:    { params: { sound: int, speed: float } }
+  # Recording from the default microphone, one at a time: 16 kHz, mono, 16-bit (a voice note).
+  # start: 1, or 0 (audio_record_error() says why). Events for handle 0: "level" (0-100, ~10 per
+  # second), "full" (the 61 s limit was reached; what came after isn't kept).
+  audio_record_start:  { returns: int }
+  # Writes the recording as a WAV file to path; returns "<seconds>\n<48 bars 0-100, comma-separated>",
+  # or "" when nothing was recording or the file couldn't be written (audio_record_error()).
+  audio_record_stop:   { params: { path: string }, returns: string }
+  audio_record_cancel: { }
+  audio_record_error:  { returns: string }

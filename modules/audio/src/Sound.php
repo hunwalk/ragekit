@@ -62,6 +62,15 @@ final class Sound
     }
 
     /** Seconds from the start. */
+    /**
+     * Plays faster or slower: 1.5 is half again as fast. miniaudio resamples, so the pitch rises and
+     * falls with the speed (no time-stretching yet).
+     */
+    public function speed(float $speed): void
+    {
+        \audio_speed($this->id, $speed);
+    }
+
     public function position(): float
     {
         return \audio_position($this->id);

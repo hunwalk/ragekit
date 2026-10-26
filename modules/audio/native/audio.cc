@@ -2,10 +2,16 @@
 // RAGEKIT_AUDIO_NULL=1 uses miniaudio's null device (tests, machines without audio).
 //
 // Events: a ticker thread posts "progress" (data: position in seconds) every 250 ms for each
-// playing sound, and "finished" once when a playing sound reaches its end.
+// playing sound, and "finished" once when a playing sound reaches its end. Recording (handle 0)
+// posts "level" about 10 times a second from miniaudio's capture thread, and "full" at 61 s.
 #define MINIAUDIO_IMPLEMENTATION
 #define MA_NO_ENCODING
 #define MA_NO_GENERATION
+// Windows: miniaudio initialises COM on the calling thread, the app's UI thread. Its default
+// (multithreaded) makes winit's OleInitialize fail once the first window is created (a panic,
+// RPC_E_CHANGED_MODE) whenever audio starts before that, e.g. in App::start(). Apartment-threaded
+// is what the UI thread needs anyway.
+#define MA_COINIT_VALUE 2 /* COINIT_APARTMENTTHREADED */
 #include "miniaudio.h"
 
 #include "rk_module_audio.h"
@@ -140,10 +146,13 @@ void stopTicker()
     }
 }
 
+void stopRecording(); // below, with the rest of recording
+
 // Stops the ticker and frees every sound, the engine and the context (miniaudio's audio thread
 // ends with the engine).
 void shutdown()
 {
+    stopRecording();
     stopTicker();
     std::lock_guard<std::mutex> sending(posting);
     std::lock_guard<std::mutex> lock(state);
@@ -160,6 +169,123 @@ void shutdown()
         contextReady = false;
     }
 }
+
+// Recording: one capture device at a time, 16 kHz mono s16 (miniaudio converts from the device).
+const ma_uint32 kRate = 16000;
+const size_t kMaxFrames = kRate * 61; // the dev-null server's limit, a minute and a moment
+std::mutex recordLock; // guards everything below except what the capture callback reads atomically
+ma_context recordContext;
+bool recordContextReady = false;
+ma_device recorder;
+bool recording = false;
+std::vector<int16_t> samples;
+std::atomic<int> levelPeak{0};
+std::atomic<size_t> sinceLevel{0};
+std::atomic<bool> fullSent{false};
+std::string recordError;
+
+void onCapture(ma_device *, void *, const void *input, ma_uint32 frames)
+{
+    const int16_t *in = static_cast<const int16_t *>(input);
+    bool full = false;
+    {
+        std::lock_guard<std::mutex> lock(recordLock);
+        size_t room = samples.size() < kMaxFrames ? kMaxFrames - samples.size() : 0;
+        size_t keep = frames < room ? frames : room;
+        samples.insert(samples.end(), in, in + keep);
+        full = keep < frames;
+    }
+    int peak = levelPeak;
+    for (ma_uint32 i = 0; i < frames; ++i) {
+        int v = std::abs(static_cast<int>(in[i]));
+        peak = v > peak ? v : peak;
+    }
+    levelPeak = peak;
+    if ((sinceLevel += frames) >= kRate / 10 && post != nullptr) {
+        sinceLevel = 0;
+        std::string level = std::to_string(levelPeak.exchange(0) * 100 / 32768);
+        post("audio", 0, "level", level.data(), level.size());
+    }
+    if (full && !fullSent.exchange(true) && post != nullptr) {
+        post("audio", 0, "full", "", 0);
+    }
+}
+
+void stopRecording() // under recordLock's owner rules: call without holding it
+{
+    bool was;
+    {
+        std::lock_guard<std::mutex> lock(recordLock);
+        was = recording;
+        recording = false;
+    }
+    if (was) {
+        ma_device_uninit(&recorder); // waits for the capture thread: onCapture isn't running after this
+    }
+    std::lock_guard<std::mutex> lock(recordLock);
+    if (recordContextReady) {
+        ma_context_uninit(&recordContext);
+        recordContextReady = false;
+    }
+}
+
+void put32(std::string &out, uint32_t v)
+{
+    for (int i = 0; i < 4; ++i) {
+        out += static_cast<char>((v >> (8 * i)) & 0xFF);
+    }
+}
+
+void put16(std::string &out, uint16_t v)
+{
+    out += static_cast<char>(v & 0xFF);
+    out += static_cast<char>(v >> 8);
+}
+
+/** A plain 16 kHz mono 16-bit PCM WAV: the format chunk and the samples, nothing else. */
+std::string wav(const std::vector<int16_t> &pcm)
+{
+    std::string out = "RIFF";
+    uint32_t bytes = static_cast<uint32_t>(pcm.size() * 2);
+    put32(out, 36 + bytes);
+    out += "WAVEfmt ";
+    put32(out, 16);
+    put16(out, 1);         // PCM
+    put16(out, 1);         // mono
+    put32(out, kRate);
+    put32(out, kRate * 2); // bytes per second
+    put16(out, 2);         // block align
+    put16(out, 16);        // bits
+    out += "data";
+    put32(out, bytes);
+    for (int16_t s : pcm) {
+        put16(out, static_cast<uint16_t>(s));
+    }
+    return out;
+}
+
+/** The peak of each of 48 slices, scaled so the loudest is 100 (all 0 for silence). */
+std::string waveform(const std::vector<int16_t> &pcm)
+{
+    const int bars = 48;
+    int peaks[bars] = {};
+    int loudest = 0;
+    for (int b = 0; b < bars; ++b) {
+        size_t from = pcm.size() * b / bars, to = pcm.size() * (b + 1) / bars;
+        for (size_t i = from; i < to; ++i) {
+            int v = std::abs(static_cast<int>(pcm[i]));
+            peaks[b] = v > peaks[b] ? v : peaks[b];
+        }
+        loudest = peaks[b] > loudest ? peaks[b] : loudest;
+    }
+    std::string out;
+    for (int b = 0; b < bars; ++b) {
+        out += (b > 0 ? "," : "") + std::to_string(loudest == 0 ? 0 : peaks[b] * 100 / loudest);
+    }
+    return out;
+}
+
+thread_local std::string recordResult;
 
 // The app normally resets modules when its event loop ends; if it exits some other way, everything
 // must still be shut down before the statics above are destroyed: a running std::thread aborts, and
@@ -295,6 +421,105 @@ RKM_API void rkm_audio_unload(int64_t sound)
         ma_sound_uninit(&it->second->sound);
         sounds.erase(it);
     }
+}
+
+RKM_API void rkm_audio_speed(int64_t sound, double speed)
+{
+    std::lock_guard<std::mutex> lock(state);
+    if (Sound *s = find(sound)) {
+        ma_sound_set_pitch(&s->sound, static_cast<float>(speed > 0.1 ? speed : 0.1));
+    }
+}
+
+RKM_API int64_t rkm_audio_record_start(void)
+{
+    stopRecording(); // one at a time: a new start drops a recording in progress
+    std::lock_guard<std::mutex> lock(recordLock);
+    samples.clear();
+    samples.reserve(kRate * 10);
+    fullSent = false;
+    levelPeak = 0;
+    sinceLevel = 0;
+    const char *null = std::getenv("RAGEKIT_AUDIO_NULL");
+    ma_context *ctx = nullptr;
+    if (null != nullptr && std::strcmp(null, "1") == 0) {
+        ma_backend backends[] = {ma_backend_null};
+        if (ma_context_init(backends, 1, nullptr, &recordContext) != MA_SUCCESS) {
+            recordError = "the null audio backend didn't start";
+            return 0;
+        }
+        recordContextReady = true;
+        ctx = &recordContext;
+    }
+    ma_device_config config = ma_device_config_init(ma_device_type_capture);
+    config.capture.format = ma_format_s16;
+    config.capture.channels = 1;
+    config.sampleRate = kRate;
+    config.dataCallback = onCapture;
+    if (ma_device_init(ctx, &config, &recorder) != MA_SUCCESS) {
+        recordError = "no microphone could be opened";
+        return 0;
+    }
+    if (ma_device_start(&recorder) != MA_SUCCESS) {
+        ma_device_uninit(&recorder);
+        recordError = "the microphone didn't start";
+        return 0;
+    }
+    recording = true;
+    recordError.clear();
+    return 1;
+}
+
+RKM_API const char *rkm_audio_record_stop(const char *path, size_t path_len)
+{
+    bool was;
+    {
+        std::lock_guard<std::mutex> lock(recordLock);
+        was = recording;
+    }
+    stopRecording();
+    std::lock_guard<std::mutex> lock(recordLock);
+    recordResult.clear();
+    if (!was) {
+        recordError = "nothing was recording";
+        return recordResult.c_str();
+    }
+    std::string file(path, path_len);
+#ifdef _WIN32 // untested
+    std::wstring wide(MultiByteToWideChar(CP_UTF8, 0, file.c_str(), -1, nullptr, 0), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, file.c_str(), -1, wide.data(), static_cast<int>(wide.size()));
+    FILE *out = _wfopen(wide.c_str(), L"wb");
+#else
+    FILE *out = std::fopen(file.c_str(), "wb");
+#endif
+    std::string bytes = wav(samples);
+    if (out == nullptr || std::fwrite(bytes.data(), 1, bytes.size(), out) != bytes.size()) {
+        if (out != nullptr) {
+            std::fclose(out);
+        }
+        recordError = "couldn't write " + file;
+        return recordResult.c_str();
+    }
+    std::fclose(out);
+    char seconds[32];
+    std::snprintf(seconds, sizeof seconds, "%.3f", static_cast<double>(samples.size()) / kRate);
+    recordResult = std::string(seconds) + "\n" + waveform(samples);
+    samples.clear();
+    return recordResult.c_str();
+}
+
+RKM_API void rkm_audio_record_cancel(void)
+{
+    stopRecording();
+    std::lock_guard<std::mutex> lock(recordLock);
+    samples.clear();
+}
+
+RKM_API const char *rkm_audio_record_error(void)
+{
+    std::lock_guard<std::mutex> lock(recordLock);
+    recordResult = recordError;
+    return recordResult.c_str();
 }
 
 } // extern "C"
