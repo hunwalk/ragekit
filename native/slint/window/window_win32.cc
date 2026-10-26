@@ -110,6 +110,21 @@ void raise(slint::Window &window, const char *)
     SetForegroundWindow(hwnd);
 }
 
+// The foreground right comes with the handover itself (AllowSetForegroundWindow): no token.
+void set_activation_token(const std::string &)
+{
+}
+
+std::string take_activation_token()
+{
+    return "";
+}
+
+bool activate_wayland(slint::Window &)
+{
+    return false;
+}
+
 } // namespace rk::win
 
 #endif

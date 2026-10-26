@@ -76,7 +76,12 @@ window is brought to the front first. A link the app was started with arrives th
 - **Windows:** a named pipe per app (`\\.\pipe\ragekit-<app>`, local clients only); the first
   launch creates it, later ones send their link to it. A crashed instance takes its pipe with it.
 - **Coming to the front** (also `Window::raise()`): on X11 RageKit asks the window manager to
-  activate the window (`_NET_ACTIVE_WINDOW`); some desktops only mark it as wanting attention. On
+  activate the window (`_NET_ACTIVE_WINDOW`, dated by the launch's startup id when it has one).
+  On Wayland a window may come forward only with an activation token from whoever started the
+  launch (`XDG_ACTIVATION_TOKEN`), which the launch hands over with its link; browsers don't pass
+  one yet (Firefox 153), and without it GNOME only shows "… is ready". So an app that declares
+  links runs on XWayland when both are there, where GNOME brings it forward (checked on GNOME 48);
+  `RAGEKIT_WAYLAND=1` keeps native Wayland. Some desktops only mark the window as wanting attention. On
   Windows: `SetForegroundWindow`. Windows lets a background app come forward only when the user's
   last input went to it or a launch the user started allows it: a new launch handing over its link
   does (so links bring the window forward), while `raise()` from a timer only flashes the taskbar

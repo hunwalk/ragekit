@@ -9,6 +9,7 @@
 #define RK_BUILDING_BRIDGE
 #endif
 #include "ragekit_slint.h"
+#include "activation.h"
 
 #include <algorithm>
 #include <atomic>
@@ -130,10 +131,17 @@ std::string launchLink(const std::vector<std::string> &schemes)
     return "";
 }
 
-/** "open <url>" / "focus" from another launch: an event for PHP on the UI thread. */
+/**
+ * "open <url>" / "focus" from another launch, optionally followed by "token <activation token>":
+ * an event for PHP on the UI thread (the token is for the raise it leads to).
+ */
 void deliver(const std::string &message)
 {
     std::string line = message.substr(0, message.find('\n'));
+    if (auto at = message.find("\ntoken "); at != std::string::npos) {
+        std::string token = message.substr(at + 7);
+        rk::win::set_activation_token(token.substr(0, token.find('\n')));
+    }
     if (line.rfind("open ", 0) == 0) {
         std::string url = line.substr(5);
         rk_post_event("@links", 0, "open", url.data(), url.size());
@@ -302,6 +310,17 @@ RK_API int rk_links_claim(const char *schemes)
     std::vector<std::string> list = split(schemes, ',');
     std::string link = launchLink(list);
     std::string message = link.empty() ? "focus\n" : "open " + link + "\n";
+#ifndef _WIN32
+    // Who started this launch (browser, desktop) may have given it the right to come forward;
+    // the running instance needs it to raise its window.
+    for (const char *name : {"XDG_ACTIVATION_TOKEN", "DESKTOP_STARTUP_ID"}) {
+        const char *token = std::getenv(name);
+        if (token != nullptr && *token != '\0' && std::strchr(token, '\n') == nullptr) {
+            message += std::string("token ") + token + "\n";
+            break;
+        }
+    }
+#endif
     std::string id = appId();
 #ifndef _WIN32
     std::string dir = runtimeDir();
@@ -356,6 +375,11 @@ RK_API int rk_links_claim(const char *schemes)
         listener = std::thread(listen_, pipe);
     }
 #endif
+    if (result == 1) {
+        // The running instance must come to the front for links: on GNOME's Wayland only with a
+        // token browsers don't hand over yet, while XWayland's _NET_ACTIVE_WINDOW works.
+        rk::win::prefer_x11();
+    }
     if (result == 1 && !link.empty()) {
         rk_post_event("@links", 0, "open", link.data(), link.size()); // started by a link: the app opens it
     }

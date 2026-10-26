@@ -45,7 +45,9 @@ grep -q "^Exec=\"$exe\" %u$" "$tmp/data/applications/ragekit-links.desktop" || f
 # the window (_NET_WM_ICON, which xprop draws: "Icon (64 x 64):" and the pixels).
 grep -qx "Icon=$app/build/slint/icon.png" "$tmp/data/applications/ragekit-links.desktop" || fail "the .desktop file doesn't name the icon"
 cmp -s "$app/build/slint/icon.png" "$root/tests/fixtures/links/icon.png" || fail "the icon isn't next to the executable"
-xprop -id "$window" _NET_WM_ICON | head -1 | grep -q 'Icon (64 x 64)' || fail "the window has no 64x64 icon"
+# Into a file first: under pipefail, `xprop | head -1` fails whenever head closes the pipe early.
+xprop -id "$window" _NET_WM_ICON >"$tmp/icon.txt" 2>&1
+head -1 "$tmp/icon.txt" | grep -q 'Icon (64 x 64)' || fail "the window has no 64x64 icon"
 [ "$(xdg-mime query default x-scheme-handler/rktest)" = "ragekit-links.desktop" ] || fail "xdg-mime doesn't name the app as the handler"
 [ -S "$tmp/runtime/ragekit-links.sock" ] || fail "the running instance doesn't listen"
 timeout 5 import -window "$window" "$tmp/before.png"

@@ -32,6 +32,9 @@ App:
   `App::linkOpened($url)`. `Links::register('myapp')` makes the app the OS's handler (Linux: a
   .desktop file and mimeapps.list; Windows: the registry). `Links::openInBrowser($url)` and
   `Links::query($url)` (Nano builds have no `parse_str()`). Built apps only, not `ragekit dev`.
+  On Linux such an app runs on XWayland when it can: GNOME's Wayland lets a window come forward
+  only with an activation token, which browsers don't hand over yet (the token is used when one
+  comes; `RAGEKIT_WAYLAND=1` keeps Wayland).
   See docs/links.md.
 - **Windows:** `Window::hide()` / `show()` (a window off the screen keeps its screens' state) and
   `Window::raise()`.

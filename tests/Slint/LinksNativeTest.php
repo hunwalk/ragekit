@@ -39,7 +39,7 @@ final class LinksNativeTest extends TestCase
         mkdir($folder, 0777, true);
         $root = (string) realpath(self::ROOT);
         exec('g++ -std=c++20 -O1 -Wall -Wextra -Werror ' . escapeshellarg("$root/native/slint/bridge/rk_links.cc") . ' '
-            . escapeshellarg("$root/tests/fixtures/links/probe_links.cc") . " -I$root/native/slint/bridge -lpthread -o "
+            . escapeshellarg("$root/tests/fixtures/links/probe_links.cc") . " -I$root/native/slint/bridge -I$root/native/slint/window -lpthread -o "
             . escapeshellarg("$folder/probe") . ' 2>&1', $output, $code);
         self::assertSame(0, $code, implode("\n", $output));
         return "$folder/probe";
@@ -91,5 +91,23 @@ final class LinksNativeTest extends TestCase
         self::assertSame('0700', substr(sprintf('%o', fileperms($private)), -4));
         self::assertFileExists("$private/ragekit-probe.lock");
         unlink("$private/ragekit-probe.lock");
+    }
+
+    /**
+     * The launch hands over its activation token with its link (Wayland: XDG_ACTIVATION_TOKEN, from
+     * whoever started it): the running instance keeps it for the raise the link leads to.
+     */
+    public function testActivationTokenComesWithTheLink(): void
+    {
+        $probe = $this->probe("$this->dir/bin");
+        mkdir("$this->dir/runtime", 0700);
+        $env = 'env -i PATH=/usr/bin:/bin HOME=' . escapeshellarg("$this->dir/home") . ' XDG_RUNTIME_DIR=' . escapeshellarg("$this->dir/runtime");
+        $first = popen("$env " . escapeshellarg($probe) . ' serve rktest 1500 2>&1', 'r');
+        usleep(400000);
+        $second = (string) shell_exec("$env XDG_ACTIVATION_TOKEN=tok-123 " . escapeshellarg($probe) . " claim rktest 'rktest://y' 2>&1");
+        $out = (string) stream_get_contents($first);
+        pclose($first);
+        self::assertSame("claim 0\n", $second, 'the second launch hands over');
+        self::assertSame("claim 1\ntoken tok-123\nevent @links open rktest://y\n", $out, 'the token arrives before the link');
     }
 }

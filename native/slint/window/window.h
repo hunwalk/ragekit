@@ -5,19 +5,14 @@
 // builds) and the dev shell.
 #pragma once
 
+#include "activation.h"
+
 #include <slint.h>
 
 namespace rk::win {
 
 /** Resize directions: corners and edges, clockwise from the top-left (the grips' order). */
 enum class Edge { TopLeft = 0, Top, TopRight, Right, BottomRight, Bottom, BottomLeft, Left };
-
-/**
- * Before Slint starts: run on X11 (XWayland) when both X11 and Wayland are there. A native Wayland
- * window can't be moved by the app itself. RAGEKIT_WAYLAND=1 or an explicit SLINT_BACKEND keeps
- * Wayland.
- */
-void prefer_x11();
 
 /** After the window is shown: the OS's shadow and rounded corners (Windows 11; elsewhere a no-op). */
 void make_floating(slint::Window &window);
@@ -41,10 +36,14 @@ void start_resize(slint::Window &window, Edge edge);
 void resize(slint::Window &window);
 
 /**
- * Brings the window to the front (another launch of a single-instance app). X11: asks the window
- * manager (_NET_ACTIVE_WINDOW) for this process's top-level window with this title; Windows:
- * SetForegroundWindow. A window manager may still only mark it as wanting attention.
+ * Brings the window to the front (another launch of a single-instance app). Wayland: xdg-activation
+ * with the token set_activation_token() got (else one of its own); X11: asks the window manager
+ * (_NET_ACTIVE_WINDOW, with the handed-over startup id's time) for this process's top-level window
+ * with this title; Windows: SetForegroundWindow. A desktop may still only mark it as wanting attention.
  */
 void raise(slint::Window &window, const char *title);
+
+/** Wayland: activates the window (see raise()); false when it isn't a Wayland window. */
+bool activate_wayland(slint::Window &window);
 
 } // namespace rk::win

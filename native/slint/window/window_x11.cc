@@ -146,7 +146,7 @@ void prefer_x11()
     }
     const char *display = std::getenv("DISPLAY");
     if (display == nullptr || *display == '\0') {
-        std::fprintf(stderr, "ragekit: no X11 (XWayland) display; this window's title bar can't move it on Wayland\n");
+        std::fprintf(stderr, "ragekit: no X11 (XWayland) display; on Wayland the app can't move its own title bar or come to the front for a link\n");
         return;
     }
     unsetenv("WAYLAND_DISPLAY");
@@ -266,6 +266,16 @@ namespace rk::win {
 void raise(slint::Window &window, const char *title)
 {
     window.set_minimized(false);
+    if (activate_wayland(window)) {
+        return;
+    }
+    // A startup id ("…_TIME<server time>") dates the request to the user's action, which window
+    // managers' focus-stealing prevention checks.
+    std::string startup = take_activation_token();
+    long time = 0;
+    if (auto at = startup.rfind("_TIME"); at != std::string::npos) {
+        time = std::strtol(startup.c_str() + at + 5, nullptr, 10);
+    }
     Xlib *x = xlib();
     if (x == nullptr || x->XQueryTree == nullptr) {
         return;
@@ -289,6 +299,7 @@ void raise(slint::Window &window, const char *title)
     event.message_type = x->XInternAtom(x->display, "_NET_ACTIVE_WINDOW", 0);
     event.format = 32;
     event.l[0] = 2; // the request comes from a pager-like source: window managers honour it
+    event.l[1] = time;
     // SubstructureRedirectMask | SubstructureNotifyMask
     x->XSendEvent(x->display, root, 0, (1L << 20) | (1L << 19), &event);
     x->XFlush(x->display);
