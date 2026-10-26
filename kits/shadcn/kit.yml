@@ -2,6 +2,12 @@
 # Same element contract as kits/material (see src/Cli/Kits/ElementSpec.php and PropSpec.php).
 name: shadcn
 entry: shadcn.slint
+fetch:
+  # A monospace font for <Text variant="code"> (SIL Open Font License 1.1): Slint 1.18 doesn't
+  # resolve the generic "monospace" family, so the kit brings its own (embedded, ~270 KB).
+  - url: https://raw.githubusercontent.com/JetBrains/JetBrainsMono/v2.304/fonts/ttf/JetBrainsMono-Regular.ttf
+    sha256: a0bf60ef0f83c5ed4d7a75d45838548b1f6873372dfac88f71804491898d138f
+    to: fonts/JetBrainsMono-Regular.ttf
 window: ShadWindow
 elements:
   Label:
@@ -20,6 +26,8 @@ elements:
     component: ShadEntry
     props:
       value: { type: string, property: text, twoWay: edited }
+    events:
+      onSubmit: submitted
   Checkbox:
     component: ShadCheckbox
     props:
@@ -75,6 +83,9 @@ elements:
       value: { type: string, property: text, twoWay: edited }
       placeholder: string
       rows: int
+      maxRows: { type: int, property: max-rows }
+    events:
+      onSubmit: { callback: submitted, enables: submit-on-return }
   RadioGroup:
     component: ShadRadioGroup
     props:

@@ -125,6 +125,7 @@ final class ControlFlowCompiler implements ElementCompiler
     {
         $out = '';
         $earlier = [];
+        $collapse = self::wrappingTextOnly($element) && $this->context->isInView($element->children[0]->children[0]);
         foreach ($element->children as $branch) {
             if (count($branch->children) !== 1) {
                 throw new OneChildRequired($element, 'each @if branch');
@@ -136,7 +137,10 @@ final class ControlFlowCompiler implements ElementCompiler
                 $guard[] = $condition;
                 $earlier[] = $condition;
             }
-            $out .= 'if ' . ($guard === [] ? 'true' : implode(' && ', $guard)) . ' : ' . $this->body($branch->children[0], $scope, $axis);
+            $shown = $guard === [] ? 'true' : implode(' && ', $guard);
+            $out .= $collapse
+                ? self::collapsed($this->body($branch->children[0], $scope, $axis), $shown)
+                : 'if ' . $shown . ' : ' . $this->body($branch->children[0], $scope, $axis);
         }
         return $out;
     }
@@ -155,6 +159,35 @@ final class ControlFlowCompiler implements ElementCompiler
         }
         $style = $this->context->resolved($child);
         return $style !== null && $style->position === 'absolute' ? ViewCompiler::place($code, $style) : $code;
+    }
+
+    /**
+     * Whether every branch of an @if shows one <Text>. Slint's FlexboxLayout (a <View>) measures a
+     * child under `if` without its width, so text that wraps counted as one line and its bubble
+     * came out too short. Such texts are always there instead, hidden and collapsed when their
+     * condition is false (see collapsed()).
+     */
+    private static function wrappingTextOnly(Element $element): bool
+    {
+        foreach ($element->children as $branch) {
+            $child = $branch->children[0] ?? null;
+            if (count($branch->children) !== 1 || $child === null || $child->namespace !== null || $child->tag !== 'Text' || self::isControl($child)) {
+                return false;
+            }
+        }
+        return $element->children !== [];
+    }
+
+    /** $code (one element) shown only while $shown is true, taking no room otherwise. */
+    private static function collapsed(string $code, string $shown): string
+    {
+        // Hidden, its text is empty: the kits' Text takes no room then.
+        $code = (string) preg_replace_callback('/^    text: (.*);$/m', fn(array $m) => "    text: ($shown) ? {$m[1]} : \"\";", $code, 1);
+        $end = strrpos($code, '}');
+        if ($end === false) {
+            return 'if ' . $shown . ' : ' . $code;
+        }
+        return substr($code, 0, $end) . Code::indent("visible: $shown;", 1) . substr($code, $end);
     }
 
     /** Whether an element compiles to a Slint `for` or `if`. */

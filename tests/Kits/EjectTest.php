@@ -6,6 +6,7 @@ namespace RageKit\Tests\Kits;
 
 use PHPUnit\Framework\TestCase;
 use RageKit\Cli\Command\EjectCommand;
+use RageKit\Cli\Fetch\Fetcher;
 use RageKit\Cli\RageKitException;
 use RageKit\Cli\Slint\SlintCompiler;
 use RageKit\Cli\Templates\ClassInfo;
@@ -49,7 +50,7 @@ final class EjectTest extends TestCase
         self::assertStringContainsString("  kit: gallery\n", $project);
         self::assertStringContainsString('# my app', $project, 'comments survive');
         self::assertStringContainsString('backend: slint   # the renderer', $project);
-        self::assertNull($result->gitignore);
+        self::assertSame(['kits/gallery/fonts/JetBrainsMono-Regular.ttf'], $result->gitignore);
     }
 
     public function testEjectedKitBuilds(): void
@@ -64,6 +65,15 @@ final class EjectTest extends TestCase
         $compiler = InstalledToolchain::slintHome() . '/bin/slint-compiler';
         if (!is_file($compiler)) {
             self::markTestSkipped('needs the Slint toolchain');
+        }
+        // The build fetches what the kit's fetch: names; here the installed kit's copies stand in (same sha256).
+        foreach ($kits->find('shadcn')->fetch as $dependency) {
+            if (!Fetcher::present($dependency)) {
+                self::markTestSkipped('needs the shadcn kit fetched (any ragekit build with it)');
+            }
+            $copy = "$this->project/kits/gallery/" . substr($dependency->target, strlen((string) realpath(self::ROOT) . '/kits/shadcn/'));
+            @mkdir(dirname($copy), 0777, true);
+            copy($dependency->target, $copy);
         }
         file_put_contents("$this->project/app.slint", $out->slint);
         $command = [$compiler, "$this->project/app.slint", '-f', 'cpp', '-o', "$this->project/app.h"];
@@ -85,7 +95,7 @@ final class EjectTest extends TestCase
         self::assertStringContainsString('component: BrandButton', $yml);
         self::assertStringNotContainsString('RkButton', (string) file_get_contents("$dir/rk-material.slint"));
         self::assertStringContainsString('MaterialWindow', (string) file_get_contents("$dir/rk-material.slint"), 'the library\'s own names stay');
-        self::assertSame('kits/brand/library/', $result->gitignore);
+        self::assertSame(['kits/brand/library/', 'kits/brand/fonts/JetBrainsMono-Regular.ttf'], $result->gitignore);
         self::assertStringContainsString('kit: shadcn', (string) file_get_contents("$this->project/project.yml"), '--no-use leaves project.yml alone');
     }
 

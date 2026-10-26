@@ -76,6 +76,9 @@ final class KitElementCompiler implements ElementCompiler
             if (!isset($element->attributes[$attribute])) {
                 continue;
             }
+            if (isset($spec->enables[$attribute])) {
+                $lines[] = "{$spec->enables[$attribute]}: true;";
+            }
             $lines[] = isset($spec->eventValues[$attribute])
                 ? $this->valueEvent($element, $attribute, $callback, $spec->eventValues[$attribute], $scope)
                 : "$callback => { " . $this->context->values->handler($element->attributes[$attribute], $scope, $element) . ' }';
@@ -127,7 +130,7 @@ final class KitElementCompiler implements ElementCompiler
                 return $found;
             }
         }
-        throw TemplateException::at($element, "unknown element <{$element->tag}> (core: View, VStack, HStack, " . implode(', ', self::CORE)
+        throw TemplateException::at($element, "unknown element <{$element->tag}> (core: View, VStack, HStack, ScrollView, " . implode(', ', self::CORE)
             . '; components: ' . (implode(', ', array_keys($this->context->children)) ?: 'none') . '; kit elements need their prefix, e.g. <ui:Card>)');
     }
 }

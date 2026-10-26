@@ -419,6 +419,70 @@ public const STYLES = [
 - `position: 'absolute'` takes a child out of the flow and places it from `top`/`right`/`bottom`/
   `left` inside its `<View>` (only a `<View>` parent can do that).
 - A `<View>` as the template's root fills the window, with no extra padding.
+- A `<Text>` under `@if` directly in a `<View>` is always there and only hidden: Slint's flexbox
+  measures what is under an `if` without its width, so wrapping text counted as one line. Hidden,
+  its text is empty, and an empty `<Text>` takes no room (`gap` still applies around it).
+
+### ScrollView: lists longer than the window
+
+`<ScrollView>` stacks its children in a column, like a `VStack`, and scrolls when they don't fit:
+with the mouse wheel or touchpad, by dragging the content, or with its scrollbar (a thin grey bar
+that appears when there's something to scroll; it sits over the rightmost 8 px of the content). It takes the room its stack gives it,
+so give the template's root `grow="true"` to let it fill the window:
+
+```blade
+<VStack grow="true">
+    <Label text="{{ $title }}" size="title" />
+    <ScrollView>
+        @foreach ($items as $item)
+            <Label text="{{ $item }}" />
+        @endforeach
+    </ScrollView>
+</VStack>
+```
+
+For a chat, three attributes make it behave like a messaging app:
+
+```blade
+<ScrollView stickToBottom="true" anchor="{{ $anchor }}" onTop="loadOlder">
+    @foreach ($messages as $message)
+        <Label text="{{ $message->text }}" />
+    @endforeach
+</ScrollView>
+```
+
+```php
+public function loadOlder(): void
+{
+    if ($this->loading || !$this->hasOlder) {
+        return;
+    }
+    $this->loading = true;
+    Api::olderMessages($this->messages->get(0)->id, function (array $older): void {
+        $this->anchor = 'bottom';   // what's on screen stays put while rows are added above
+        $this->messages = new Messages([...$older, ...$this->messages->all()]);
+        $this->loading = false;
+    });
+}
+
+public function received(Message $message): void
+{
+    $this->anchor = 'top';
+    $this->messages->add($message);   // at the bottom: it scrolls into view; scrolled up: nothing moves
+}
+```
+
+| Attribute | What it does |
+|---|---|
+| `stickToBottom` | `true`: opens at the bottom, and stays at the bottom while rows are added or the window resizes, as long as the user is at the bottom. Scrolled up, nothing moves. A list shorter than the view rests at the bottom. A `{{ bool }}` works too. |
+| `anchor` | `top` (default) or `bottom`: which end keeps its place when the content changes height while the user is scrolled away from the bottom. Set it to `bottom` (a `{{ string }}`) just before adding older rows above, so the rows on screen don't jump. |
+| `onTop` | A handler called when the view comes within 200 px of the top. It is called again while the view stays there as long as the rows don't fill the view yet, and when rows come in with `anchor="bottom"` (older ones), so a short chat keeps loading until it fills the view. Once the view has been full, rows added at the bottom never call it. Guard it in PHP (a `loading` flag, "no older rows"), since it can come again before your answer arrives. |
+| `padded` | `false` removes the 8 px gap between children. |
+| `grow` | `false` stops it taking the leftover room; give it a `height` style instead. |
+
+It takes box styles (`backgroundColor`, `borderRadius`, `padding`, a fixed `height`, …). Tested
+inside `VStack`/`HStack`; inside a `<View>`, give it a `height` style. Not yet: horizontal
+scrolling, scrolling to a given row from PHP, and keyboard scrolling (Page Up/Down).
 
 ## Styles
 
@@ -492,7 +556,7 @@ any kit. A kit may lack one; it then falls back to the Material kit's version.
 | `Label` | `text`, `size` | `size`: `body` (default), `title`, `display` |
 | `Text` | `variant`, the text as content | typography, see below |
 | `Button` | `text`, `variant`, `onClick` | `variant`: `default`, `secondary`, `outline`, `ghost`, `destructive` |
-| `Entry` | `value` | two-way `string` |
+| `Entry` | `value`, `onSubmit` | `value`: two-way `string`; `onSubmit`: a handler for Return (the value is already up to date when it runs) |
 | `Checkbox` | `text`, `checked` | `checked`: two-way `bool` |
 | `Slider` | `value`, `min`, `max` | `value`: two-way `float`; range defaults to 0 to 1 |
 | `Select` | `value`, `options` | `value`: two-way `string`; `options`: a list |
@@ -501,7 +565,7 @@ any kit. A kit may lack one; it then falls back to the Material kit's version.
 | `Card` | `title` | holds other elements |
 | `Separator` | (none) | a thin line |
 | `Switch` | `text`, `checked` | `checked`: two-way `bool` |
-| `Textarea` | `value`, `placeholder`, `rows` | multi-line; `value`: two-way `string`; `rows`: visible lines (default 3) |
+| `Textarea` | `value`, `placeholder`, `rows`, `maxRows`, `onSubmit` | multi-line; `value`: two-way `string`; `rows`: visible lines (default 3); `maxRows`: grows with its text up to that many lines, then scrolls (a chat composer: `rows="1" maxRows="8"`); `onSubmit`: Return runs the handler and Shift+Return or Alt+Return adds a line (without `onSubmit`, Return adds a line) |
 | `RadioGroup` | `value`, `options` | `value`: two-way `string`, the chosen option |
 | `Toggle` | `text`, `pressed` | a button that stays pressed; `pressed`: two-way `bool` |
 | `Badge` | `text`, `variant` | `variant`: `default`, `secondary`, `outline`, `destructive` |
@@ -529,7 +593,9 @@ any kit. A kit may lack one; it then falls back to the Material kit's version.
 React Native's `<Text>` with shadcn's typography. The text is the element's content, with
 `{{ expressions }}` anywhere in it; spaces and line breaks collapse into one space, like HTML, and
 long text wraps. `variant` is one of `h1`, `h2`, `h3`, `h4`, `p` (default), `lead`, `large`,
-`small`, `muted`, `code`, `blockquote`; each kit draws them in its own type scale. Text styles
+`small`, `muted`, `code`, `blockquote`; each kit draws them in its own type scale (`code` in
+JetBrains Mono, which both kits ship). In a box with a `maxWidth` style, short text keeps the box
+snug and long text wraps at that width: a chat bubble. Text styles
 (`color`, `fontSize`, `fontWeight`, `textAlign`) override the variant. `<Text>` holds only text: no
 other elements inside it (yet), and not both `text="…"` and content.
 

@@ -102,6 +102,11 @@ final class CompileContext
         $this->inView[spl_object_id($element)] = true;
     }
 
+    public function isInView(Element $element): bool
+    {
+        return isset($this->inView[spl_object_id($element)]);
+    }
+
     /** The screen's root element: a root <View> fills the window. */
     public function markRoot(Element $element): void
     {

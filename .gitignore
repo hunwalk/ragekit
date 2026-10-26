@@ -6,6 +6,7 @@ demo/*/build/
 /composer.lock
 # Third-party code kits and modules fetch themselves (their `fetch:` in kit.yml / module.yml).
 /kits/*/library/
+/kits/*/fonts/
 /modules/*/native/third_party/
 *.exe
 *.obj

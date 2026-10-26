@@ -1,0 +1,10 @@
+# <ScrollView> as a chat: tests/e2e/scroll.sh drives it under Xvfb (normal and --nano).
+name: chat
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software

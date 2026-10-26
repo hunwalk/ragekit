@@ -14,6 +14,7 @@ use RageKit\Cli\Slint\Elements\DialogCompiler;
 use RageKit\Cli\Slint\Elements\DropdownMenuCompiler;
 use RageKit\Cli\Slint\Elements\ElementCompiler;
 use RageKit\Cli\Slint\Elements\KitElementCompiler;
+use RageKit\Cli\Slint\Elements\ScrollViewCompiler;
 use RageKit\Cli\Slint\Elements\StackCompiler;
 use RageKit\Cli\Slint\Elements\TabsCompiler;
 use RageKit\Cli\Slint\Elements\ViewCompiler;
@@ -53,6 +54,7 @@ final class ElementDispatcher
             new DialogCompiler($this->context),
             new DropdownMenuCompiler($this->context),
             new AccordionCompiler($this->context),
+            new ScrollViewCompiler($this->context),
             $stacks,
             new ChildComponentCompiler($this->context),
         ] as $compiler) {

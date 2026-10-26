@@ -41,10 +41,13 @@ final class StackCompiler implements ElementCompiler
         return $this->context->withMargin($code, $style, $element, $axis);
     }
 
-    /** Whether an element takes the leftover space: grow="true", or a flex style above 0. */
+    /** Whether an element takes the leftover space: grow="true", a flex style above 0, or a <ScrollView> (unless grow="false"). */
     private function grows(Element $element, Scope $scope): bool
     {
         if ($this->context->flag($element, 'grow')) {
+            return true;
+        }
+        if ($element->namespace === null && $element->tag === 'ScrollView' && !isset($element->attributes['grow']) && $this->context->resolved($element)?->flex === null) {
             return true;
         }
         $style = $this->context->resolved($element);

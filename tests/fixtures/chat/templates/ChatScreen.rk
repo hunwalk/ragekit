@@ -1,0 +1,12 @@
+<VStack padded="false" grow="true">
+    <HStack>
+        <Button text="Receive" onClick="receive" />
+        <Label text="{{ $status }}" />
+    </HStack>
+    <ScrollView stickToBottom="true" anchor="{{ $anchor }}" onTop="loadOlder">
+        @foreach ($messages as $message)
+            <Label text="{{ $message->text }}" />
+        @endforeach
+    </ScrollView>
+    <Textarea value="{{ $draft }}" rows="1" maxRows="4" onSubmit="send" />
+</VStack>

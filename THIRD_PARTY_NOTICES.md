@@ -18,8 +18,12 @@ What ends up in, or next to, an executable RageKit builds:
 | [GMP](https://gmplib.org), [MPFR](https://www.mpfr.org) | big-number support PHPX uses (system libraries, linked dynamically in normal builds) | LGPLv3+ (GMP also GPLv2+) |
 | [php-nano](https://github.com/swoole/php-nano) | the stripped-down PHP runtime compiled into Nano builds | BSD-3-Clause |
 | [Slint Material](https://material.slint.dev) | the `material` kit's components | MIT |
+| [JetBrains Mono](https://www.jetbrains.com/lp/mono/) 2.304 | the code font of both kits (`<Text variant="code">`), embedded | SIL Open Font License 1.1 |
 | [miniaudio](https://miniaud.io) 0.11.22 | the `audio` module | public domain or MIT No Attribution |
 | [libcurl](https://curl.se/libcurl/) (the system's, linked dynamically; not shipped) | the `http` module on Linux | curl license (MIT-style) |
+| [Monocypher](https://monocypher.org) 4.0.2 | the `crypto` module (Ed25519, SHA-512) | BSD-2-Clause or CC0-1.0 |
+| [libsecret](https://gitlab.gnome.org/GNOME/libsecret) (the system's, loaded at runtime; not shipped) | the `keyring` module on Linux | LGPL-2.1-or-later |
+| [GLib / GIO](https://gitlab.gnome.org/GNOME/glib) (the system's, loaded at runtime; not shipped) | the `notifications` and `tray` modules on Linux | LGPL-2.1-or-later |
 
 **RageKit and your app.** RageKit's runtime is compiled into every app it builds, so an app you
 distribute is a combined work with GPLv3 code: it must be distributed under the GPLv3 too

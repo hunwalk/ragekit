@@ -1,0 +1,92 @@
+Rectangle {
+    {{ lines }}
+    clip: true;
+    {{ id }} := Flickable {
+        width: parent.width;
+        height: parent.height;
+        // The content's and the view's heights when last seen: a change handler only sees the new value.
+        property <length> rk-content: 0px;
+        property <length> rk-view: 0px;
+        property <bool> rk-near-top: false;
+        // Whether the rows ever filled the view: until then, every change near the top asks for more.
+        property <bool> rk-filled: false;
+        // At least the view's height, so a short list can rest at the bottom (alignment: end).
+        content-height: max(self.height, {{ id }}-items.preferred-height);
+        {{ id }}-items := VerticalLayout {
+            width: {{ id }}.width;
+            height: {{ id }}.content-height;
+            spacing: {{ spacing }};
+            alignment: {{ alignment }};
+            {{ children }}
+        }
+        // The rows' own height: content-height is at least the view's, so it doesn't change while
+        // a short list grows; this does.
+        property <length> rk-rows: {{ id }}-items.preferred-height;
+        changed rk-rows => {
+            // Stuck to the bottom (or anchored there), the distance from the bottom stays the same:
+            // rows added below follow, rows added above (older messages) don't move what is shown.
+            if (self.rk-content == 0px ? {{ stick }} : ({{ anchorBottom }} || ({{ stick }} && self.content-y <= self.height - self.rk-content + 2px))) {
+                self.content-y = max(min(0px, self.height - self.content-height), min(0px, self.content-y - (self.content-height - self.rk-content)));
+            }
+            self.rk-content = self.content-height;
+            self.rk-ask(true);
+        }
+        changed height => {
+            if ({{ stick }} && self.content-y <= self.rk-view - self.rk-content + 2px) {
+                self.content-y = min(0px, self.height - self.content-height);
+            }
+            self.rk-view = self.height;
+            self.rk-content = self.content-height;
+            self.rk-ask(false);
+        }
+        // Near the top while the rows don't fill the view yet, or after older rows came in (anchor
+        // bottom, rows changed): ask for more, so a short list fills up. Once the view has been
+        // full, rows appended below don't ask.
+        function rk-ask(rows-changed: bool) {
+            if (self.height > 0px && (!self.rk-filled || ({{ anchorBottom }} && rows-changed)) && self.content-y > -{{ threshold }}) {
+                self.rk-near-top = true;
+                {{ onTop }}
+            }
+            self.rk-filled = self.rk-filled || (self.height > 0px && self.rk-rows > self.height + 1px);
+        }
+        changed content-y => {
+            if (self.content-y > -{{ threshold }}) {
+                if (!self.rk-near-top) {
+                    self.rk-near-top = true;
+                    {{ onTop }}
+                }
+            } else {
+                self.rk-near-top = false;
+            }
+        }
+    }
+    // The scrollbar: a thumb to look at, and a fixed strip along the edge to drag (a TouchArea
+    // inside the moving thumb would see the pointer move whenever the thumb does).
+    if {{ id }}.content-height > {{ id }}.height + 1px : Rectangle {
+        x: parent.width - 8px;
+        width: 6px;
+        height: min(max(24px, parent.height * {{ id }}.height / {{ id }}.content-height), parent.height - 1px);
+        y: (parent.height - self.height) * (-{{ id }}.content-y / ({{ id }}.content-height - {{ id }}.height));
+        border-radius: 3px;
+        background: #80808080;
+        opacity: {{ id }}-bar.has-hover || {{ id }}-bar.pressed ? 1 : 0.6;
+    }
+    {{ id }}-bar := TouchArea {
+        property <length> rk-pressed-y;
+        property <length> rk-thumb: min(max(24px, parent.height * {{ id }}.height / max(1px, {{ id }}.content-height)), parent.height - 1px);
+        x: parent.width - 10px;
+        width: 10px;
+        enabled: {{ id }}.content-height > {{ id }}.height + 1px;
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down) {
+                self.rk-pressed-y = {{ id }}.content-y;
+            }
+        }
+        moved => {
+            if (self.pressed) {
+                {{ id }}.content-y = max({{ id }}.height - {{ id }}.content-height, min(0px,
+                    self.rk-pressed-y - (self.mouse-y - self.pressed-y) * ({{ id }}.content-height - {{ id }}.height) / max(1px, parent.height - self.rk-thumb)));
+            }
+        }
+    }
+}

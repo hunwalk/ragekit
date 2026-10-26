@@ -54,10 +54,12 @@ final class KitEjector
         $skip = array_map(fn($dependency) => rtrim((string) $dependency->target, '/'), $kit->fetch);
         self::copy(rtrim($kit->dir, '/'), $target, $skip);
         [$renamed, $fromPrefix, $toPrefix] = $this->rename($kit, $target, $name);
-        $gitignore = null;
-        foreach ($skip as $fetched) {
+        $gitignore = [];
+        foreach ($kit->fetch as $dependency) {
+            $fetched = rtrim((string) $dependency->target, '/');
             if (str_starts_with($fetched, rtrim($kit->dir, '/') . '/')) {
-                $gitignore = "kits/$name/" . substr($fetched, strlen(rtrim($kit->dir, '/')) + 1) . '/';
+                // A git folder is ignored as a folder, a downloaded file as itself.
+                $gitignore[] = "kits/$name/" . substr($fetched, strlen(rtrim($kit->dir, '/')) + 1) . ($dependency->git !== null ? '/' : '');
             }
         }
         if ($use) {

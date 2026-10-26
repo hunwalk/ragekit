@@ -9,7 +9,7 @@ final class EjectResult
 {
     /**
      * @param array<string, string> $renamed   old component name => new one
-     * @param string|null           $gitignore a line to add to the app's .gitignore (fetched code), if any
+     * @param list<string>          $gitignore lines to add to the app's .gitignore (fetched code and files)
      */
     public function __construct(
         public readonly string $kit,
@@ -17,7 +17,7 @@ final class EjectResult
         public readonly string $dir,
         public readonly array $renamed,
         public readonly bool $used,
-        public readonly ?string $gitignore,
+        public readonly array $gitignore,
         public readonly string $fromPrefix = '',
         public readonly string $toPrefix = '',
     ) {

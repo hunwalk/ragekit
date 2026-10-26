@@ -1,4 +1,5 @@
 // RageKit's shadcn-style kit (dark): zinc palette, 8px radius, 1px borders, drawn entirely in Slint.
+import "fonts/JetBrainsMono-Regular.ttf"; // the code font (kit.yml fetch:)
 export global Shad {
     out property <color> background: #09090b;
     out property <color> card: #0c0c0f;
@@ -59,6 +60,8 @@ export component ShadButton inherits Rectangle {
 export component ShadEntry inherits Rectangle {
     in-out property <string> text;
     callback edited(string);
+    // Return was pressed (onSubmit).
+    callback submitted();
     // Scroll offset that keeps the caret visible once the text is wider than the box.
     property <length> scroll-x;
     min-width: 120px;
@@ -81,6 +84,7 @@ export component ShadEntry inherits Rectangle {
             vertical-alignment: center;
             single-line: true;
             edited => { root.edited(self.text); }
+            accepted => { root.submitted(); }
             cursor-position-changed(position) => {
                 if (position.x + root.scroll-x < 0) {
                     root.scroll-x = -position.x;
@@ -402,12 +406,32 @@ export component ShadTextarea inherits Rectangle {
     in-out property <string> text;
     in property <string> placeholder;
     in property <int> rows: 3;
+    // maxRows above rows: the box grows with its text up to that many rows, then scrolls.
+    in property <int> max-rows: 0;
+    // Set by the compiler when the template uses onSubmit: Return submits, Shift/Alt+Return adds a line.
+    in property <bool> submit-on-return: false;
     callback edited(string);
+    callback submitted();
+    // rows alone: the box's long-standing size; with maxRows, real lines of the font (line-probe).
+    property <length> line: root.max-rows > root.rows ? line-probe.preferred-height : 20px;
+    property <length> rows-height: (root.max-rows > root.rows ? max(1, root.rows) : max(2, root.rows)) * root.line;
+    property <length> scroll-y;
+    // Emptied from PHP (sent): back to the top; typing moves the caret, which scrolls again.
+    changed text => {
+        if (root.text == "") {
+            root.scroll-y = 0;
+        }
+    }
     min-width: 200px;
-    height: max(2, root.rows) * 20px + 16px;
+    height: (root.max-rows > root.rows ? min(max(root.rows-height, input.preferred-height), root.max-rows * root.line) : root.rows-height) + 16px;
     border-radius: Shad.radius;
     border-width: 1px;
     border-color: input.has-focus ? #71717a : Shad.border;
+    line-probe := Text {
+        visible: false;
+        text: "X";
+        font-size: Shad.font-size;
+    }
     TouchArea { clicked => { input.focus(); } }
     Rectangle {
         x: 12px;
@@ -422,15 +446,33 @@ export component ShadTextarea inherits Rectangle {
             color: Shad.muted;
             font-size: Shad.font-size;
         }
-        input := TextInput {
-            width: parent.width;
-            height: parent.height;
-            text <=> root.text;
-            color: Shad.foreground;
-            font-size: Shad.font-size;
-            single-line: false;
-            wrap: word-wrap;
-            edited => { root.edited(self.text); }
+        FocusScope {
+            capture-key-pressed(event) => {
+                if (root.submit-on-return && event.text == Key.Return && !event.modifiers.shift && !event.modifiers.alt && input.preedit-text == "") {
+                    root.submitted();
+                    return accept;
+                }
+                reject
+            }
+            input := TextInput {
+                y: root.scroll-y;
+                width: parent.width;
+                height: max(parent.height, self.preferred-height);
+                text <=> root.text;
+                color: Shad.foreground;
+                font-size: Shad.font-size;
+                single-line: false;
+                wrap: word-wrap;
+                edited => { root.edited(self.text); }
+                // Keeps the caret in view once the text is taller than the box.
+                cursor-position-changed(position) => {
+                    if (position.y + root.scroll-y < 0) {
+                        root.scroll-y = -position.y;
+                    } else if (position.y + root.line + root.scroll-y > parent.height) {
+                        root.scroll-y = parent.height - position.y - root.line;
+                    }
+                }
+            }
         }
     }
 }
@@ -811,13 +853,14 @@ export component ShadText {
                     padding-right: root.variant == "code" ? 6px : 0px;
                     padding-top: root.variant == "code" ? 2px : 0px;
                     padding-bottom: root.variant == "code" ? 2px : 0px;
-                    Text {
+                    // Empty text takes no room (an @if in a <View> hides a <Text> by emptying it).
+                    if root.text != "" : Text {
                         text: root.text;
                         color: root.color;
                         font-size: root.font-size;
                         font-weight: root.font-weight;
                         font-italic: root.variant == "blockquote";
-                        font-family: root.variant == "code" ? "monospace" : "";
+                        font-family: root.variant == "code" ? "JetBrains Mono" : "";
                         horizontal-alignment: root.horizontal-alignment;
                         wrap: word-wrap;
                     }

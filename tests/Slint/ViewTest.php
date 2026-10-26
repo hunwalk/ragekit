@@ -35,7 +35,7 @@ final class ViewTest extends TestCase
     private function compile(string $rk): CompiledViews
     {
         file_put_contents("$this->dir/S.rk", $rk);
-        $class = new ClassInfo('Demo\S', 'S', "$this->dir/S.php", true, "$this->dir/S.rk", props: ['items' => 'list'], constants: ['STYLES' => self::STYLES]);
+        $class = new ClassInfo('Demo\S', 'S', "$this->dir/S.php", true, "$this->dir/S.rk", props: ['items' => 'list', 'flag' => 'bool', 'name' => 'string'], constants: ['STYLES' => self::STYLES]);
         $kits = KitRegistry::load([self::ROOT . '/kits/material/kit.yml', self::ROOT . '/kits/shadcn/kit.yml'], '/rk');
         return (new SlintCompiler($kits, 'shadcn'))->compile(['Demo\S' => $class]);
     }
@@ -98,6 +98,22 @@ final class ViewTest extends TestCase
         $this->compile('<VStack><Badge text="new" style="corner" /></VStack>');
     }
 
+    /**
+     * Slint's FlexboxLayout measures a child under `if` without its width, so a wrapping <Text> in an
+     * @if counted as one line and its View came out too short. Inside a View such a Text is always
+     * there, hidden and emptied (the kits' Text takes no room when empty); elsewhere it stays an `if`.
+     */
+    public function testTextUnderIfInAViewIsCollapsedNotRemoved(): void
+    {
+        $out = $this->compile("<VStack><View>\n@if (\$flag)\n<Text>{{ \$name }}</Text>\n@else\n<Text>none</Text>\n@endif\n@if (\$flag)\n<Badge text=\"b\" />\n@endif\n</View></VStack>")->slint;
+        self::assertMatchesRegularExpression('/ShadText \{\s+text: \(root\.p\d+\) \? "\\\{root\.p\d+\}" : "";.*?visible: root\.p\d+;\s+\}/s', $out);
+        self::assertMatchesRegularExpression('/ShadText \{\s+text: \(!\(root\.p\d+\)\) \? "none" : "";.*?visible: !\(root\.p\d+\);\s+\}/s', $out);
+        self::assertStringNotContainsString(': ShadText {', $out, 'no if around the texts');
+        self::assertMatchesRegularExpression('/if root\.p\d+ : ShadBadge \{/', $out, 'other elements keep their if');
+        $plain = $this->compile("<VStack>\n@if (\$flag)\n<Text>hi</Text>\n@endif\n</VStack>")->slint;
+        self::assertMatchesRegularExpression('/if root\.p\d+ : ShadText \{/', $plain, 'outside a View: unchanged');
+    }
+
     public function testRootViewFillsTheWindow(): void
     {
         $out = $this->compile('<View style="card"><Label text="a" /></View>');
@@ -114,7 +130,8 @@ final class ViewTest extends TestCase
         }
         $out = $this->compile('<View style="card">'
             . '<View style="tags"><Badge text="a" style="centered" /><Badge text="b" /></View>'
-            . '<Label text="body" /><Badge text="new" style="corner" /></View>');
+            . '<Label text="body" /><Badge text="new" style="corner" />'
+            . "\n@if (\$flag)\n<Text>maybe</Text>\n@endif\n</View>");
         file_put_contents("$this->dir/app.slint", $out->slint);
         $command = [$compiler, "$this->dir/app.slint", '-f', 'cpp', '-o', "$this->dir/app.h"];
         foreach ($out->libraries as $name => $path) {

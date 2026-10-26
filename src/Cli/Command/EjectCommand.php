@@ -52,8 +52,8 @@ final class EjectCommand extends Command
         $output->writeln("ragekit: ejected {$result->kit} into kits/{$result->name}"
             . ($result->renamed === [] ? '' : " (components renamed {$result->fromPrefix}… → {$result->toPrefix}…: " . count($result->renamed) . ' names)'));
         $output->writeln($result->used ? "  project.yml now uses kit: {$result->name}" : "  to use it: set kit: {$result->name} under ragekit: in project.yml");
-        if ($result->gitignore !== null) {
-            $output->writeln("  add this to your .gitignore (the build fetches it): {$result->gitignore}");
+        if ($result->gitignore !== []) {
+            $output->writeln('  add this to your .gitignore (the build fetches it): ' . implode(' ', $result->gitignore));
         }
         $output->writeln("  edit kits/{$result->name}/*.slint to change how elements look; ragekit dev reloads kit edits");
         return self::SUCCESS;

@@ -40,11 +40,11 @@ final class FetchDependenciesTest extends TestCase
     public function testOnlyTheActiveKitIsFetchedUpFront(): void
     {
         self::assertSame(['material'], $this->owners("  kit: material\n"));
-        self::assertSame([], $this->owners("  kit: shadcn\n"), 'shadcn apps no longer download Material');
+        self::assertSame(['shadcn'], $this->owners("  kit: shadcn\n"), 'shadcn apps fetch only its font, not Material');
     }
 
     public function testModulesTheAppEnables(): void
     {
-        self::assertSame(['audio'], $this->owners("  kit: shadcn\n  modules: [audio]\n"));
+        self::assertSame(['shadcn', 'audio'], $this->owners("  kit: shadcn\n  modules: [audio]\n"));
     }
 }

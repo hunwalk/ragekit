@@ -9,6 +9,11 @@ fetch:
     commit: 372cf0ee5577c3dfec309a45e7b778ba4e81b734
     path: ui-libraries/material/src
     to: library
+  # A monospace font for <Text variant="code"> (SIL Open Font License 1.1): Slint 1.18 doesn't
+  # resolve the generic "monospace" family, so the kit brings its own (embedded, ~270 KB).
+  - url: https://raw.githubusercontent.com/JetBrains/JetBrainsMono/v2.304/fonts/ttf/JetBrainsMono-Regular.ttf
+    sha256: a0bf60ef0f83c5ed4d7a75d45838548b1f6873372dfac88f71804491898d138f
+    to: fonts/JetBrainsMono-Regular.ttf
 libraries:
   material: ${KIT}/library/material.slint
 window: RkWindow
@@ -29,6 +34,8 @@ elements:
     component: RkEntry
     props:
       value: { type: string, property: text, twoWay: edited }
+    events:
+      onSubmit: submitted
   Checkbox:
     component: RkCheckbox
     props:
@@ -84,6 +91,9 @@ elements:
       value: { type: string, property: text, twoWay: edited }
       placeholder: string
       rows: int
+      maxRows: { type: int, property: max-rows }
+    events:
+      onSubmit: { callback: submitted, enables: submit-on-return }
   RadioGroup:
     component: RkRadioGroup
     props:

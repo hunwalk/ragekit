@@ -72,6 +72,25 @@ final class KitTest extends TestCase
         }
     }
 
+    public function testEntrySubmitsOnReturnInBothKits(): void
+    {
+        $kits = KitRegistry::load([self::ROOT . '/kits/material/kit.yml', self::ROOT . '/kits/shadcn/kit.yml'], '/rk');
+        foreach (['material', 'shadcn'] as $kit) {
+            self::assertSame(['onSubmit' => 'submitted'], $kits->get($kit)->elements['Entry']->events, $kit);
+        }
+    }
+
+    public function testAnEventCanEnableAProperty(): void
+    {
+        $spec = \RageKit\Cli\Kits\ElementSpec::fromArray(['component' => 'X', 'events' => [
+            'onSubmit' => ['callback' => 'submitted', 'enables' => 'submit-on-return'],
+            'onSelect' => ['callback' => 'selected', 'value' => 'int'],
+        ]], 'test');
+        self::assertSame(['onSubmit' => 'submitted', 'onSelect' => 'selected'], $spec->events);
+        self::assertSame(['onSubmit' => 'submit-on-return'], $spec->enables);
+        self::assertSame(['onSelect' => 'int'], $spec->eventValues, 'an enabling event passes no value');
+    }
+
     public function testUsedKitsAreTheImportedOnes(): void
     {
         $kits = KitRegistry::load([self::ROOT . '/kits/material/kit.yml', __DIR__ . '/../fixtures/kits/shadcn/kit.yml'], '/rk');

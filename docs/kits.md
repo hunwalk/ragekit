@@ -49,7 +49,7 @@ Every kit that provides a core element accepts exactly these attributes for it:
 |---|---|
 | `Label` | `text`, `size` (`body`, `title`, `display`) |
 | `Button` | `text`, `variant` (`default`, `secondary`, `outline`, `ghost`, `destructive`), event `onClick` |
-| `Entry` | `value` (two-way string) |
+| `Entry` | `value` (two-way string), `onSubmit` (Return pressed) |
 | `Checkbox` | `text`, `checked` (two-way bool) |
 | `Slider` | `value` (two-way float), `min`, `max` (default 0 to 1) |
 | `Select` | `value` (two-way string), `options` (list) |
@@ -58,7 +58,7 @@ Every kit that provides a core element accepts exactly these attributes for it:
 | `Card` | `title`, contains other elements |
 | `Separator` | (none) |
 | `Switch` | `text`, `checked` (two-way bool) |
-| `Textarea` | `value` (two-way string), `placeholder`, `rows` (int) |
+| `Textarea` | `value` (two-way string), `placeholder`, `rows` (int), `maxRows` (int), `onSubmit` (Return; Shift/Alt+Return adds a line) |
 | `RadioGroup` | `value` (two-way string), `options` (list) |
 | `Toggle` | `text`, `pressed` (two-way bool) |
 | `Badge` | `text`, `variant` (`default`, `secondary`, `outline`, `destructive`) |
@@ -235,6 +235,9 @@ elements:
   (`callback clicked;`). An event that hands the handler a value (a clicked item) is a map:
   `onSelect: { callback: selected, value: string }` with `callback selected(string);` in Slint;
   the template then names just the method (`onSelect="goTo"`), which takes that one value.
+  `enables: <bool property>` in that map sets the property to `true` when the template uses the
+  event: `onSubmit: { callback: submitted, enables: submit-on-return }` lets a Textarea send on
+  Return only when there's a handler for it.
 - **`children: true`**: the element can contain other elements. Its component places them with
   Slint's `@children`.
 
