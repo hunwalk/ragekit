@@ -408,7 +408,9 @@ What does the work:
   GDBus loaded at runtime. KDE, XFCE and most other desktops show these icons; **GNOME needs the
   AppIndicator extension** ("AppIndicator and KStatusNotifierItem Support", preinstalled on Ubuntu).
   Without a tray host, `available()` is false and `why()` says so. The icon is passed as a file
-  (its folder and name), so the desktop draws it at its own size.
+  (its folder and name), so the desktop draws it at its own size. On GNOME (checked on GNOME 48
+  with the AppIndicator extension) both mouse buttons open the menu and `onClick` never runs, so
+  give the menu an item that does what the click does (e.g. "Open").
 - **Windows, macOS:** not yet (`why()` says so).
 
 Not in this version: submenus, checkable items, icons in the menu, an attention or overlay icon, and
