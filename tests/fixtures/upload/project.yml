@@ -1,0 +1,11 @@
+# A multipart upload through the http module: tests/e2e/upload.sh (normal and --nano).
+name: upload
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software
+  modules: [http]

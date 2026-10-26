@@ -39,6 +39,13 @@ final class Request
         return $this;
     }
 
+    /** Sends $form as the body, with its multipart/form-data Content-Type. */
+    public function multipart(Multipart $form): Request
+    {
+        $this->body = $form->body();
+        return $this->header('Content-Type', $form->contentType());
+    }
+
     /** Gives up after this many seconds without progress (connecting, or no data arriving). Default 30. */
     public function timeout(float $seconds): Request
     {
