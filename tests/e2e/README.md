@@ -4,7 +4,7 @@
 
     DISPLAY=:99 tests/e2e/demos.sh            # extra arguments go to ragekit build, e.g. --nano
 
-`tests/e2e/kitchen-sink.sh` opens every tab of `demo/kitchen-sink` and checks the window keeps its
+`tests/e2e/kitchen-sink.sh` opens every section and tab of `demo/kitchen-sink` and checks the window keeps its
 size (an element that caps a column's width shrinks the window); `--kit=material` for the other kit.
 
 `tests/e2e/navigator.sh` drives `demo/navigator`: signs in (a store event the app class turns into
@@ -44,6 +44,17 @@ from screenshots, how far the messages move: one row for a new message at the bo
 one while scrolled up, and no jump when older messages load above:
 
     DISPLAY=:99 tests/e2e/scroll.sh           # also with --nano
+
+`tests/e2e/pressable.sh` builds `tests/fixtures/pressable`: Ctrl+F before any click focuses the search
+box (`ref` + `focus()`), then hovers, presses and right-clicks `<View>` rows (onHoverIn/onHoverOut,
+onPress, `<ContextMenu>`) and uses `<Shortcut>`s, comparing the events the app prints:
+
+    DISPLAY=:99 tests/e2e/pressable.sh        # also with --kit=material, --nano
+
+`tests/e2e/clipboard.sh` builds `tests/fixtures/clipboard`: a GTK program (`xclipboard.py`) owns the X11
+clipboard, the app pastes its text and copies its own, which the program reads back:
+
+    DISPLAY=:99 tests/e2e/clipboard.sh        # also with --nano
 
 `tests/e2e/upload.sh` builds `tests/fixtures/upload`, which sends a `Multipart` form through the
 http module to a local `php -S`; the answer is what PHP's own parser made of it:
