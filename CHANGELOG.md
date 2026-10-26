@@ -11,6 +11,10 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-26
+
+A Windows build fix for larger apps, and a new kitchen sink. Nothing changes for 0.7.0 apps.
+
 ### Changed
 
 - **`demo/kitchen-sink`** is organised as sections in a sidebar (Inputs, Display, Navigation,
