@@ -17,6 +17,11 @@ final class PeopleScreen extends Screen
 
     public string $query = '';
 
+    /** Ctrl+N shows a note field (under @if) and focuses it in the same go. */
+    public bool $noting = false;
+
+    public string $note = '';
+
     public function __construct()
     {
         $this->people = new People([new Person('ann'), new Person('bob')]);
@@ -62,6 +67,18 @@ final class PeopleScreen extends Screen
     {
         $this->focus('search');
         $this->event('find');
+    }
+
+    public function newNote(): void
+    {
+        $this->noting = true;
+        $this->focus('note');
+    }
+
+    public function saveNote(): void
+    {
+        $this->noting = false;
+        $this->event('note ' . $this->note);
     }
 
     public function submit(): void

@@ -1,7 +1,11 @@
 <VStack>
     <Shortcut keys="Ctrl+F" onPress="find" />
     <Shortcut keys="Escape" onPress="escape" />
+    <Shortcut keys="Ctrl+N" onPress="newNote" />
     <Label text="{{ $status }}" />
+    @if ($noting)
+        <Entry value="{{ $note }}" ref="note" onSubmit="saveNote" />
+    @endif
     <Entry value="{{ $query }}" ref="search" onSubmit="submit" />
     @foreach ($people as $p)
         <View style="row" onPress="open($p->name)" onHoverIn="hoverIn($p->name)" onHoverOut="hoverOut($p->name)">

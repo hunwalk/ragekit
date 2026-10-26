@@ -66,6 +66,12 @@ export component ShadEntry inherits Rectangle {
             focus-later.running = true;
         }
     }
+    // Shown by the same change that asked (an input under @if): no change to see, so check at start.
+    init => {
+        if (self.focus-request > 0) {
+            focus-later.running = true;
+        }
+    }
     // A moment later, once the event that asked is over: a popup menu that closes gives the focus
     // back to what had it before, which would undo an immediate focus().
     focus-later := Timer {
@@ -424,6 +430,12 @@ export component ShadTextarea inherits Rectangle {
     // ref="…" + Screen::focus(): the compiler raises this to focus the input.
     in property <int> focus-request;
     changed focus-request => {
+        if (self.focus-request > 0) {
+            focus-later.running = true;
+        }
+    }
+    // Shown by the same change that asked (an input under @if): no change to see, so check at start.
+    init => {
         if (self.focus-request > 0) {
             focus-later.running = true;
         }
