@@ -107,6 +107,10 @@ RK_API size_t rk_open_url(const char *url, char *error, size_t size);
 RK_API void rk_window_set_visible(int64_t window, int visible);
 /** Brings a window to the front (X11: asks the window manager; Windows: SetForegroundWindow). */
 RK_API void rk_window_raise(int64_t window, const char *title, size_t title_len);
+/** Puts text on the clipboard (through an open window; nothing without one). */
+RK_API void rk_clipboard_set(const char *text, size_t len);
+/** The clipboard's text ('' if none, not text, or no window is open); valid until the next call. */
+RK_API const char *rk_clipboard_get(size_t *len);
 RK_API void rk_run(void);
 RK_API void rk_quit(void);
 

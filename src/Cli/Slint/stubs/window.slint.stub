@@ -24,4 +24,21 @@ export component {{ name }} inherits {{ window }} {
         {{ body }}
     }
     {{ overlays }}
+    // RageKit\Clipboard: an invisible TextInput copies and pastes through Slint's own clipboard.
+    rk-clipboard := TextInput {
+        visible: false;
+        width: 0px;
+        height: 0px;
+        single-line: false;
+    }
+    public function rk-copy(text: string) {
+        rk-clipboard.text = text;
+        rk-clipboard.select-all();
+        rk-clipboard.copy();
+    }
+    public function rk-paste() -> string {
+        rk-clipboard.text = "";
+        rk-clipboard.paste();
+        return rk-clipboard.text;
+    }
 }

@@ -110,6 +110,19 @@ final class RecordingBackend implements Backend
     /** What utcOffset() answers. */
     public int $offset = 0;
 
+    public string $clipboard = '';
+
+    public function copyText(string $text): void
+    {
+        $this->calls[] = 'copy ' . $text;
+        $this->clipboard = $text;
+    }
+
+    public function pasteText(): string
+    {
+        return $this->clipboard;
+    }
+
     public function utcOffset(int $at): int
     {
         return $this->offset;

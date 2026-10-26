@@ -79,6 +79,18 @@ function slint_utc_offset(int $at): int
     }
 }
 
+/** The shell's window copies (as in a built app). */
+function slint_clipboard_set(string $text): void
+{
+    Session::channel()->send('clipboard-set', $text);
+}
+
+function slint_clipboard_get(): string
+{
+    $reply = Session::channel()->request('clipboard-get');
+    return $reply[1] ?? '';
+}
+
 /** Dev mode runs full PHP: it opens the browser itself. */
 function slint_open_url(string $url): string
 {

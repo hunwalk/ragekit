@@ -396,6 +396,21 @@ RK_API void rk_window_raise(int64_t window, const char *title, size_t title_len)
     }
 }
 
+RK_API void rk_clipboard_set(const char *text, size_t len)
+{
+    if (!windows.empty()) {
+        windows.begin()->second->copy_text(std::string_view(text, len));
+    }
+}
+
+RK_API const char *rk_clipboard_get(size_t *len)
+{
+    static std::string text;
+    text = windows.empty() ? std::string() : windows.begin()->second->paste_text();
+    *len = text.size();
+    return text.data();
+}
+
 RK_API void rk_run(void)
 {
     slint::run_event_loop(slint::EventLoopMode::RunUntilQuit);

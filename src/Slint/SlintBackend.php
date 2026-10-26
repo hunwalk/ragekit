@@ -132,6 +132,16 @@ final class SlintBackend implements Backend
         return \slint_links_register($scheme);
     }
 
+    public function copyText(string $text): void
+    {
+        \slint_clipboard_set($text);
+    }
+
+    public function pasteText(): string
+    {
+        return \slint_clipboard_get();
+    }
+
     public function utcOffset(int $at): int
     {
         return \slint_utc_offset($at);

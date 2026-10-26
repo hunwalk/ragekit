@@ -65,4 +65,10 @@ interface Backend
 
     /** Opens $url in the user's browser; '' or why it couldn't. */
     public function openUrl(string $url): string;
+
+    /** Puts text on the clipboard (needs an open window). */
+    public function copyText(string $text): void;
+
+    /** The clipboard's text ('' if none, not text, or no window is open). */
+    public function pasteText(): string;
 }

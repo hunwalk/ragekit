@@ -6,6 +6,7 @@
 
 #include <slint-testing.h>
 
+#include <array>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -326,6 +327,25 @@ void Shell::onPhpLine(unsigned generation, const std::string &line)
         if (it != windows_.end()) {
             set(it->second, cmd, f[2], f);
         }
+        return;
+    }
+    if (cmd == "clipboard-set" && f.size() >= 2) {
+        // RageKit\Clipboard: the window's hidden TextInput (the template's rk-copy / rk-paste).
+        if (!windows_.empty()) {
+            std::array<slint::interpreter::Value, 1> args{slint::interpreter::Value(slint::SharedString(f[1]))};
+            windows_.begin()->second.instance->invoke("rk-copy", args);
+        }
+        return;
+    }
+    if (cmd == "clipboard-get") {
+        std::string text;
+        if (!windows_.empty()) {
+            auto value = windows_.begin()->second.instance->invoke("rk-paste", {});
+            if (auto s = value ? value->to_string() : std::nullopt) {
+                text = std::string(s->data(), s->size());
+            }
+        }
+        child_.send(encode({"result", text}));
         return;
     }
     if ((cmd == "hide" || cmd == "show") && f.size() >= 2) {

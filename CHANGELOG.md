@@ -16,6 +16,9 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 - **Focus from PHP:** `ref="search"` on an Entry or Textarea, and `$this->focus('search')` in a
   screen (or `onPress="focus('search')"` in a template) gives it the keyboard focus. Kits: an element
   declares `focus: <int property>` in kit.yml (see docs/kits.md).
+- **Clipboard:** `RageKit\Clipboard::copy($text)` and `Clipboard::paste()`, text only, through an
+  open window (normal and Nano builds, `ragekit dev`). See docs/state.md, "Clipboard". Backends gain
+  `copyText()`/`pasteText()`; the bridge exports `rk_clipboard_set`/`rk_clipboard_get`.
 
 ## [0.7.1] - 2026-10-26
 

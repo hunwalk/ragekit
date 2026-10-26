@@ -1,0 +1,10 @@
+# RageKit\Clipboard: tests/e2e/clipboard.sh (normal and --nano).
+name: clipboardapp
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software

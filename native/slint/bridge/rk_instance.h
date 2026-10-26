@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <variant>
 #include <vector>
@@ -84,6 +85,9 @@ public:
     /** Screens with a layout: frameless windows with an app-drawn title bar. */
     virtual bool frameless() const { return false; }
     virtual void set_maximized(bool) {}
+    /** The clipboard, through the window's hidden TextInput (RageKit\Clipboard). */
+    virtual void copy_text(std::string_view) {}
+    virtual std::string paste_text() { return ""; }
 };
 
 /** Generated: creates the compiled screen named `screen`, or nullptr. */

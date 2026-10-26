@@ -221,6 +221,18 @@ String php_slint_links_register(String scheme)
     return String(error, len < sizeof error ? len : sizeof error - 1);
 }
 
+void php_slint_clipboard_set(String text)
+{
+    rk_clipboard_set(text.data(), text.length());
+}
+
+String php_slint_clipboard_get()
+{
+    size_t len = 0;
+    const char *text = rk_clipboard_get(&len);
+    return String(text, len);
+}
+
 Int php_slint_utc_offset(Int at)
 {
     return rk_utc_offset(at);

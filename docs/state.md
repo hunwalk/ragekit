@@ -279,6 +279,19 @@ It follows the computer's timezone setting, daylight saving included (on Linux a
 letters that describe the timezone itself (`e I O P p T Z U`) aren't supported, since they would
 describe UTC; `format()` throws for them (use `offset()`).
 
+## Clipboard
+
+```php
+use RageKit\Clipboard;
+
+Clipboard::copy($message->text);     // e.g. a context menu's "Copy"
+$this->draft .= Clipboard::paste();  // '' when the clipboard is empty or holds something else
+```
+
+Text only. It works once a window is open (it goes through one). Inputs (Entry, Textarea) have the
+usual Ctrl+C / Ctrl+V of their own. On Wayland a desktop may not let a window in the background
+change the clipboard.
+
 ## Tests
 
 A root store is a plain object: no App, no window and no backend needed. Creating one replaces the

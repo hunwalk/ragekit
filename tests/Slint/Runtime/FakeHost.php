@@ -10,6 +10,7 @@ namespace RageKit\Tests\Slint\Runtime {
         public static ?\Closure $dispatcher = null;
         public static int $nextWindow = 1;
         public static ?\Closure $eventDispatcher = null;
+        public static string $clipboard = '';
         /** @var array<string, string> available modules => '' ; missing => error text */
         public static array $modules = ['audio' => ''];
         /** @var list<array<string, mixed>> http_request / http_cancel calls */
@@ -37,6 +38,7 @@ namespace RageKit\Tests\Slint\Runtime {
             self::$notificationService = '';
             self::$nextNotification = 1;
             self::$links = '';
+            self::$clipboard = '';
             self::$first = true;
             self::$cacheDir = '';
             self::$calls = [];
@@ -85,6 +87,8 @@ namespace {
     function slint_window_set_visible(int $window, bool $visible): void { FakeHost::$calls[] = ($visible ? 'show ' : 'hide ') . $window; }
     function slint_open_url(string $url): string { FakeHost::$calls[] = "browse $url"; return ''; }
     function slint_utc_offset(int $at): int { return 3600; }
+    function slint_clipboard_set(string $text): void { FakeHost::$calls[] = "copy $text"; FakeHost::$clipboard = $text; }
+    function slint_clipboard_get(): string { return FakeHost::$clipboard; }
     function slint_set_event_dispatcher(mixed $fn): void { FakeHost::$eventDispatcher = $fn; }
     function slint_app_dir(): string { return '/app'; }
     function slint_print_error(string $line): void { FakeHost::$calls[] = "error $line"; }

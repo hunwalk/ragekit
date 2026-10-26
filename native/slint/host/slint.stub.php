@@ -70,6 +70,12 @@ function slint_links_claim(string $schemes): int {}
 /** Makes the app the OS's handler for $scheme links; '' or the error. */
 function slint_links_register(string $scheme): string {}
 
+/** Puts $text on the clipboard. */
+function slint_clipboard_set(string $text): void {}
+
+/** The clipboard's text ('' if none). */
+function slint_clipboard_get(): string {}
+
 /** Seconds east of UTC of the computer's local time at unix time $at. */
 function slint_utc_offset(int $at): int {}
 

@@ -38,6 +38,7 @@ abstract class App
         Timer::attach($this->backend);
         Links::attach($this->backend);
         LocalTime::attach($this->backend);
+        Clipboard::attach($this->backend);
         if (self::$base === '') {
             self::$base = $this->backend->appDir();
         }

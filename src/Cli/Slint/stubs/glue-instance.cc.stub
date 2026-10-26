@@ -16,6 +16,12 @@ public:
     void show() override { handle_->show(); }
     void hide() override { handle_->hide(); }
     void set_title(std::string_view value) override { handle_->set_rk_title(slint::SharedString(value)); }
+    void copy_text(std::string_view text) override { handle_->invoke_rk_copy(slint::SharedString(text)); }
+    std::string paste_text() override
+    {
+        slint::SharedString text = handle_->invoke_rk_paste();
+        return std::string(text.data(), text.size());
+    }
     {{ setters }}
 
 private:
