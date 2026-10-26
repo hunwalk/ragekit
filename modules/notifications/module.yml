@@ -1,0 +1,19 @@
+# RageKit's notifications module: desktop notifications that can be clicked. Linux: the
+# org.freedesktop.Notifications D-Bus service (GNOME, KDE, …) through GLib's GDBus, loaded at
+# runtime (building needs nothing extra; without GLib or a notification service it reports itself
+# unavailable). Windows and macOS: not yet.
+name: notifications
+php: [src]
+library:
+  sources: [native]
+  include-paths: [native]
+  platforms:
+    linux: { link-libs: [dl, pthread] }
+functions:
+  # '' when notifications can be shown, otherwise why not.
+  notifications_available: { returns: string }
+  # Shows one; returns its id (0 if it couldn't be shown: notifications_error() says why).
+  # Events for the id: "clicked", "closed".
+  notifications_show:      { params: { title: string, body: string }, returns: int }
+  notifications_close:     { params: { notification: int } }
+  notifications_error:     { returns: string }

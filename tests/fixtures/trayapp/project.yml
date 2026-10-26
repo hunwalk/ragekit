@@ -1,0 +1,12 @@
+# An app that lives in the tray: tests/e2e/tray.sh (normal and --nano).
+name: trayapp
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software
+  modules: [tray]
+  assets: [assets/]

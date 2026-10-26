@@ -1,0 +1,21 @@
+# RageKit's tray module: an icon in the system tray / panel with a tooltip, a click and a menu.
+# Linux: the StatusNotifierItem protocol (KDE, GNOME with the AppIndicator extension, XFCE, …) and
+# com.canonical.dbusmenu over D-Bus, through GLib's GDBus loaded at runtime. Windows, macOS: not yet.
+name: tray
+php: [src]
+library:
+  sources: [native]
+  include-paths: [native]
+  platforms:
+    linux: { link-libs: [dl, pthread] }
+functions:
+  # '' when a tray host is there, otherwise why not.
+  tray_available: { returns: string }
+  # Shows (or updates) the app's icon: an image file (png or svg); 0 if it couldn't (tray_error()).
+  # Events for handle 1: "activate" (clicked), "menu" (data: the item's index).
+  tray_show:      { params: { icon: string, tooltip: string }, returns: int }
+  tray_tooltip:   { params: { text: string } }
+  # Menu items, "\n"-separated labels in order; "-" is a separator.
+  tray_menu:      { params: { items: string } }
+  tray_remove:    { }
+  tray_error:     { returns: string }

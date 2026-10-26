@@ -1,0 +1,11 @@
+# A desktop notification that gets clicked: tests/e2e/notifications.sh (normal and --nano).
+name: notify
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software
+  modules: [notifications]
