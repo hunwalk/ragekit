@@ -55,6 +55,11 @@ Templates:
   added above don't move what's shown) and `onTop` (a handler to load older rows). Built by the
   compiler, so it works the same with every kit. See docs/templates.md, "ScrollView".
 - **`<Entry onSubmit="send">`**: a handler for Return. The value is up to date when it runs.
+- **Pressable Views, context menus and shortcuts.** `<View onPress onHoverIn onHoverOut>` (React
+  Native's Pressable names); `<ContextMenu>` with `<MenuItem>`s inside a View opens at the pointer
+  on a right-click; `<Shortcut keys="Ctrl+F" onPress="find" />` handles a key combination while its
+  screen shows (also while typing in an input, for keys the input doesn't use). See
+  docs/templates.md, "View", "ContextMenu" and "Keyboard shortcuts".
 - **A chat composer:** `<Textarea rows="1" maxRows="8" onSubmit="send">` grows with its text up to
   `maxRows` lines, then scrolls (keeping the caret in view); with `onSubmit`, Return sends and
   Shift+Return or Alt+Return adds a line.
@@ -108,7 +113,8 @@ Modules:
 - **The core element contract:** `Entry` gains the event `onSubmit`; `Textarea` gains `maxRows` and
   `onSubmit: { callback: submitted, enables: submit-on-return }` (a new `kit.yml` event option:
   using the event sets that bool property). A kit of your own should add them (see the shadcn and
-  Material kits); templates that use them otherwise fail to build with that kit. A kit's `Text`
+  Material kits); templates that use them otherwise fail to build with that kit. New core element
+  `ContextMenu` (see docs/kits.md); a kit without it falls back to Material's. A kit's `Text`
   should take no room when its text is empty (the compiler hides a `<Text>` under `@if` in a
   `<View>` that way).
 

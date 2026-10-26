@@ -748,6 +748,54 @@ export component RkDialog inherits Rectangle {
 }
 
 // <DropdownMenu>: a Material button that opens a menu below it; picking an item calls selected(index).
+// <ContextMenu> in a <View>: the compiler calls open(x, y) on a right-click there; picking an item
+// calls selected(index). It takes no room itself.
+export component RkContextMenu {
+    in property <[string]> items;
+    in property <[string]> variants;
+    callback selected(int);
+    property <length> at-x;
+    property <length> at-y;
+    public function open(x: length, y: length) {
+        root.at-x = x;
+        root.at-y = y;
+        popup.show();
+    }
+    width: 0px;
+    height: 0px;
+    popup := PopupWindow {
+        x: root.at-x;
+        y: root.at-y;
+        width: 200px;
+        height: root.items.length * 48px + 16px;
+        Rectangle {
+            background: MaterialPalette.surface_container;
+            border-radius: 4px;
+            drop-shadow-blur: 8px;
+            drop-shadow-color: #00000050;
+            VerticalLayout {
+                padding-top: 8px;
+                padding-bottom: 8px;
+                for item[i] in root.items : Rectangle {
+                    height: 48px;
+                    background: touch.has-hover ? MaterialPalette.surface_container_highest : transparent;
+                    Text {
+                        x: 12px;
+                        height: parent.height;
+                        text: item;
+                        font-size: MaterialTypography.body_large.font-size;
+                        color: root.variants[i] == "destructive" ? MaterialPalette.error : MaterialPalette.on_surface;
+                        vertical-alignment: center;
+                    }
+                    touch := TouchArea {
+                        clicked => { root.selected(i); }
+                    }
+                }
+            }
+        }
+    }
+}
+
 export component RkDropdownMenu inherits Rectangle {
     in property <string> text;
     in property <string> variant: "outline";

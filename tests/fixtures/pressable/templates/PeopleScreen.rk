@@ -1,0 +1,16 @@
+<VStack>
+    <Shortcut keys="Ctrl+F" onPress="find" />
+    <Shortcut keys="Escape" onPress="escape" />
+    <Label text="{{ $status }}" />
+    <Entry value="{{ $query }}" />
+    @foreach ($people as $p)
+        <View style="row" onPress="open($p->name)" onHoverIn="hoverIn($p->name)" onHoverOut="hoverOut($p->name)">
+            <Text>{{ $p->name }}</Text>
+            <Button text="Wave" variant="outline" onClick="wave($p->name)" />
+            <ContextMenu>
+                <MenuItem text="Reply" onClick="reply($p->name)" />
+                <MenuItem text="Delete" variant="destructive" onClick="remove($p->name)" />
+            </ContextMenu>
+        </View>
+    @endforeach
+</VStack>

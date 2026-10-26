@@ -972,6 +972,55 @@ export component ShadDropdownMenu inherits Rectangle {
     }
 }
 
+// <ContextMenu> in a <View>: the compiler calls open(x, y) on a right-click there; picking an item
+// calls selected(index). It takes no room itself.
+export component ShadContextMenu {
+    in property <[string]> items;
+    in property <[string]> variants;
+    callback selected(int);
+    property <length> at-x;
+    property <length> at-y;
+    public function open(x: length, y: length) {
+        root.at-x = x;
+        root.at-y = y;
+        popup.show();
+    }
+    width: 0px;
+    height: 0px;
+    popup := PopupWindow {
+        x: root.at-x;
+        y: root.at-y;
+        width: 180px;
+        height: root.items.length * 32px + 10px;
+        Rectangle {
+            background: Shad.card;
+            border-radius: Shad.radius;
+            border-width: 1px;
+            border-color: Shad.border;
+            drop-shadow-blur: 12px;
+            drop-shadow-color: #00000060;
+            VerticalLayout {
+                padding: 4px;
+                for item[i] in root.items : Rectangle {
+                    height: 32px;
+                    border-radius: 4px;
+                    background: touch.has-hover ? Shad.hover : transparent;
+                    Text {
+                        x: 8px;
+                        height: parent.height;
+                        text: item;
+                        color: root.variants[i] == "destructive" ? Shad.destructive : Shad.foreground;
+                        vertical-alignment: center;
+                    }
+                    touch := TouchArea {
+                        clicked => { root.selected(i); }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // A toast ($this->toast('Saved') in PHP); the compiler stacks them bottom-right.
 export component ShadToast inherits Rectangle {
     in property <string> text;

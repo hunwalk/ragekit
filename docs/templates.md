@@ -223,8 +223,26 @@ public function open(string $file, int $index): void { … }
 - Handler parameters must be `string`, `int`, `float` or `bool`. The number of arguments must
   match the method's parameters (optional parameters may be left out).
 
-`onClick` (Button) is the only event the core elements have. Inputs report changes through
-two-way bindings instead.
+Events of the core elements: `onClick` (Button, MenuItem), `onSubmit` (Entry, Textarea),
+`onSelect` (Breadcrumb), and `onPress`, `onHoverIn`, `onHoverOut` on a `<View>` (see "View"). Inputs
+report changes through two-way bindings instead.
+
+### Keyboard shortcuts
+
+```blade
+<Shortcut keys="Ctrl+F" onPress="focusSearch" />
+<Shortcut keys="Escape" onPress="closeThread" />
+```
+
+A shortcut works while its screen shows. It draws nothing, so it can go anywhere in the template
+except under `@if`/`@foreach` (check the condition in the handler instead).
+- Keys: modifiers `Ctrl`, `Shift`, `Alt`, `Meta` joined with `+`, then a letter, digit or
+  symbol, `F1`–`F24`, or `Escape`, `Enter`, `Tab`, `Backspace`, `Delete`, `Space`, `Up`, `Down`,
+  `Left`, `Right`, `Home`, `End`, `PageUp` or `PageDown`.
+- Modifiers must match exactly: `Ctrl+F` doesn't fire for `Ctrl+Shift+F`. Letters match in
+  either case.
+- While an input has the focus, keys it uses itself (typing, Ctrl+C, arrows) stay with it; the
+  others (Ctrl+F, Escape) still reach the shortcut.
 
 ## Two-way bindings (inputs)
 
@@ -419,6 +437,20 @@ public const STYLES = [
 - `position: 'absolute'` takes a child out of the flow and places it from `top`/`right`/`bottom`/
   `left` inside its `<View>` (only a `<View>` parent can do that).
 - A `<View>` as the template's root fills the window, with no extra padding.
+- Like React Native's `Pressable`, a View takes `onPress` (a click anywhere on it), `onHoverIn` and
+  `onHoverOut` (the pointer enters or leaves it). Elements inside that handle clicks themselves, like
+  buttons, still get them, and the pointer over them still counts as over the View:
+
+  ```blade
+  @foreach ($people as $person)
+      <View style="row" onPress="open($person->name)" onHoverIn="hover($person->name)" onHoverOut="unhover">
+          <Text>{{ $person->name }}</Text>
+          @if ($person->hovered)
+              <Button text="Wave" onClick="wave($person->name)" />
+          @endif
+      </View>
+  @endforeach
+  ```
 - A `<Text>` under `@if` directly in a `<View>` is always there and only hidden: Slint's flexbox
   measures what is under an `if` without its width, so wrapping text counted as one line. Hidden,
   its text is empty, and an empty `<Text>` takes no room (`gap` still applies around it).
@@ -580,6 +612,7 @@ any kit. A kit may lack one; it then falls back to the Material kit's version.
 | `Accordion` / `Section` | `open` / `title` | see below |
 | `Dialog` | `open`, `title` | over the whole window, see below |
 | `DropdownMenu` / `MenuItem` | `text`, `variant` / `text`, `onClick`, `variant` | see below |
+| `ContextMenu` / `MenuItem` | — / `text`, `onClick`, `variant` | inside a `<View>`, see below |
 | `Tabs` / `Tab` | `selected` / `title` | see below |
 
 ### Text
@@ -648,6 +681,22 @@ A button that opens a list below it; picking an item runs its handler (arguments
 `onClick`) and closes the list, as does a click elsewhere. The button takes Button's variants
 (`outline` by default); a `MenuItem`'s `variant` is `default` or `destructive`. The items are fixed:
 no `@if`/`@foreach` among them.
+
+### ContextMenu
+
+```blade
+<View style="bubble">
+    <Text>{{ $message->text }}</Text>
+    <ContextMenu>
+        <MenuItem text="Reply" onClick="reply($message->id)" />
+        <MenuItem text="Delete" variant="destructive" onClick="remove($message->id)" />
+    </ContextMenu>
+</View>
+```
+
+A right-click on the View opens the kit's menu at the pointer; picking an item runs its handler.
+It goes directly inside a `<View>` (one per View), and its items are fixed like DropdownMenu's.
+A right-click on a button inside the View goes to the button, not the menu.
 
 ### Accordion
 

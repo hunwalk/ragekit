@@ -24,7 +24,7 @@ final class KitTest extends TestCase
         self::assertStringEndsWith('/kits/material/library/material.slint', $material->libraries['material']);
         self::assertSame(['Label', 'Button', 'Entry', 'Checkbox', 'Slider', 'Select', 'Image', 'Progress', 'Card', 'Separator', 'TabBar', 'WindowControls',
             'Switch', 'Textarea', 'RadioGroup', 'Toggle', 'Badge', 'Avatar', 'Alert', 'Skeleton', 'Spinner',
-            'Sidebar', 'NavList', 'Breadcrumb', 'Pagination', 'AccordionHeader', 'Text', 'Dialog', 'DropdownMenu', 'Toast'], array_keys($material->elements));
+            'Sidebar', 'NavList', 'Breadcrumb', 'Pagination', 'AccordionHeader', 'Text', 'Dialog', 'DropdownMenu', 'ContextMenu', 'Toast'], array_keys($material->elements));
 
         $entry = $material->elements['Entry']->props['value'];
         self::assertSame('string', $entry->type);

@@ -14,10 +14,14 @@ use RageKit\Cli\Templates\TemplateException;
  * <View>: React Native's box. A Rectangle (background, border, corners, clip, shadow) holding a
  * FlexboxLayout for its children (column, no wrap by default, like React Native); children with
  * position: absolute sit outside the layout, placed from top/right/bottom/left.
+ *
+ * Like React Native's Pressable it takes onPress, onHoverIn and onHoverOut, and a <ContextMenu>
+ * child opens on a right-click. Then a TouchArea holds the layout: elements inside that handle
+ * clicks themselves (buttons) still get them, and the pointer over them still counts as over the View.
  */
 final class ViewCompiler implements ElementCompiler
 {
-    public function __construct(private readonly CompileContext $context)
+    public function __construct(private readonly CompileContext $context, private readonly ContextMenuCompiler $menus)
     {
     }
 
@@ -28,13 +32,21 @@ final class ViewCompiler implements ElementCompiler
 
     public function compile(Element $element, Scope $scope, string $axis): string
     {
-        $this->context->checkAttributes($element, ['grow', 'when', 'each'], styled: true);
+        $this->context->checkAttributes($element, ['grow', 'when', 'each', 'onPress', 'onHoverIn', 'onHoverOut'], styled: true);
         $style = $this->context->styleOf($element, $scope, 'view');
         $layout = array_merge(['flex-direction' => 'column', 'flex-wrap' => 'no-wrap'], $style->layout);
         $own = str_starts_with($layout['flex-direction'], 'row') ? 'h' : 'v';
         $flow = '';
         $placed = '';
+        $menu = null;
         foreach ($element->children as $child) {
+            if ($child->namespace === null && $child->tag === 'ContextMenu') {
+                if ($menu !== null) {
+                    throw TemplateException::at($child, 'a <View> has one <ContextMenu>');
+                }
+                $menu = $child;
+                continue;
+            }
             $leaves = ControlFlowCompiler::leaves($child);
             foreach ($leaves as $leaf) {
                 $this->context->markInView($leaf);
@@ -65,7 +77,35 @@ final class ViewCompiler implements ElementCompiler
             }
         }
         $box = Code::block('FlexboxLayout', CompileContext::styleLines($style, $layout), $flow);
+        $box = $this->pressable($element, $scope, $box, $menu);
         return $this->context->withMargin(Code::block('Rectangle', $lines, $box . $placed), $style, $element, $axis);
+    }
+
+    /** The layout inside a TouchArea when the View has events or a context menu; else as it is. */
+    private function pressable(Element $element, Scope $scope, string $box, ?Element $menu): string
+    {
+        $events = array_intersect_key($element->attributes, array_flip(['onPress', 'onHoverIn', 'onHoverOut']));
+        if ($events === [] && $menu === null) {
+            return $box;
+        }
+        $values = $this->context->values;
+        $lines = ['width: 100%;', 'height: 100%;'];
+        if (isset($events['onPress'])) {
+            $lines[] = 'mouse-cursor: pointer;';
+            $lines[] = "clicked => {\n" . Code::indent($values->handler($events['onPress'], $scope, $element), 1) . '}';
+        }
+        if (isset($events['onHoverIn']) || isset($events['onHoverOut'])) {
+            $in = isset($events['onHoverIn']) ? $values->handler($events['onHoverIn'], $scope, $element) : '';
+            $out = isset($events['onHoverOut']) ? $values->handler($events['onHoverOut'], $scope, $element) : '';
+            $lines[] = "changed has-hover => {\n    if (self.has-hover) {\n" . Code::indent($in, 2) . "    } else {\n" . Code::indent($out, 2) . "    }\n}";
+        }
+        $children = $box;
+        if ($menu !== null) {
+            $id = $this->context->nextId('rk-menu');
+            $lines[] = "pointer-event(event) => {\n    if (event.button == PointerEventButton.right && event.kind == PointerEventKind.down) {\n        $id.open(self.mouse-x, self.mouse-y);\n    }\n}";
+            $children .= $this->menus->menu($menu, $scope, $id);
+        }
+        return Code::block('TouchArea', $lines, $children);
     }
 
     /**

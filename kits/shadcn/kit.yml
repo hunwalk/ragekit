@@ -171,6 +171,13 @@ elements:
       variants: list
     events:
       onSelect: { callback: selected, value: int }
+  ContextMenu:
+    component: ShadContextMenu
+    props:
+      items: list
+      variants: list
+    events:
+      onSelect: { callback: selected, value: int }
   Toast:
     component: ShadToast
     props:

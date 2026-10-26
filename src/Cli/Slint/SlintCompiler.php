@@ -300,6 +300,7 @@ final class SlintCompiler
             }
         }
         $overlays = $this->elements->takeOverlays() . $this->toasts($model);
+        $shortcuts = $this->elements->takeShortcuts();
         if ($frame !== null) {
             $overlays .= self::grips();
         }
@@ -320,6 +321,7 @@ final class SlintCompiler
             'properties' => implode("\n", $properties),
             'body' => $body,
             'overlays' => $overlays,
+            'shortcuts' => $shortcuts,
         ]);
     }
 

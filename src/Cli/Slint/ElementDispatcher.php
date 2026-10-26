@@ -11,7 +11,9 @@ use RageKit\Cli\Slint\Elements\ChildComponentCompiler;
 use RageKit\Cli\Slint\Elements\CompileContext;
 use RageKit\Cli\Slint\Elements\ControlFlowCompiler;
 use RageKit\Cli\Slint\Elements\DialogCompiler;
+use RageKit\Cli\Slint\Elements\ContextMenuCompiler;
 use RageKit\Cli\Slint\Elements\DropdownMenuCompiler;
+use RageKit\Cli\Slint\Elements\ShortcutCompiler;
 use RageKit\Cli\Slint\Elements\ElementCompiler;
 use RageKit\Cli\Slint\Elements\KitElementCompiler;
 use RageKit\Cli\Slint\Elements\ScrollViewCompiler;
@@ -48,7 +50,9 @@ final class ElementDispatcher
         // Registration order is lookup priority: a child component can't take a built-in tag.
         foreach ([
             $this->controlFlow,
-            new ViewCompiler($this->context),
+            new ViewCompiler($this->context, $contextMenus = new ContextMenuCompiler($this->context)),
+            $contextMenus,
+            new ShortcutCompiler($this->context),
             new WindowFrameCompiler($this->context, $stacks),
             new TabsCompiler($this->context),
             new DialogCompiler($this->context),
@@ -108,6 +112,12 @@ final class ElementDispatcher
     public function takeOverlays(): string
     {
         return $this->context->takeOverlays();
+    }
+
+    /** The keyboard shortcuts (<Shortcut>) collected since the last call, for the window's key handler. */
+    public function takeShortcuts(): string
+    {
+        return $this->context->takeShortcuts();
     }
 
     /** Dialogs compiled from now on show only while this page is (see CompileContext::pageGuard). */

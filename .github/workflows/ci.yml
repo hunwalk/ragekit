@@ -93,6 +93,12 @@ jobs:
           DISPLAY=:99 tests/e2e/scroll.sh
           DISPLAY=:99 tests/e2e/scroll.sh --nano
 
+      - name: Pressable Views, context menus and shortcuts (normal, Nano, Material)
+        run: |
+          DISPLAY=:99 tests/e2e/pressable.sh
+          DISPLAY=:99 tests/e2e/pressable.sh --nano
+          DISPLAY=:99 tests/e2e/pressable.sh --kit=material
+
       - name: Multipart upload through the http module (normal and Nano builds)
         run: |
           DISPLAY=:99 tests/e2e/upload.sh

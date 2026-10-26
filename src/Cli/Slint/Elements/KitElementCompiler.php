@@ -32,7 +32,7 @@ final class KitElementCompiler implements ElementCompiler
     public const CORE = [
         'Label', 'Button', 'Entry', 'Checkbox', 'Slider', 'Select', 'Image', 'Progress', 'Card', 'Separator',
         'Switch', 'Textarea', 'RadioGroup', 'Toggle', 'Badge', 'Avatar', 'Alert', 'Skeleton', 'Spinner',
-        'Sidebar', 'NavList', 'Breadcrumb', 'Pagination', 'Text', 'Dialog', 'DropdownMenu',
+        'Sidebar', 'NavList', 'Breadcrumb', 'Pagination', 'Text', 'Dialog', 'DropdownMenu', 'ContextMenu',
     ];
 
     public function compile(Element $element, Scope $scope, string $axis): string
@@ -130,7 +130,7 @@ final class KitElementCompiler implements ElementCompiler
                 return $found;
             }
         }
-        throw TemplateException::at($element, "unknown element <{$element->tag}> (core: View, VStack, HStack, ScrollView, " . implode(', ', self::CORE)
+        throw TemplateException::at($element, "unknown element <{$element->tag}> (core: View, VStack, HStack, ScrollView, Shortcut, " . implode(', ', self::CORE)
             . '; components: ' . (implode(', ', array_keys($this->context->children)) ?: 'none') . '; kit elements need their prefix, e.g. <ui:Card>)');
     }
 }

@@ -1,0 +1,10 @@
+# <View onPress/onHoverIn/onHoverOut>, <ContextMenu> and <Shortcut>: tests/e2e/pressable.sh (normal and --nano).
+name: pressable
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software

@@ -51,6 +51,12 @@ final class CompileContext
     /** How many for/if (directives, each=, when=) the element being compiled is inside. */
     private int $guarded = 0;
 
+    /** Makes element ids unique within the generated component (see nextId()). */
+    private int $ids = 0;
+
+    /** @var list<string> the window's keyboard shortcuts so far: Slint statements for its key handler */
+    private array $shortcuts = [];
+
     /** While a window's page compiles: its condition (root.rk-page == N), '' when the window has one page. */
     private string $pageGuard = '';
 
@@ -245,6 +251,26 @@ final class CompileContext
     public function pageGuard(): string
     {
         return $this->pageGuard;
+    }
+
+    /** A fresh element id, e.g. rk-menu-3. */
+    public function nextId(string $prefix): string
+    {
+        return $prefix . '-' . ++$this->ids;
+    }
+
+    /** A shortcut for the window's key handler: an `if (…) { …; return accept; }` statement. */
+    public function addShortcut(string $statement): void
+    {
+        $this->shortcuts[] = $statement;
+    }
+
+    /** @return string the shortcuts collected since the last call, for the window's key handler */
+    public function takeShortcuts(): string
+    {
+        $shortcuts = implode("\n", $this->shortcuts);
+        $this->shortcuts = [];
+        return $shortcuts;
     }
 
     /** Reserves the next place at the window's top level; fill it with setOverlay(). */

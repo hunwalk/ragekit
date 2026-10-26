@@ -75,6 +75,7 @@ Every kit that provides a core element accepts exactly these attributes for it:
 | `Text` | `text`, `variant` (h1, h2, h3, h4, p, lead, large, small, muted, code, blockquote); also takes text styles, so it declares `color`, `font-size`, `font-weight`, `horizontal-alignment` (see `ShadText`) |
 | `Dialog` | `title`, contains other elements, event `onDismiss`; the compiler sizes it to the whole window: draw the scrim, the centred panel, and call `onDismiss` on a scrim click or Esc (see `ShadDialog`) |
 | `DropdownMenu` | `text`, `variant` (Button's), `items` (list), `variants` (list: `default`/`destructive` per item), event `onSelect` passing the picked index (int): used by `<DropdownMenu>` in templates |
+| `ContextMenu` | `items`, `variants` and `onSelect` as DropdownMenu's, plus a `public function open(x: length, y: length)` that shows the list at that point (relative to the component, which the compiler puts at its View's top-left corner); it takes no room itself (`width`/`height: 0px`) |
 | `Toast` | `text`: one toast; the compiler stacks them bottom-right of every window |
 | `WindowControls` | `maximized` (bool), events `onMinimize`, `onToggleMaximize`, `onClose`: used by layouts |
 
