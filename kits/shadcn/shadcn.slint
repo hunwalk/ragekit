@@ -63,6 +63,16 @@ export component ShadEntry inherits Rectangle {
     in property <int> focus-request;
     changed focus-request => {
         if (self.focus-request > 0) {
+            focus-later.running = true;
+        }
+    }
+    // A moment later, once the event that asked is over: a popup menu that closes gives the focus
+    // back to what had it before, which would undo an immediate focus().
+    focus-later := Timer {
+        interval: 1ms;
+        running: false;
+        triggered => {
+            self.running = false;
             input.focus();
         }
     }
@@ -415,6 +425,16 @@ export component ShadTextarea inherits Rectangle {
     in property <int> focus-request;
     changed focus-request => {
         if (self.focus-request > 0) {
+            focus-later.running = true;
+        }
+    }
+    // A moment later, once the event that asked is over: a popup menu that closes gives the focus
+    // back to what had it before, which would undo an immediate focus().
+    focus-later := Timer {
+        interval: 1ms;
+        running: false;
+        triggered => {
+            self.running = false;
             input.focus();
         }
     }

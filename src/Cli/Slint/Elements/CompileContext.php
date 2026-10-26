@@ -272,6 +272,26 @@ final class CompileContext
         return $this->loops > 0;
     }
 
+    /** @var list<bool> per <View> being compiled: whether it's laid out as a plain column (see ViewCompiler) */
+    private array $columns = [];
+
+    /** Compiles a View's children knowing whether the View is a plain column (true) or a flexbox. */
+    public function inView(bool $column, \Closure $compile): mixed
+    {
+        $this->columns[] = $column;
+        try {
+            return $compile();
+        } finally {
+            array_pop($this->columns);
+        }
+    }
+
+    /** Whether the <View> whose children are being compiled is a plain column, not a flexbox. */
+    public function viewIsColumn(): bool
+    {
+        return $this->columns !== [] && $this->columns[count($this->columns) - 1];
+    }
+
     /** A fresh element id, e.g. rk-menu-3. */
     public function nextId(string $prefix): string
     {

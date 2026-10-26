@@ -36,6 +36,31 @@ final class ViewCompiler implements ElementCompiler
         $style = $this->context->styleOf($element, $scope, 'view');
         $layout = array_merge(['flex-direction' => 'column', 'flex-wrap' => 'no-wrap'], $style->layout);
         $own = str_starts_with($layout['flex-direction'], 'row') ? 'h' : 'v';
+        // Decided before the children: an @if of text in a plain column needs no flexbox workaround.
+        $column = $this->columnLines($layout);
+        [$flow, $placed, $menu] = $this->context->inView($column !== null, fn() => $this->children($element, $scope, $own));
+        $lines = [...CompileContext::styleLines($style, $style->view), ...CompileContext::styleLines($style, $style->box)];
+        if ($this->context->isRoot($element)) {
+            $lines[] = 'width: parent.width;';
+            $lines[] = 'height: parent.height;';
+        } else {
+            $lines[] = $this->context->stretch($element, $axis);
+            // Slint's wrapping FlexboxLayout reports a maximum width of about one child, which
+            // capped the whole window there (min of its children's maximums); a View without a width
+            // of its own may grow like any block (React Native's default).
+            if ($layout['flex-wrap'] !== 'no-wrap' && preg_match('/^(max-)?width:/m', implode("\n", $lines)) !== 1) {
+                $lines[] = 'max-width: 100000px;';
+            }
+        }
+        $box = $this->repeatedColumn($element, $style, $column, $flow)
+            ?? Code::block('FlexboxLayout', CompileContext::styleLines($style, $layout), $flow);
+        $box = $this->pressable($element, $scope, $box, $menu);
+        return $this->context->withMargin(Code::block('Rectangle', $lines, $box . $placed), $style, $element, $axis);
+    }
+
+    /** @return array{0: string, 1: string, 2: ?Element} the laid-out children, the absolutely placed ones, the ContextMenu */
+    private function children(Element $element, Scope $scope, string $own): array
+    {
         $flow = '';
         $placed = '';
         $menu = null;
@@ -63,23 +88,7 @@ final class ViewCompiler implements ElementCompiler
                 $flow .= $code;
             }
         }
-        $lines = [...CompileContext::styleLines($style, $style->view), ...CompileContext::styleLines($style, $style->box)];
-        if ($this->context->isRoot($element)) {
-            $lines[] = 'width: parent.width;';
-            $lines[] = 'height: parent.height;';
-        } else {
-            $lines[] = $this->context->stretch($element, $axis);
-            // Slint's wrapping FlexboxLayout reports a maximum width of about one child, which
-            // capped the whole window there (min of its children's maximums); a View without a width
-            // of its own may grow like any block (React Native's default).
-            if ($layout['flex-wrap'] !== 'no-wrap' && preg_match('/^(max-)?width:/m', implode("\n", $lines)) !== 1) {
-                $lines[] = 'max-width: 100000px;';
-            }
-        }
-        $box = $this->repeatedColumn($element, $style, $layout, $flow)
-            ?? Code::block('FlexboxLayout', CompileContext::styleLines($style, $layout), $flow);
-        $box = $this->pressable($element, $scope, $box, $menu);
-        return $this->context->withMargin(Code::block('Rectangle', $lines, $box . $placed), $style, $element, $axis);
+        return [$flow, $placed, $menu];
     }
 
     /**
@@ -90,7 +99,14 @@ final class ViewCompiler implements ElementCompiler
      *
      * @param array<string, string> $layout
      */
-    private function repeatedColumn(Element $element, StyleResult $style, array $layout, string $flow): ?string
+    /**
+     * The VerticalLayout lines for a plain column View that a @foreach repeats, or null (a flexbox):
+     * no wrapping, no cross-axis alignment, no column gaps.
+     *
+     * @param array<string, string> $layout
+     * @return array<string, string>|null
+     */
+    private function columnLines(array $layout): ?array
     {
         if (!$this->context->inLoop() || $layout['flex-direction'] !== 'column' || $layout['flex-wrap'] !== 'no-wrap') {
             return null;
@@ -109,6 +125,15 @@ final class ViewCompiler implements ElementCompiler
             $lines[$property === 'spacing-vertical' ? 'spacing' : $property] = $value;
         }
         $lines['alignment'] ??= 'start'; // a flexbox's start, not a VerticalLayout's stretch
+        return $lines;
+    }
+
+    /** @param array<string, string>|null $lines from columnLines() */
+    private function repeatedColumn(Element $element, StyleResult $style, ?array $lines, string $flow): ?string
+    {
+        if ($lines === null) {
+            return null;
+        }
         foreach ($element->children as $child) {
             foreach (ControlFlowCompiler::leaves($child) as $leaf) {
                 if (isset($this->context->resolved($leaf)?->box['cross-axis-self-alignment'])) {

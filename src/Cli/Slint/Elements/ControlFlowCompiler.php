@@ -125,7 +125,8 @@ final class ControlFlowCompiler implements ElementCompiler
     {
         $out = '';
         $earlier = [];
-        $collapse = self::wrappingTextOnly($element) && $this->context->isInView($element->children[0]->children[0]);
+        // Only a flexbox needs it (a plain column measures an `if`'s text like any other).
+        $collapse = self::wrappingTextOnly($element) && $this->context->isInView($element->children[0]->children[0]) && !$this->context->viewIsColumn();
         foreach ($element->children as $branch) {
             if (count($branch->children) !== 1) {
                 throw new OneChildRequired($element, 'each @if branch');

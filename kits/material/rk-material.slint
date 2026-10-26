@@ -42,17 +42,36 @@ export component RkButton inherits HorizontalLayout {
     }
 }
 
-export component RkEntry inherits TextField {
+// A TextField with Return (onSubmit) and focus requests. A wrapper, since a TextField can't hold the timer.
+export component RkEntry {
+    in-out property <string> text <=> field.text;
+    callback edited(string);
+    // Return was pressed (onSubmit).
+    callback submitted();
     // ref="…" + Screen::focus(): the compiler raises this to focus the input.
     in property <int> focus-request;
     changed focus-request => {
         if (self.focus-request > 0) {
-            self.focus(); // TextField forwards the focus to its input
+            focus-later.running = true;
         }
     }
-    // Return was pressed (onSubmit).
-    callback submitted();
-    accepted(text) => { root.submitted(); }
+    // A moment later, once the event that asked is over: a popup menu that closes gives the focus
+    // back to what had it before, which would undo an immediate focus().
+    focus-later := Timer {
+        interval: 1ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            field.focus(); // TextField forwards the focus to its input
+        }
+    }
+    forward-focus: field;
+    VerticalLayout {
+        field := TextField {
+            edited(value) => { root.edited(value); }
+            accepted(value) => { root.submitted(); }
+        }
+    }
 }
 
 export component RkCheckbox inherits HorizontalLayout {
@@ -264,6 +283,16 @@ export component RkTextarea inherits Rectangle {
     in property <int> focus-request;
     changed focus-request => {
         if (self.focus-request > 0) {
+            focus-later.running = true;
+        }
+    }
+    // A moment later, once the event that asked is over: a popup menu that closes gives the focus
+    // back to what had it before, which would undo an immediate focus().
+    focus-later := Timer {
+        interval: 1ms;
+        running: false;
+        triggered => {
+            self.running = false;
             input.focus();
         }
     }
