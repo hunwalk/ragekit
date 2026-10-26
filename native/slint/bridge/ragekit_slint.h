@@ -87,6 +87,26 @@ RK_API void rk_post_event(const char *module, int64_t handle, const char *kind, 
  */
 RK_API void rk_timer_start(int64_t id, int64_t milliseconds, int repeat);
 RK_API void rk_timer_stop(int64_t id);
+/* App links (rk_links.cc), for apps that declare schemes (project.yml `ragekit: { links: [...] }`). */
+/**
+ * One instance per app: hands this launch's link (or "come to the front") to a running instance and
+ * returns 0 (the caller exits), or becomes that instance and returns 1. schemes: "a,b". Incoming
+ * links arrive as the event "@links" / 0 / "open" (data: the URL) or "focus"; a link this launch
+ * was started with arrives the same way.
+ */
+RK_API int rk_links_claim(const char *schemes);
+/** Stops listening for other launches (rk_run does it when the event loop ends). */
+RK_API void rk_links_stop(void);
+/** Makes the app the OS's handler for `scheme:` links. Returns the error's length (0 = done). */
+RK_API size_t rk_links_register(const char *scheme, char *error, size_t size);
+/** Seconds east of UTC of the computer's local time at unix time `at` (daylight saving included). */
+RK_API int64_t rk_utc_offset(int64_t at);
+/** Opens url in the user's browser (Linux: xdg-open; Windows: ShellExecute). Returns the error's length. */
+RK_API size_t rk_open_url(const char *url, char *error, size_t size);
+/** Hides a window without closing it (a tray app's main window), or shows it again. */
+RK_API void rk_window_set_visible(int64_t window, int visible);
+/** Brings a window to the front (X11: asks the window manager; Windows: SetForegroundWindow). */
+RK_API void rk_window_raise(int64_t window, const char *title, size_t title_len);
 RK_API void rk_run(void);
 RK_API void rk_quit(void);
 

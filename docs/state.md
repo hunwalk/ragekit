@@ -263,6 +263,22 @@ Timer::after(2, fn() => $this->hint = '');   // once, in 2 seconds
 - In `ragekit dev` the dev shell runs the timers. A PHP restart stops them, and the new PHP's
   `start()` starts its own (a Timer in a property isn't kept across restarts).
 
+## Local time
+
+PHP's `date()` in an app uses UTC: the app's PHP has no timezone database. `RageKit\LocalTime` asks
+the operating system instead, so a server's time shows as the user's clock does:
+
+```php
+use RageKit\LocalTime;
+
+LocalTime::format('H:i', strtotime($message['created_at']));   // date()'s formats, local time
+LocalTime::offset(time());                                      // seconds east of UTC, e.g. 7200
+```
+
+It follows the computer's timezone setting, daylight saving included (on Linux also `TZ`). The format
+letters that describe the timezone itself (`e I O P p T Z U`) aren't supported, since they would
+describe UTC; `format()` throws for them (use `offset()`).
+
 ## Tests
 
 A root store is a plain object: no App, no window and no backend needed. Creating one replaces the

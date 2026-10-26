@@ -40,6 +40,53 @@ function ragekit_module_error(string $name): string
     return Session::channel()->request('module-error', $name)[1] ?? '';
 }
 
+/** App links are for built apps (`ragekit run`): in dev mode the app declares none and runs normally. */
+function slint_links(): string
+{
+    return '';
+}
+
+function slint_links_claim(string $schemes): int
+{
+    return 1;
+}
+
+function slint_links_register(string $scheme): string
+{
+    return 'links work in built apps (ragekit run), not in ragekit dev';
+}
+
+function slint_window_raise(int $window, string $title): void
+{
+}
+
+function slint_window_set_visible(int $window, bool $visible): void
+{
+    Session::channel()->send($visible ? 'show' : 'hide', (string) $window);
+}
+
+/** Dev mode runs full PHP: the system's timezone ($TZ, else /etc/localtime), read by PHP itself. */
+function slint_utc_offset(int $at): int
+{
+    $zone = (string) getenv('TZ');
+    if ($zone === '' && is_link('/etc/localtime')) {
+        $zone = (string) preg_replace('#^.*/zoneinfo/#', '', (string) readlink('/etc/localtime'));
+    }
+    try {
+        return (new \DateTimeZone($zone !== '' ? ltrim($zone, ':') : 'UTC'))->getOffset(new \DateTimeImmutable('@' . $at));
+    } catch (\Exception $e) {
+        return 0;
+    }
+}
+
+/** Dev mode runs full PHP: it opens the browser itself. */
+function slint_open_url(string $url): string
+{
+    $command = PHP_OS_FAMILY === 'Windows' ? 'start "" ' . escapeshellarg($url) : 'xdg-open ' . escapeshellarg($url) . ' >/dev/null 2>&1 &';
+    exec($command, $output, $code);
+    return $code === 0 ? '' : "couldn't open the browser";
+}
+
 /** The shell runs the timer and sends its ticks as "@timer" module events. */
 function slint_timer_start(int $id, int $milliseconds, bool $repeat): void
 {

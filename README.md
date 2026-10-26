@@ -107,7 +107,9 @@ After every event the window shows the screen's new state; there is no manual re
 - **Hot reload.** `ragekit dev` reloads templates in place and restarts only your PHP when it
   changes, keeping the screen's state (Linux and Windows).
 - **Native modules.** Device and OS features as runtime-loaded libraries with a PHP API, starting
-  with audio and HTTP. An app still runs when a module's library is missing.
+  with audio, HTTP, crypto (Ed25519, SSH signatures), the OS keyring, desktop notifications and a
+  tray icon. An app still runs when a
+  module's library is missing.
 - **Your own title bar.** A layout frames screens in a frameless window with an app-drawn bar that
   moves, resizes, maximises and closes the window (Windows and Linux).
 - **Nano builds.** One small executable with a stripped-down PHP runtime compiled in.
@@ -174,9 +176,10 @@ On Windows, run `setup.ps1` instead of `setup.sh`.
 - [Templates](docs/templates.md) — `.rk` syntax, elements, components
 - [Moving between screens](docs/navigation.md) — the navigator: push, back, a window's stack of screens
 - [App-wide state](docs/state.md) — stores: the signed-in user, settings; `$store` in templates
+- [App links](docs/links.md) — `myapp://…` links, one running instance, registering the scheme
 - [Generators](docs/make.md) — `ragekit make:screen` and friends, where things go, `stub:publish`
 - [Kits](docs/kits.md) — choosing and writing UI kits
-- [Native modules](docs/modules.md) — using and writing modules (audio, http)
+- [Native modules](docs/modules.md) — using and writing modules (audio, http, crypto, keyring, notifications, tray)
 - [Dev mode](docs/dev-mode.md) — `ragekit dev` and hot reload
 - [Architecture](ARCHITECTURE.md) — how the repository is laid out
 - [Changelog](CHANGELOG.md) — what changed in each version, and what counts as breaking

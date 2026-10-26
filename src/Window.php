@@ -62,6 +62,37 @@ class Window extends Component
         $this->app->backend()->minimize($this->id);
     }
 
+    private bool $hidden = false;
+
+    /**
+     * Takes the window off the screen without closing it: its screens keep their state, and show()
+     * brings it back. An app that lives in the tray hides its main window from mainWindowClosed().
+     */
+    public function hide(): void
+    {
+        $this->hidden = true;
+        $this->app->backend()->setVisible($this->id, false);
+    }
+
+    /** Shows a hidden window again, and brings it to the front. */
+    public function show(): void
+    {
+        $this->hidden = false;
+        $this->app->backend()->setVisible($this->id, true);
+        $this->raise();
+    }
+
+    public function visible(): bool
+    {
+        return !$this->hidden;
+    }
+
+    /** Brings the window to the front (as far as the desktop allows: some only mark it as wanting attention). */
+    public function raise(): void
+    {
+        $this->app->backend()->raise($this->id);
+    }
+
     public function toggleMaximize(): void
     {
         $this->maximized = !$this->maximized;

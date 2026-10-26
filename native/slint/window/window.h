@@ -40,4 +40,11 @@ void start_resize(slint::Window &window, Edge edge);
 /** The pointer moved with the button held on an edge grip (X11: the app resizes the window). */
 void resize(slint::Window &window);
 
+/**
+ * Brings the window to the front (another launch of a single-instance app). X11: asks the window
+ * manager (_NET_ACTIVE_WINDOW) for this process's top-level window with this title; Windows:
+ * SetForegroundWindow. A window manager may still only mark it as wanting attention.
+ */
+void raise(slint::Window &window, const char *title);
+
 } // namespace rk::win

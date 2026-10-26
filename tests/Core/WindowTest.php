@@ -87,4 +87,17 @@ final class WindowTest extends TestCase
     {
         self::assertFalse((new Window())->canGoBack());
     }
+
+    public function testHideAndShowKeepTheWindow(): void
+    {
+        $app = RecordingApp::make();
+        $app->run();
+        $app->recorder->calls = [];
+        $main = $app->main();
+        $main->hide();
+        self::assertFalse($main->visible());
+        $main->show();
+        self::assertTrue($main->visible());
+        self::assertSame(['hide 1', 'show 1', 'raise 1'], $app->recorder->calls, 'shown again and brought to the front; never closed');
+    }
 }

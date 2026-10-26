@@ -27,6 +27,48 @@ stdout until exit, so the script reads the output after closing the window:
 
     DISPLAY=:99 tests/e2e/timer.sh            # also with --nano
 
+`tests/e2e/crypto.sh` builds `tests/fixtures/crypto` (the crypto module) and compares what it
+prints for fixed keys and messages with `tests/fixtures/crypto/expected.txt`, which comes from
+sodium, PHP's `hash()` and `ssh-keygen`:
+
+    DISPLAY=:99 tests/e2e/crypto.sh           # also with --nano
+
+`tests/e2e/keyring.sh` builds `tests/fixtures/devicekey` (crypto + keyring) and runs it twice in a
+throwaway D-Bus session and gnome-keyring-daemon with a temporary HOME: the first run stores a new
+device key, the second loads the same one. Then once with no Secret Service at all:
+
+    DISPLAY=:99 tests/e2e/keyring.sh          # also with --nano
+
+`tests/e2e/scroll.sh` builds `tests/fixtures/chat` (a `<ScrollView>` used as a chat) and measures,
+from screenshots, how far the messages move: one row for a new message at the bottom, nothing for
+one while scrolled up, and no jump when older messages load above:
+
+    DISPLAY=:99 tests/e2e/scroll.sh           # also with --nano
+
+`tests/e2e/upload.sh` builds `tests/fixtures/upload`, which sends a `Multipart` form through the
+http module to a local `php -S`; the answer is what PHP's own parser made of it:
+
+    DISPLAY=:99 tests/e2e/upload.sh           # also with --nano
+
+`tests/e2e/notifications.sh` builds `tests/fixtures/notify` and runs it in a throwaway D-Bus session
+with a fake notification service (`tests/fixtures/notifications/fake_server.py`, Python with gi): the
+notification is shown, clicked through the service's test hook, and the app's handler changes the
+window:
+
+    DISPLAY=:99 tests/e2e/notifications.sh    # also with --nano
+
+`tests/e2e/links.sh` builds `tests/fixtures/links` (links: [rktest]) and, with temporary XDG folders,
+checks the registration (`xdg-mime`), a `gio open rktest://…` handed to the running app, a plain
+second launch, rktest://quit, and a start after an instance was killed (stale socket):
+
+    DISPLAY=:99 tests/e2e/links.sh            # also with --nano
+
+`tests/e2e/tray.sh` builds `tests/fixtures/trayapp` (it lives in the tray) and runs it in a throwaway
+D-Bus session with a fake StatusNotifierWatcher (`tests/fixtures/tray/fake_watcher.py`): closing the
+window hides it, a click on the icon shows it again, the menu's Quit ends the app:
+
+    DISPLAY=:99 tests/e2e/tray.sh             # also with --nano
+
 By hand:
 
     Xvfb :99 -screen 0 1280x1024x24 -nolisten tcp &

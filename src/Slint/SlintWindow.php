@@ -22,7 +22,7 @@ final class SlintWindow
     /** @var array<int, mixed> property id => value last sent */
     private array $sent = [];
 
-    public function __construct(private App $app, Screen $screen, string $title, int $width, int $height)
+    public function __construct(private App $app, Screen $screen, public readonly string $title, int $width, int $height)
     {
         $component = Screens::component($screen);
         $this->window = Screens::newWindow($screen); // one per window: its state is this window's

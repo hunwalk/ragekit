@@ -83,6 +83,12 @@ final class SlintBackend implements Backend
         return \slint_app_dir();
     }
 
+    public function cacheDir(): string
+    {
+        $images = \slint_cache_dir(); // <cache>/<app>/images, created
+        return substr($images, 0, (int) strrpos($images, '/'));
+    }
+
     public function printError(string $line): void
     {
         \slint_print_error($line);
@@ -96,6 +102,44 @@ final class SlintBackend implements Backend
     public function stopTimer(int $id): void
     {
         \slint_timer_stop($id);
+    }
+
+    public function setVisible(int $window, bool $visible): void
+    {
+        \slint_window_set_visible($window, $visible);
+    }
+
+    public function raise(int $window): void
+    {
+        if (isset($this->windows[$window])) {
+            \slint_window_raise($window, $this->windows[$window]->title);
+        }
+    }
+
+    public function links(): array
+    {
+        $links = \slint_links();
+        return $links === '' ? [] : explode(',', $links);
+    }
+
+    public function claimInstance(): bool
+    {
+        return \slint_links_claim(\slint_links()) === 1;
+    }
+
+    public function registerLink(string $scheme): string
+    {
+        return \slint_links_register($scheme);
+    }
+
+    public function utcOffset(int $at): int
+    {
+        return \slint_utc_offset($at);
+    }
+
+    public function openUrl(string $url): string
+    {
+        return \slint_open_url($url);
     }
 
     /** Pushes every window's values again (dev mode, after a template reload). */

@@ -48,6 +48,7 @@ final class GenerateViews implements Step
         $kits = KitRegistry::discover($root, $project->dir);
         $kit = (string) ($project->options['kit'] ?? 'material');
         $kits->get($kit);
-        return new ViewProject($classes, $kits, $kit, $outDir, $project->dir, array_values(array_map('strval', (array) ($project->options['modules'] ?? []))));
+        return new ViewProject($classes, $kits, $kit, $outDir, $project->dir, array_values(array_map('strval', (array) ($project->options['modules'] ?? []))),
+            \RageKit\Cli\Build\AppIcon::path($project));
     }
 }

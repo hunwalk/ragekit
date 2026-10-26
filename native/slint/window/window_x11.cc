@@ -14,7 +14,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <dlfcn.h>
+#include <string>
 #include <type_traits>
+#include <unistd.h>
 
 namespace {
 
@@ -24,10 +26,36 @@ using Display = struct _XDisplay;
 using XWindow = unsigned long;
 using Bool = int;
 
+using Atom = unsigned long;
+
+// XClientMessageEvent, as Xlib lays it out (for _NET_ACTIVE_WINDOW), padded to an XEvent's size.
+struct ClientMessage {
+    int type;
+    unsigned long serial;
+    Bool send_event;
+    Display *display;
+    XWindow window;
+    Atom message_type;
+    int format;
+    long l[5];
+    char pad[96];
+};
+
 struct Xlib {
     Display *(*XOpenDisplay)(const char *);
     XWindow (*XDefaultRootWindow)(Display *);
     Bool (*XQueryPointer)(Display *, XWindow, XWindow *, XWindow *, int *, int *, int *, int *, unsigned int *);
+    // raise(): finding our window and asking the window manager to activate it.
+    int (*XQueryTree)(Display *, XWindow, XWindow *, XWindow *, XWindow **, unsigned int *) = nullptr;
+    Atom (*XInternAtom)(Display *, const char *, Bool) = nullptr;
+    int (*XGetWindowProperty)(Display *, XWindow, Atom, long, long, Bool, Atom, Atom *, int *, unsigned long *,
+                              unsigned long *, unsigned char **) = nullptr;
+    int (*XSendEvent)(Display *, XWindow, Bool, long, void *) = nullptr;
+    int (*XFlush)(Display *) = nullptr;
+    int (*XFree)(void *) = nullptr;
+    using ErrorHandler = int (*)(Display *, void *);
+    ErrorHandler (*XSetErrorHandler)(ErrorHandler) = nullptr;
+    int (*XSync)(Display *, Bool) = nullptr;
     Display *display = nullptr;
 };
 
@@ -57,6 +85,11 @@ Xlib *xlib()
     if (!load(lib.XOpenDisplay, "XOpenDisplay") || !load(lib.XDefaultRootWindow, "XDefaultRootWindow")
         || !load(lib.XQueryPointer, "XQueryPointer")) {
         return nullptr;
+    }
+    if (!load(lib.XQueryTree, "XQueryTree") || !load(lib.XInternAtom, "XInternAtom") || !load(lib.XGetWindowProperty, "XGetWindowProperty")
+        || !load(lib.XSendEvent, "XSendEvent") || !load(lib.XFlush, "XFlush") || !load(lib.XFree, "XFree")
+        || !load(lib.XSetErrorHandler, "XSetErrorHandler") || !load(lib.XSync, "XSync")) {
+        lib.XQueryTree = nullptr; // raise() isn't possible; the rest still is
     }
     lib.display = lib.XOpenDisplay(nullptr);
     return lib.display != nullptr ? &lib : nullptr;
@@ -180,6 +213,85 @@ void resize(slint::Window &window)
     if (x != drag.x || y != drag.y) {
         window.set_position(slint::PhysicalPosition({x, y}));
     }
+}
+
+} // namespace rk::win
+
+namespace {
+
+/** A window property as bytes ('' if it isn't set). */
+std::string property(Xlib *x, XWindow window, const char *name)
+{
+    Atom type = 0;
+    int format = 0;
+    unsigned long items = 0, after = 0;
+    unsigned char *data = nullptr;
+    std::string out;
+    if (x->XGetWindowProperty(x->display, window, x->XInternAtom(x->display, name, 0), 0, 4096, 0, 0 /* AnyPropertyType */, &type,
+                              &format, &items, &after, &data) == 0 && data != nullptr) {
+        out.assign(reinterpret_cast<const char *>(data), items * (format == 32 ? sizeof(long) : format / 8));
+        x->XFree(data);
+    }
+    return out;
+}
+
+/** This process's window titled `title`: a child of the root, or of a window manager's frame. */
+XWindow find(Xlib *x, XWindow parent, const char *title, int depth)
+{
+    XWindow root = 0, up = 0, *children = nullptr;
+    unsigned int count = 0;
+    if (x->XQueryTree(x->display, parent, &root, &up, &children, &count) == 0) {
+        return 0;
+    }
+    XWindow found = 0;
+    for (unsigned int i = count; i-- > 0 && found == 0;) { // topmost first
+        std::string pid = property(x, children[i], "_NET_WM_PID");
+        if (pid.size() >= sizeof(long) && *reinterpret_cast<const long *>(pid.data()) == static_cast<long>(getpid())
+            && property(x, children[i], "_NET_WM_NAME") == title) {
+            found = children[i];
+        } else if (depth > 0) {
+            found = find(x, children[i], title, depth - 1);
+        }
+    }
+    if (children != nullptr) {
+        x->XFree(children);
+    }
+    return found;
+}
+
+} // namespace
+
+namespace rk::win {
+
+void raise(slint::Window &window, const char *title)
+{
+    window.set_minimized(false);
+    Xlib *x = xlib();
+    if (x == nullptr || x->XQueryTree == nullptr) {
+        return;
+    }
+    XWindow root = x->XDefaultRootWindow(x->display);
+    // Windows come and go during the walk (other apps' popups): a BadWindow for one of them must
+    // be skipped, not handled by Xlib's default handler, which exits the process.
+    x->XSync(x->display, 0);
+    auto previous = x->XSetErrorHandler([](Display *, void *) { return 0; });
+    XWindow ours = find(x, root, title, 2);
+    x->XSync(x->display, 0); // errors of the walk arrive while the quiet handler is still in place
+    x->XSetErrorHandler(previous);
+    if (ours == 0) {
+        return;
+    }
+    ClientMessage event{};
+    event.type = 33; // ClientMessage
+    event.send_event = 1;
+    event.display = x->display;
+    event.window = ours;
+    event.message_type = x->XInternAtom(x->display, "_NET_ACTIVE_WINDOW", 0);
+    event.format = 32;
+    event.l[0] = 2; // the request comes from a pager-like source: window managers honour it
+    // SubstructureRedirectMask | SubstructureNotifyMask
+    x->XSendEvent(x->display, root, 0, (1L << 20) | (1L << 19), &event);
+    x->XFlush(x->display);
 }
 
 } // namespace rk::win

@@ -25,7 +25,7 @@ nothing from the right-hand column can end up in an app by accident.
 src/        PHP only
 native/     RageKit's own C and C++ only
 kits/       UI kits: what core elements look like (Slint)
-modules/    native modules: device and OS features (audio, http, …)
+modules/    native modules: device and OS features (audio, http, crypto, keyring, notifications, tray, …)
 demo/       example apps
 tests/      PHPUnit tests (+ small C++ test programs in tests/fixtures)
 toolchain/  the TypePHP and Slint versions RageKit builds with (toolchain.yml) + TypePHP patches
@@ -43,6 +43,8 @@ src/
                                                        screens, app-wide state
   Events.php, Modules.php, ModuleUnavailable.php       module events and availability
   Timer.php                                            Timer::every()/after() (ticks are events)
+  Links.php                                            app links: Links::register() (App::linkOpened())
+  LocalTime.php                                        times in the computer's timezone
   Slint/
     backend.yml          what the Slint backend adds to an app's build (sources, libraries,
                          options, dev shell)
@@ -64,6 +66,7 @@ src/Cli/
   Toolchain/             TypePHP, the C++ compiler (Gcc / Msvc), running processes, NativeBuild
                          for compiling C++ only when its inputs changed
   Build/                 the build pipeline: one class per step in Build/Steps
+  Package/               ragekit package: the build's runtime files as a .tar.gz or .deb in dist/
   Templates/             .rk parser, reading the app's classes (introspect.php), the
                          ViewGenerator interface backends implement
   Rageblade/             the Blade-style parts of .rk files: @foreach/@if (Directives) and the

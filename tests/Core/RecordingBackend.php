@@ -58,6 +58,11 @@ final class RecordingBackend implements Backend
         return '/app';
     }
 
+    public function cacheDir(): string
+    {
+        return '/cache';
+    }
+
     public function printError(string $line): void
     {
         $this->calls[] = "error $line";
@@ -71,5 +76,54 @@ final class RecordingBackend implements Backend
     public function stopTimer(int $id): void
     {
         $this->calls[] = "timer-stop $id";
+    }
+
+    /** @var list<string> */
+    public array $links = [];
+
+    /** What claimInstance() answers (false: another instance runs). */
+    public bool $first = true;
+
+    public string $registerError = '';
+
+    public function setVisible(int $window, bool $visible): void
+    {
+        $this->calls[] = ($visible ? 'show ' : 'hide ') . $window;
+    }
+
+    public function raise(int $window): void
+    {
+        $this->calls[] = "raise $window";
+    }
+
+    public function links(): array
+    {
+        return $this->links;
+    }
+
+    public function claimInstance(): bool
+    {
+        $this->calls[] = 'claim';
+        return $this->first;
+    }
+
+    /** What utcOffset() answers. */
+    public int $offset = 0;
+
+    public function utcOffset(int $at): int
+    {
+        return $this->offset;
+    }
+
+    public function openUrl(string $url): string
+    {
+        $this->calls[] = "browse $url";
+        return '';
+    }
+
+    public function registerLink(string $scheme): string
+    {
+        $this->calls[] = "register $scheme";
+        return $this->registerError;
     }
 }

@@ -178,6 +178,71 @@ void php_slint_timer_stop(Int id)
     rk_timer_stop(id);
 }
 
+// project.yml `ragekit: { links: [a, b] }` arrives as RAGEKIT_LINKS=a__b ('_' isn't valid in a
+// scheme, and a comma would split the macro).
+#define RK_STRINGIFY2(x) #x
+#define RK_STRINGIFY(x) RK_STRINGIFY2(x)
+
+String php_slint_links()
+{
+#if defined(RAGEKIT_LINKS)
+    std::string links = RK_STRINGIFY(RAGEKIT_LINKS);
+    std::string out;
+    for (size_t i = 0; i < links.size(); i++) {
+        if (links.compare(i, 2, "__") == 0) {
+            out += ',';
+            i++;
+        } else {
+            out += links[i];
+        }
+    }
+    return String(out.data(), out.size());
+#else
+    return String("");
+#endif
+}
+
+Int php_slint_links_claim(String schemes)
+{
+    int first = rk_links_claim(std::string(schemes.data(), schemes.length()).c_str());
+    if (first == 0) {
+        // This launch ends without running the event loop: release the PHP closures now, as
+        // php_slint_run() would, or they'd be destroyed after PHP has shut down (a crash at exit).
+        dispatcher = Variant();
+        eventDispatcher = Variant();
+    }
+    return first;
+}
+
+String php_slint_links_register(String scheme)
+{
+    char error[1024];
+    size_t len = rk_links_register(std::string(scheme.data(), scheme.length()).c_str(), error, sizeof error);
+    return String(error, len < sizeof error ? len : sizeof error - 1);
+}
+
+Int php_slint_utc_offset(Int at)
+{
+    return rk_utc_offset(at);
+}
+
+String php_slint_open_url(String url)
+{
+    char error[1024];
+    size_t len = rk_open_url(std::string(url.data(), url.length()).c_str(), error, sizeof error);
+    return String(error, len < sizeof error ? len : sizeof error - 1);
+}
+
+void php_slint_window_set_visible(Int window, Bool visible)
+{
+    rk_window_set_visible(window, visible ? 1 : 0);
+}
+
+void php_slint_window_raise(Int window, String title)
+{
+    rk_window_raise(window, title.data(), title.length());
+}
+
 void php_slint_run()
 {
     rk_run();

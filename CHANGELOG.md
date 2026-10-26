@@ -11,20 +11,106 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+Planned as 0.7.0: what a real desktop app needs around its UI, driven by a dev-null.sh client.
+Signed API requests with a key kept in the OS keyring, a browser sign-in that comes back through an
+app link, a chat view that scrolls like a messaging app, desktop notifications and a tray icon.
+Linux is tested; on Windows timers, links, the app icon, hide/show, crypto, keyring, uploads and
+recording are tested too (notifications and the tray are Linux only for now); macOS isn't supported.
+Nothing changes for 0.6 apps. Custom backends and kits: see "Changed".
+
 ### Added
+
+App:
 
 - **Timers.** `RageKit\Timer::every(5, fn() => …)` runs a function every 5 seconds until
   `stop()`, `Timer::after(0.5, fn() => …)` once. Ticks run on the UI thread like clicks: the
   windows show the new values afterwards, and an uncaught exception goes to
-  `App::uncaughtException()`. They work in normal and Nano builds and in `ragekit dev`. See
-  docs/state.md, "Timers: polling and delays".
+  `App::uncaughtException()`. Normal and Nano builds and `ragekit dev`. See docs/state.md,
+  "Timers: polling and delays".
+- **App links** (`ragekit: { links: [myapp] }`): the app runs as a single instance; another launch,
+  by a `myapp://…` link or plainly, hands over to it, which comes to the front and gets
+  `App::linkOpened($url)`. `Links::register('myapp')` makes the app the OS's handler (Linux: a
+  .desktop file and mimeapps.list; Windows: the registry). `Links::openInBrowser($url)` and
+  `Links::query($url)` (Nano builds have no `parse_str()`). Built apps only, not `ragekit dev`.
+  See docs/links.md.
+- **Windows:** `Window::hide()` / `show()` (a window off the screen keeps its screens' state) and
+  `Window::raise()`.
+- **App icon** (`ragekit: { icon: assets/icon.png }`): every window shows it, it's copied next to
+  the executable and named in the `.desktop` file of `Links::register()`; on Windows a png also
+  becomes the `.exe`'s icon (an `.ico` wrapping the png).
+- **`App::cacheDir()`:** a folder for the app's cache files (`~/.cache/<app>` on Linux,
+  `%LOCALAPPDATA%\<app>` on Windows), created on first use.
+- **`RageKit\LocalTime`:** `format('H:i', $timestamp)` and `offset()` in the computer's own
+  timezone (an app's `date()` is UTC). See docs/state.md, "Local time".
+
+- **`ragekit package`** makes a `.tar.gz` (a folder that runs from anywhere) or a `.deb` (installs
+  into `/opt` with a menu entry, the icon, the app's link schemes, and `Depends:` computed by
+  `dpkg-shlibdeps`) in `dist/`. Metadata: `ragekit: { package: { version, description, … } }`. See
+  docs/getting-started.md, "Packaging".
+
+Templates:
+
+- **`<ScrollView>`**: a column that scrolls (wheel, drag, its own scrollbar). For chats:
+  `stickToBottom` (opens and stays at the bottom while the user is there), `anchor="bottom"` (rows
+  added above don't move what's shown) and `onTop` (a handler to load older rows). Built by the
+  compiler, so it works the same with every kit. See docs/templates.md, "ScrollView".
+- **`<Entry onSubmit="send">`**: a handler for Return. The value is up to date when it runs.
+- **A chat composer:** `<Textarea rows="1" maxRows="8" onSubmit="send">` grows with its text up to
+  `maxRows` lines, then scrolls (keeping the caret in view); with `onSubmit`, Return sends and
+  Shift+Return or Alt+Return adds a line.
+
+Modules:
+
+- **Crypto** (`modules: [crypto]`): `Ed25519Key` (generate, sign, verify), `Ssh` (the
+  `ssh-ed25519` public key line, its `SHA256:` fingerprint, and SSHSIG signatures as
+  `ssh-keygen -Y sign` makes them), `Hash::sha256/sha512` and `Random::bytes`. Monocypher 4.0.2
+  underneath. See docs/modules.md, "The crypto module".
+- **Keyring** (`modules: [keyring]`): `Keyring::set/get/delete` keep secrets in the OS's credential
+  store: the Secret Service (GNOME Keyring, KWallet) through libsecret on Linux, loaded at runtime;
+  Credential Manager on Windows. A locked keyring is an error, never "nothing stored". See
+  docs/modules.md, "The keyring module".
+- **Notifications** (`modules: [notifications]`): `Notification::show($title, $body, onClick:,
+  onClose:)` on Linux desktops (the freedesktop notification service through GLib, loaded at
+  runtime). See docs/modules.md, "The notifications module".
+- **Tray** (`modules: [tray]`): `Tray::show($icon, $tooltip, onClick:)` with a menu (`item()`,
+  `separator()`), on Linux desktops with a StatusNotifierItem host (KDE, XFCE, GNOME with the
+  AppIndicator extension). With `Window::hide()` an app keeps running in the tray when its window
+  is closed. See docs/modules.md, "The tray module".
+- **Uploads in the http module:** `RageKit\Http\Multipart` builds a `multipart/form-data` body
+  (fields and files, any bytes), sent with `Request::multipart()`.
+- **Recording in the audio module:** `Recorder::start(onLevel:, onFull:)` / `stop($path)` records a
+  voice note (16 kHz mono WAV, up to 61 s) and returns a `Recording` with its length and a 48-bar
+  waveform; `Sound::speed()` plays faster or slower. See docs/modules.md, "Recording".
+
+### Fixed
+
+- **`<Text variant="code">` is monospace now** in both kits: they ship JetBrains Mono (SIL OFL,
+  fetched by the build, embedded), since Slint doesn't resolve the generic `monospace` family.
+- **A wrapping `<Text>` under `@if` in a `<View>`** got the height of one line, so its View came out
+  too short (a chat bubble's last lines spilled out). Slint's flexbox measures what is under an `if`
+  without its width; such a Text is now always there, hidden and emptied, and an empty `<Text>`
+  takes no room in both kits.
+- **Windows: audio started before the first window** (e.g. in `App::start()`) no longer crashes the
+  app: miniaudio now initialises COM apartment-threaded, as the window system needs on that thread.
+- **`ragekit eject`** lists every file the build fetches for a kit (now also its font) for
+  `.gitignore`.
+- An app that ends without running its event loop (a second launch handing over to the running
+  one) no longer crashes on exit: the host released PHP closures after PHP had shut down.
 
 ### Changed
 
-- **Backends:** `RageKit\Backend` gains `startTimer(int $id, int $milliseconds, bool $repeat)`
-  and `stopTimer(int $id)`; ticks come back as `Events::deliver('@timer', $id, 'tick', '')`. The
-  Slint bridge exports `rk_timer_start` / `rk_timer_stop`, and the dev protocol has `timer-start` /
-  `timer-stop` (plus a headless-only `advance <ms>` control, since the testing backend mocks time).
+- **Backends:** `RageKit\Backend` gains `startTimer()`/`stopTimer()` (ticks come back as
+  `Events::deliver('@timer', $id, 'tick', '')`), `setVisible()`, `raise()`, `links()`,
+  `claimInstance()`, `registerLink()`, `openUrl()`, `utcOffset()` and `cacheDir()`. The Slint bridge exports
+  `rk_timer_*`, `rk_links_*`, `rk_open_url`, `rk_utc_offset`, `rk_window_set_visible` and
+  `rk_window_raise`; the dev protocol has `timer-start`/`timer-stop`, `hide`/`show` (and a
+  headless-only `advance <ms>` control, since Slint's testing backend mocks time).
+- **The core element contract:** `Entry` gains the event `onSubmit`; `Textarea` gains `maxRows` and
+  `onSubmit: { callback: submitted, enables: submit-on-return }` (a new `kit.yml` event option:
+  using the event sets that bool property). A kit of your own should add them (see the shadcn and
+  Material kits); templates that use them otherwise fail to build with that kit. A kit's `Text`
+  should take no room when its text is empty (the compiler hides a `<Text>` under `@if` in a
+  `<View>` that way).
 
 ## [0.6.0] - 2026-10-25
 

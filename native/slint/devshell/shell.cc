@@ -328,6 +328,19 @@ void Shell::onPhpLine(unsigned generation, const std::string &line)
         }
         return;
     }
+    if ((cmd == "hide" || cmd == "show") && f.size() >= 2) {
+        // Window::hide() / show(): a tray app's main window.
+        auto it = windows_.find(std::atoll(f[1].c_str()));
+        if (it != windows_.end()) {
+            if (cmd == "hide") {
+                it->second.instance->hide();
+            } else {
+                it->second.instance->show();
+            }
+            log(cmd + " " + f[1]);
+        }
+        return;
+    }
     if ((cmd == "minimize" || cmd == "maximize") && f.size() >= 2) {
         // A layout's minimize() / toggleMaximize().
         auto it = windows_.find(std::atoll(f[1].c_str()));

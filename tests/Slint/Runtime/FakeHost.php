@@ -18,6 +18,13 @@ namespace RageKit\Tests\Slint\Runtime {
         /** @var list<array{url: string, file: string, done: \Closure}> Screens::fetchImage() calls */
         public static array $fetches = [];
         public static bool $httpModule = true;
+        /** '' = a notification service answers, else why not */
+        public static string $notificationService = '';
+        public static int $nextNotification = 1;
+        public static string $links = '';
+        /** What audio_record_stop() answers. */
+        public static string $recording = '';
+        public static bool $first = true;
         public static string $cacheDir = '';
         /** Files the fake bridge can't decode (besides paths containing "broken"). */
         public static array $unloadable = [];
@@ -27,6 +34,10 @@ namespace RageKit\Tests\Slint\Runtime {
             self::$unloadable = [];
             self::$fetches = [];
             self::$httpModule = true;
+            self::$notificationService = '';
+            self::$nextNotification = 1;
+            self::$links = '';
+            self::$first = true;
             self::$cacheDir = '';
             self::$calls = [];
             self::$dispatcher = null;
@@ -67,6 +78,13 @@ namespace {
     function slint_quit(): void { FakeHost::$calls[] = 'quit'; }
     function slint_timer_start(int $id, int $milliseconds, bool $repeat): void { FakeHost::$calls[] = "timer-start $id $milliseconds " . ($repeat ? '1' : '0'); }
     function slint_timer_stop(int $id): void { FakeHost::$calls[] = "timer-stop $id"; }
+    function slint_links(): string { return FakeHost::$links; }
+    function slint_links_claim(string $schemes): int { FakeHost::$calls[] = "claim $schemes"; return FakeHost::$first ? 1 : 0; }
+    function slint_links_register(string $scheme): string { FakeHost::$calls[] = "register $scheme"; return ''; }
+    function slint_window_raise(int $window, string $title): void { FakeHost::$calls[] = "raise $window $title"; }
+    function slint_window_set_visible(int $window, bool $visible): void { FakeHost::$calls[] = ($visible ? 'show ' : 'hide ') . $window; }
+    function slint_open_url(string $url): string { FakeHost::$calls[] = "browse $url"; return ''; }
+    function slint_utc_offset(int $at): int { return 3600; }
     function slint_set_event_dispatcher(mixed $fn): void { FakeHost::$eventDispatcher = $fn; }
     function slint_app_dir(): string { return '/app'; }
     function slint_print_error(string $line): void { FakeHost::$calls[] = "error $line"; }
@@ -80,5 +98,23 @@ namespace {
         return FakeHost::$nextRequest++;
     }
     function http_cancel(int $request): void { FakeHost::$http[] = ['cancel' => $request]; }
+    function notifications_available(): string { return FakeHost::$notificationService; }
+    function notifications_show(string $title, string $body): int
+    {
+        FakeHost::$calls[] = "notify $title|$body";
+        return FakeHost::$notificationService === '' ? FakeHost::$nextNotification++ : 0;
+    }
+    function notifications_close(int $notification): void { FakeHost::$calls[] = "close-notification $notification"; }
+    function notifications_error(): string { return FakeHost::$notificationService; }
+    function audio_record_start(): int { return 1; }
+    function audio_record_stop(string $path): string { return str_starts_with($path, '/nope/') ? '' : FakeHost::$recording; }
+    function audio_record_cancel(): void { FakeHost::$calls[] = 'record-cancel'; }
+    function audio_record_error(): string { return "couldn't write /nope/x.wav"; }
+    function tray_available(): string { return ''; }
+    function tray_show(string $icon, string $tooltip): int { FakeHost::$calls[] = "tray $icon|$tooltip"; return 1; }
+    function tray_tooltip(string $text): void { FakeHost::$calls[] = "tray-tooltip $text"; }
+    function tray_menu(string $items): void { FakeHost::$calls[] = 'tray-menu ' . str_replace("\n", '|', $items); }
+    function tray_remove(): void { FakeHost::$calls[] = 'tray-remove'; }
+    function tray_error(): string { return ''; }
     function ragekit_module_error(string $name): string { return FakeHost::$modules[$name] ?? 'not installed'; }
 }

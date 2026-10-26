@@ -20,7 +20,7 @@ final class SlintViewGenerator implements ViewGenerator
 {
     public function generate(ViewProject $project, BuildContext $context): ViewResult
     {
-        $compiled = (new SlintCompiler($project->kits, $project->activeKit, $project->projectDir))->compile($project->classes);
+        $compiled = (new SlintCompiler($project->kits, $project->activeKit, $project->projectDir, icon: $project->icon))->compile($project->classes);
         foreach ($compiled->warnings as $warning) {
             $context->status->clear();
             $context->output->writeln("<comment>ragekit: $warning</comment>");

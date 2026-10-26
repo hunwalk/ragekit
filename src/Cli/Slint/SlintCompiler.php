@@ -34,6 +34,8 @@ final class SlintCompiler
         private readonly string $activeKit,
         private readonly string $projectRoot = '',
         private readonly bool $dev = false,
+        /** The app's icon (project.yml ragekit: icon:), absolute: every window shows it. */
+        private readonly string $icon = '',
     ) {
     }
 
@@ -313,12 +315,21 @@ final class SlintCompiler
         return Code::stub('window', [
             'name' => $model->name,
             'window' => $window,
-            'dev' => $this->dev ? Code::stub('window-dev', []) : '',
+            'dev' => ($this->dev ? Code::stub('window-dev', []) : '') . $this->iconLine(),
             'frameless' => $frame !== null ? Code::stub('window-frameless', []) : '',
             'properties' => implode("\n", $properties),
             'body' => $body,
             'overlays' => $overlays,
         ]);
+    }
+
+    private function iconLine(): string
+    {
+        if ($this->icon === '') {
+            return '';
+        }
+        $this->values->embed($this->icon); // an edited icon rebuilds, like any embedded image
+        return 'icon: @image-url(' . TextAttribute::slintString($this->icon) . ');';
     }
 
     /**

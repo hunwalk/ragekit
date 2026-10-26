@@ -26,7 +26,9 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: mbstring
+          # ffi: the crypto and keyring tests call the modules' real libraries; sodium: reference values.
+          extensions: mbstring, ffi, sodium
+          ini-values: ffi.enable=true
           tools: composer
           coverage: none
 
@@ -41,7 +43,9 @@ jobs:
             libfontconfig1 libfreetype6 libxkbcommon0 libxkbcommon-x11-0 libinput10 libgbm1 libudev1 \
             libx11-xcb1 libxcursor1 libxi6 libxrandr2 libxtst6 imagemagick \
             php8.4-dev libphp8.4-embed cmake libgmp-dev libmpfr-dev \
-            libcurl4-openssl-dev
+            libcurl4-openssl-dev \
+            libsecret-1-0 gnome-keyring dbus openssh-client python3-gi gir1.2-glib-2.0 libglib2.0-bin xdg-utils \
+            dpkg-dev fakeroot desktop-file-utils
 
       # The pinned toolchain (TypePHP + Slint) and the third-party code kits and modules fetch.
       - uses: actions/cache@v6
@@ -84,7 +88,42 @@ jobs:
       - name: Title bar (drag, resize, a button in the bar, close)
         run: DISPLAY=:99 tests/e2e/titlebar.sh
 
+      - name: ScrollView as a chat (normal and Nano builds)
+        run: |
+          DISPLAY=:99 tests/e2e/scroll.sh
+          DISPLAY=:99 tests/e2e/scroll.sh --nano
+
+      - name: Multipart upload through the http module (normal and Nano builds)
+        run: |
+          DISPLAY=:99 tests/e2e/upload.sh
+          DISPLAY=:99 tests/e2e/upload.sh --nano
+
+      - name: App links, single instance (normal and Nano builds)
+        run: |
+          DISPLAY=:99 tests/e2e/links.sh
+          DISPLAY=:99 tests/e2e/links.sh --nano
+
       - name: Timers (normal and Nano builds)
         run: |
           DISPLAY=:99 tests/e2e/timer.sh
           DISPLAY=:99 tests/e2e/timer.sh --nano
+
+      - name: Crypto module (normal and Nano builds)
+        run: |
+          DISPLAY=:99 tests/e2e/crypto.sh
+          DISPLAY=:99 tests/e2e/crypto.sh --nano
+
+      - name: Tray module, an app living in a fake tray (normal and Nano builds)
+        run: |
+          DISPLAY=:99 tests/e2e/tray.sh
+          DISPLAY=:99 tests/e2e/tray.sh --nano
+
+      - name: Notifications module, clicked through a fake notification service (normal and Nano builds)
+        run: |
+          DISPLAY=:99 tests/e2e/notifications.sh
+          DISPLAY=:99 tests/e2e/notifications.sh --nano
+
+      - name: Keyring module, a device key in a throwaway keyring (normal and Nano builds)
+        run: |
+          DISPLAY=:99 tests/e2e/keyring.sh
+          DISPLAY=:99 tests/e2e/keyring.sh --nano

@@ -45,7 +45,7 @@ final class DevAppTest extends TestCase
         file_put_contents("$dir/main.php", "<?php\nfunction main(): void { (new App\\CounterApp())->run(); }\n");
         $root = dirname(__DIR__, 2);
         $runtime = "$root/src/Slint/Dev";
-        $php = [...glob("$runtime/*.php"), "$root/src/App.php", "$root/src/Backend.php", "$root/src/Component.php", "$root/src/Screen.php", "$root/src/Window.php", "$root/src/Navigator.php", "$root/src/Store.php", "$root/src/RootStore.php", "$root/src/Events.php", "$root/src/Timer.php", "$root/src/Modules.php", "$root/src/ModuleUnavailable.php", "$root/src/Slint/SlintBackend.php", "$root/src/Slint/SlintWindow.php", "$root/src/Slint/backend.php", "$dir/Counter.php", "$dir/Stores.php", "$dir/main.php"];
+        $php = [...glob("$runtime/*.php"), "$root/src/App.php", "$root/src/Backend.php", "$root/src/Component.php", "$root/src/Screen.php", "$root/src/Window.php", "$root/src/Navigator.php", "$root/src/Store.php", "$root/src/RootStore.php", "$root/src/Events.php", "$root/src/Timer.php", "$root/src/Links.php", "$root/src/LocalTime.php", "$root/src/Modules.php", "$root/src/ModuleUnavailable.php", "$root/src/Slint/SlintBackend.php", "$root/src/Slint/SlintWindow.php", "$root/src/Slint/backend.php", "$dir/Counter.php", "$dir/Stores.php", "$dir/main.php"];
         Bootstrap::write("$dir/boot.php", $php, ["$runtime/functions.php", "$root/src/Slint/backend.php", "$dir/main.php"]);
 
         [$proc, $pipes, $read, $shell] = $this->start($dir, restart: false);
@@ -122,7 +122,7 @@ final class DevAppTest extends TestCase
         file_put_contents("$dir/main.php", "<?php\nfunction main(): void { (new App\\ShelfApp())->run(); }\n");
         $root = dirname(__DIR__, 2);
         $runtime = "$root/src/Slint/Dev";
-        $php = [...glob("$runtime/*.php"), "$root/src/App.php", "$root/src/Backend.php", "$root/src/Component.php", "$root/src/Screen.php", "$root/src/Window.php", "$root/src/Navigator.php", "$root/src/Store.php", "$root/src/RootStore.php", "$root/src/Collection.php", "$root/src/Events.php", "$root/src/Timer.php", "$root/src/Modules.php", "$root/src/ModuleUnavailable.php", "$root/src/Slint/SlintBackend.php", "$root/src/Slint/SlintWindow.php", "$root/src/Slint/ImageValue.php", "$root/src/Slint/RowsValue.php", "$root/src/Slint/Images.php", "$root/src/Slint/backend.php", "$dir/Shelf.php", "$dir/main.php"];
+        $php = [...glob("$runtime/*.php"), "$root/src/App.php", "$root/src/Backend.php", "$root/src/Component.php", "$root/src/Screen.php", "$root/src/Window.php", "$root/src/Navigator.php", "$root/src/Store.php", "$root/src/RootStore.php", "$root/src/Collection.php", "$root/src/Events.php", "$root/src/Timer.php", "$root/src/Links.php", "$root/src/LocalTime.php", "$root/src/Modules.php", "$root/src/ModuleUnavailable.php", "$root/src/Slint/SlintBackend.php", "$root/src/Slint/SlintWindow.php", "$root/src/Slint/ImageValue.php", "$root/src/Slint/RowsValue.php", "$root/src/Slint/Images.php", "$root/src/Slint/backend.php", "$dir/Shelf.php", "$dir/main.php"];
         Bootstrap::write("$dir/boot.php", $php, ["$runtime/functions.php", "$root/src/Slint/backend.php", "$dir/main.php"]);
 
         [$proc, $pipes, $read, $shell] = $this->start($dir, restart: false);

@@ -12,6 +12,7 @@ final class ViewProject
     /**
      * @param array<string, ClassInfo> $classes
      * @param list<string>              $modules native modules the app enables (ragekit: modules:)
+     * @param string                    $icon    the app's icon (ragekit: icon:), absolute; '' = none
      */
     public function __construct(
         public readonly array $classes,
@@ -20,6 +21,7 @@ final class ViewProject
         public readonly string $outDir,
         public readonly string $projectDir = '',
         public readonly array $modules = [],
+        public readonly string $icon = '',
     ) {
     }
 }

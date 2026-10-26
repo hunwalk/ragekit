@@ -20,7 +20,7 @@ final class DevViews
 {
     public static function write(ViewProject $project, string $outDir): DevOutput
     {
-        $compiled = (new SlintCompiler($project->kits, $project->activeKit, $project->projectDir, dev: true))->compile($project->classes);
+        $compiled = (new SlintCompiler($project->kits, $project->activeKit, $project->projectDir, dev: true, icon: $project->icon))->compile($project->classes);
         FetchDependencies::fetchUsedKits($project->kits->used($compiled->imports));
         @mkdir("$outDir/screens", 0777, true);
         $slint = $compiled->slint;

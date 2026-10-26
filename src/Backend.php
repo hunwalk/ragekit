@@ -27,6 +27,9 @@ interface Backend
     /** The app's folder: where the executable and its assets are (in dev mode: the project). */
     public function appDir(): string;
 
+    /** A folder for the app's own cache files (created): ~/.cache/<app> on Linux, %LOCALAPPDATA%\<app> on Windows. */
+    public function cacheDir(): string;
+
     /** Writes one line to the app's error output (stderr). */
     public function printError(string $line): void;
 
@@ -37,4 +40,29 @@ interface Backend
     public function startTimer(int $id, int $milliseconds, bool $repeat): void;
 
     public function stopTimer(int $id): void;
+
+    /** Hides a window without closing it, or shows it again. */
+    public function setVisible(int $window, bool $visible): void;
+
+    /** Brings a window to the front (as far as the OS's window manager allows). */
+    public function raise(int $window): void;
+
+    /** @return list<string> the URL schemes the app declared (project.yml `ragekit: { links: [...] }`) */
+    public function links(): array;
+
+    /**
+     * For an app that declares links: true when this is its running instance; false when this launch
+     * handed its link (or "come to the front") to the running one and should end. Links arrive as
+     * Events::deliver('@links', 0, 'open', $url) / ('@links', 0, 'focus', '').
+     */
+    public function claimInstance(): bool;
+
+    /** Makes the app the OS's handler for $scheme: links; '' or why it couldn't. */
+    public function registerLink(string $scheme): string;
+
+    /** Seconds east of UTC of the computer's local time at unix time $at. */
+    public function utcOffset(int $at): int;
+
+    /** Opens $url in the user's browser; '' or why it couldn't. */
+    public function openUrl(string $url): string;
 }

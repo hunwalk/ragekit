@@ -94,6 +94,22 @@ void start_resize(slint::Window &window, Edge edge)
     post(window, hits[static_cast<int>(edge)]);
 }
 
+// Windows' foreground lock refuses this to an app in the background, unless the user's last input went
+// to it, or a launch the user started allowed it (a second instance handing over a link does).
+// Refused, Windows flashes the taskbar button instead.
+void raise(slint::Window &window, const char *)
+{
+    window.set_minimized(false);
+    HWND hwnd = window.win32_hwnd();
+    if (hwnd == nullptr) {
+        return;
+    }
+    if (IsIconic(hwnd)) {
+        ShowWindow(hwnd, SW_RESTORE);
+    }
+    SetForegroundWindow(hwnd);
+}
+
 } // namespace rk::win
 
 #endif

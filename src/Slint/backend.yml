@@ -19,6 +19,8 @@ sources:
   - src/RootStore.php
   - src/Events.php
   - src/Timer.php
+  - src/Links.php
+  - src/LocalTime.php
   - src/Modules.php
   - src/ModuleUnavailable.php
   - src/Slint/SlintBackend.php

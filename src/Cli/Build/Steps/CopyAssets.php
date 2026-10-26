@@ -48,6 +48,19 @@ final class CopyAssets implements Step
                 $copied[$path] = true;
             }
         }
+        // The app's icon (ragekit: icon:): next to the executable as icon.<ext>; on Windows a png also
+        // becomes the executable's icon (tpc's resource: icon, given by bare name next to tpc.yml).
+        $icon = \RageKit\Cli\Build\AppIcon::path($context->project);
+        if ($icon !== '') {
+            $name = 'icon.' . strtolower(pathinfo($icon, PATHINFO_EXTENSION));
+            GeneratedFile::write("$out/$name", (string) file_get_contents($icon));
+            $copied[$name] = true;
+            if (\RageKit\Cli\Toolchain\Platform::isWindows() && str_ends_with($name, '.png')) { // untested on Windows
+                GeneratedFile::write("$out/app.ico", \RageKit\Cli\Build\AppIcon::ico($icon));
+                $copied['app.ico'] = true;
+                $context->config['resource']['icon'] = 'app.ico';
+            }
+        }
         $removed = self::removeStale($out, array_keys($copied));
         $count = count($copied);
         $summary = $count === 0 ? 'none' : $count . ($count === 1 ? ' file' : ' files');

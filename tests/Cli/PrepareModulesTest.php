@@ -63,7 +63,7 @@ final class PrepareModulesTest extends TestCase
     public function testUnknownModule(): void
     {
         $this->expectException(RageKitException::class);
-        $this->expectExceptionMessage("unknown module 'gps' (installed: audio, http)");
+        $this->expectExceptionMessage("unknown module 'gps' (installed: audio, crypto, http, keyring, notifications, tray)");
         (new PrepareModules())->run($this->context("  modules: [gps]\n"));
     }
 
@@ -109,6 +109,31 @@ final class PrepareModulesTest extends TestCase
         $context = $this->context("  modules: [audio]\n  assets: [assets/]\n");
         $summary = (new ApplyOptions())->run($context);
         self::assertStringNotContainsString('ignored', $summary);
+    }
+
+    public function testLinksBecomeADefine(): void
+    {
+        $context = $this->context("  links: [devnull, My.App+x]\n");
+        self::assertStringContainsString('links: devnull, my.app+x', (new ApplyOptions())->run($context));
+        self::assertContains('RAGEKIT_LINKS=devnull__my.app+x', $context->config['defines']);
+    }
+
+    /** @return iterable<array{0: string, 1: string}> */
+    public static function badLinks(): iterable
+    {
+        yield ['  links: devnull', 'links must be a list of URL schemes'];
+        yield ['  links: [1app]', "links: '1app' isn't a URL scheme"];
+        yield ['  links: [my_app]', "links: 'my_app' isn't a URL scheme"];
+        yield ['  links: [https]', "links: 'https' belongs to the browser"];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('badLinks')]
+    public function testBadLinks(string $yaml, string $message): void
+    {
+        $context = $this->context("$yaml\n");
+        $this->expectException(RageKitException::class);
+        $this->expectExceptionMessage($message);
+        (new ApplyOptions())->run($context);
     }
 
     public function testCopyAssets(): void

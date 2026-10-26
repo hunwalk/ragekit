@@ -36,6 +36,8 @@ abstract class App
     {
         $this->backend = \ragekit_backend();
         Timer::attach($this->backend);
+        Links::attach($this->backend);
+        LocalTime::attach($this->backend);
         if (self::$base === '') {
             self::$base = $this->backend->appDir();
         }
@@ -117,9 +119,30 @@ abstract class App
         $this->backend->printError('ragekit: uncaught ' . get_class($e) . ': ' . $e->getMessage());
     }
 
-    /** Creates the store, opens the main window, calls start(), then runs until quit(). */
+    /**
+     * A link with one of the app's schemes (project.yml `ragekit: { links: [...] }`) was opened: the
+     * app was started by it, or another launch handed it over. The main window has been brought to
+     * the front already. Runs on the UI thread, after start(), like a click.
+     */
+    protected function linkOpened(string $url): void
+    {
+    }
+
+    /**
+     * Creates the store, opens the main window, calls start(), then runs until quit(). An app that
+     * declares links runs once: a second launch hands its link to the first and returns at once.
+     */
     public function run(): void
     {
+        if ($this->backend->links() !== [] && !$this->backend->claimInstance()) {
+            return;
+        }
+        Events::on('@links', 0, 'open', function (string $url): void {
+            $this->linkReceived($url);
+        });
+        Events::on('@links', 0, 'focus', function (string $data): void {
+            $this->linkReceived('');
+        });
         RootStore::register($this->createStore());
         $this->main = $this->open($this->firstScreen(), $this->title(), $this->width(), $this->height());
         $this->start();
@@ -154,10 +177,35 @@ abstract class App
         $this->backend->close($window);
     }
 
+    /**
+     * @internal Another launch handed over a link ('' = only "come to the front"), or this launch was
+     * started by one. (Public: the event closures call it, and TypePHP checks private access by the
+     * object's own class.)
+     */
+    public function linkReceived(string $url): void
+    {
+        if ($this->main !== null) {
+            if ($this->main->visible()) {
+                $this->main->raise();
+            } else {
+                $this->main->show(); // hidden in the tray: back on screen (show() raises it too)
+            }
+        }
+        if ($url !== '') {
+            $this->linkOpened($url);
+        }
+    }
+
     /** @internal The backend caught an exception from a handler or a module event. */
     public function exceptionThrown(\Throwable $e): void
     {
         $this->uncaughtException($e);
+    }
+
+    /** A folder for the app's cache files (created), e.g. ~/.cache/<app> on Linux. Safe to delete. */
+    public function cacheDir(): string
+    {
+        return $this->backend->cacheDir();
     }
 
     /** The active backend, for backend-specific APIs. */

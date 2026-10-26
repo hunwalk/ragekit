@@ -255,12 +255,43 @@ Everything ends up in `build/slint/` (`build/<backend>/` in general):
 | `libslint_cpp.so` / `slint_cpp.dll` | Slint's library |
 | `librk_module_<name>.so` / `rk_module_<name>.dll` | one per enabled module (loaded at runtime) |
 | your `assets:` | copied with their folder structure |
+| `icon.png` (with `icon:`) | the app's icon; on Windows also `app.ico` for the executable |
 | `tpc.yml`, `generated/`, `cache/` | build files, not needed to run |
 
-To ship the app, copy the executable together with the libraries and assets next to it. On
+To ship the app, `ragekit package` puts those files into `dist/` (below), or copy the executable
+together with the libraries and assets next to it yourself. On
 Windows, a normal (non-Nano) build also needs PHP's DLLs from the TypePHP release
 (`php8ts.dll`, `phpx.dll`, …); ragekit doesn't copy those yet, so `ragekit run` finds them on
 `PATH` but a copied app won't. Nano builds don't need them.
+
+## Packaging: `ragekit package`
+
+`ragekit package` builds the app (same options as `build`: `--nano`, `--kit`), then makes a file to
+hand to people in `dist/`:
+
+- `--format=tar` (the default): `<name>-<version>-linux-<arch>.tar.gz`, a folder with the runtime
+  files only. Unpack it anywhere and run the executable inside: it finds its libraries next to it.
+- `--format=deb`: `<name>_<version>_<arch>.deb` for Debian and Ubuntu. It installs the app into
+  `/opt/<name>`, a `/usr/bin/<name>` link, and a menu entry (a `.desktop` file with the app's icon,
+  and its link schemes, so an installed app handles its links without `Links::register()`).
+  `Depends:` lists the system libraries the binaries link (from `dpkg-shlibdeps`); `Recommends:`
+  the ones modules load at run time (libsecret for `keyring`, GLib for `notifications`/`tray`).
+  Needs `dpkg-dev` and `fakeroot`.
+
+```yaml
+ragekit:
+  icon: assets/icon.png
+  package:
+    version: 1.0.0                 # default 0.0.0
+    description: |                 # the first line is the summary
+      A desktop client for example.com.
+      More about it on the following lines.
+    maintainer: Ann <ann@example.com>
+    homepage: https://example.com
+```
+
+Normal builds on Linux contain PHP's runtime (statically, or the system's `libphp` next to the
+executable); Nano builds are smaller. Not yet: AppImage, Windows installers and zips, macOS bundles.
 
 ## project.yml options
 
@@ -274,6 +305,9 @@ The `ragekit:` section:
 | `nano` | `true` / `false` (default) | build with TypePHP's Nano runtime; see [toolchain.md](toolchain.md#normal-and-nano-builds) |
 | `modules` | list, e.g. `[audio]` | native modules the app uses; see [modules.md](modules.md) |
 | `assets` | list of files or folders, e.g. `[assets/]` | copied next to the executable; read them with `App::resolve('assets/…')` |
+| `icon` | a `.png` (or `.svg`) file, e.g. `assets/icon.png` | the app's icon: every window shows it, it's copied next to the executable as `icon.png`, and the `.desktop` file `Links::register()` writes names it. On Windows a png also becomes the `.exe`'s icon (not yet tested there) |
+| `package` | `{ version, description, maintainer, homepage }` | what `ragekit package` writes into the package (see above) |
+| `links` | list of URL schemes, e.g. `[myapp]` | the app handles `myapp://…` links and runs as a single instance; see [links.md](links.md) |
 | `dev` | `{ on-top: true }` | `ragekit dev` keeps the windows above others (same as `--on-top`) |
 
 Renderers:

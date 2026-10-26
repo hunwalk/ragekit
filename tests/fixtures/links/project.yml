@@ -1,0 +1,12 @@
+# App links (rktest://…), single instance: tests/e2e/links.sh (normal and --nano).
+name: links
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software
+  links: [rktest]
+  icon: icon.png

@@ -61,6 +61,27 @@ function slint_timer_start(int $id, int $milliseconds, bool $repeat): void {}
 
 function slint_timer_stop(int $id): void {}
 
+/** The URL schemes the app declared (project.yml `ragekit: { links: [...] }`), comma-separated. */
+function slint_links(): string {}
+
+/** 1: this is the app's running instance; 0: this launch handed its link over (exit). */
+function slint_links_claim(string $schemes): int {}
+
+/** Makes the app the OS's handler for $scheme links; '' or the error. */
+function slint_links_register(string $scheme): string {}
+
+/** Seconds east of UTC of the computer's local time at unix time $at. */
+function slint_utc_offset(int $at): int {}
+
+/** Opens $url in the user's browser; '' or the error. */
+function slint_open_url(string $url): string {}
+
+/** Hides window $window without closing it, or shows it again. */
+function slint_window_set_visible(int $window, bool $visible): void {}
+
+/** Brings window $window (titled $title) to the front. */
+function slint_window_raise(int $window, string $title): void {}
+
 /** Runs the Slint event loop until slint_quit(). */
 function slint_run(): void {}
 

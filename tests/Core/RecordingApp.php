@@ -60,6 +60,11 @@ class RecordingApp extends App
         return 480;
     }
 
+    protected function linkOpened(string $url): void
+    {
+        $this->recorder->calls[] = "link $url";
+    }
+
     protected function mainWindowClosed(): void
     {
         if ($this->onMainClosed !== null) {

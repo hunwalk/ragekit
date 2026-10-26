@@ -37,10 +37,18 @@ void closeLibrary(void *library)
 std::string loadError(const std::string &path)
 {
     DWORD code = GetLastError();
-    char *text = nullptr;
-    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, code, 0, reinterpret_cast<char *>(&text), 0, nullptr);
-    std::string why = text != nullptr ? text : "error " + std::to_string(code);
-    LocalFree(text);
+    wchar_t *text = nullptr; // as UTF-8 below: FormatMessageA would give the ANSI code page
+    FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, code, 0, reinterpret_cast<wchar_t *>(&text), 0, nullptr);
+    std::string why = "error " + std::to_string(code);
+    if (text != nullptr) {
+        int len = WideCharToMultiByte(CP_UTF8, 0, text, -1, nullptr, 0, nullptr, nullptr);
+        if (len > 1) {
+            why.assign(static_cast<size_t>(len), '\0');
+            WideCharToMultiByte(CP_UTF8, 0, text, -1, why.data(), len, nullptr, nullptr);
+            why.resize(static_cast<size_t>(len - 1));
+        }
+        LocalFree(text);
+    }
     while (!why.empty() && (why.back() == '\n' || why.back() == '\r' || why.back() == ' ')) {
         why.pop_back();
     }

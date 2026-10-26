@@ -378,9 +378,28 @@ RK_API void rk_timer_stop(int64_t id)
     deliver([] { parkedTimers.clear(); });
 }
 
+RK_API void rk_window_set_visible(int64_t window, int visible)
+{
+    if (auto *instance = find(window)) {
+        if (visible != 0) {
+            instance->show();
+        } else {
+            instance->hide();
+        }
+    }
+}
+
+RK_API void rk_window_raise(int64_t window, const char *title, size_t title_len)
+{
+    if (auto *instance = find(window)) {
+        rk::win::raise(instance->window(), std::string(title, title_len).c_str());
+    }
+}
+
 RK_API void rk_run(void)
 {
     slint::run_event_loop(slint::EventLoopMode::RunUntilQuit);
+    rk_links_stop();
     timers.clear();
     parkedTimers.clear();
     rk_modules_reset(); // stop module threads (e.g. audio) while everything they use still exists

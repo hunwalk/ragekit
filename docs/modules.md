@@ -1,7 +1,8 @@
 # Native modules
 
 A module gives your app access to something native that PHP alone can't do, such as playing
-sound. RageKit ships one module today, `audio`. You can write your own in C++.
+sound. RageKit ships `audio`, `http`, `crypto`, `keyring`, `notifications` and `tray`. You can write
+your own in C++.
 
 A module has three parts:
 
@@ -94,6 +95,7 @@ $sound->play();
 | `stop()` | Stops and rewinds to the start. |
 | `seek(float $seconds)` | Jumps to a position. NaN and infinity are ignored. |
 | `setVolume(float $volume)` | `0` is silent, `1` is as recorded. Negative means `0`; NaN and infinity are ignored. |
+| `speed(float $speed)` | Playback speed, `1` is normal (e.g. `1.5` for a voice note). The pitch changes with it. |
 | `position(): float` / `duration(): float` | Current position and length, in seconds. |
 | `isPlaying(): bool` | Whether it is playing right now. |
 | `onFinished(Closure $fn)` | Runs `$fn()` once when the sound plays to its end. |
@@ -108,7 +110,30 @@ output. Use it for tests and on machines without speakers; progress and "finishe
 `demo/player` is a complete example: Play / Pause / Stop, a progress bar, a volume slider, and a
 "Finished" status. It shows "Audio unavailable" when the library isn't there.
 
-Not in this version: recording, choosing an output device, streaming, and effects.
+### Recording
+
+`RageKit\Audio\Recorder` records the default microphone as a voice note: 16 kHz, mono, 16-bit WAV,
+up to 61 seconds (what the dev-null.sh server takes), one recording at a time.
+
+```php
+use RageKit\Audio\Recorder;
+
+$this->recorder = Recorder::start(
+    onLevel: fn(int $level) => $this->level = $level,   // 0-100, about 10 times a second
+    onFull: fn() => $this->finish(),                    // 61 seconds reached
+);
+// …
+$note = $this->recorder->stop($this->app->cacheDir() . '/note.wav');
+$note->path;       // the WAV file
+$note->seconds;    // 2.4
+$note->waveform;   // 48 loudness bars, 0-100 each, for drawing it
+```
+
+`start()` throws `RuntimeException` when no microphone can be opened; `stop()` when the file can't be
+written. `cancel()` stops without keeping anything. With `RAGEKIT_AUDIO_NULL=1` it records silence
+from no device (tests). `App::cacheDir()` is a good place for recordings on their way to a server.
+
+Not in this version: choosing a device, streaming, other formats (e.g. Opus) and effects.
 
 ## The http module
 
@@ -148,6 +173,7 @@ $download->cancel();                       // e.g. from a Cancel button
 | `Http::get($url)`, `Http::post($url, $body)`, `Http::request($method, $url)` | Make a request (not sent yet). |
 | `->header($name, $value)` | Adds a request header. A name or value with a line break throws `InvalidArgumentException`. |
 | `->body($body)` | The request body (any bytes). |
+| `->multipart(Multipart $form)` | Sends a form with files as `multipart/form-data` (sets the body and its `Content-Type`). |
 | `->timeout($seconds)` | Gives up after this long **without progress**: while connecting, or when no data arrives. Not a limit on the whole transfer, so big downloads work. Default 30. |
 | `->saveTo($path)` | Writes the body to a file instead of `Response::$body`. Missing folders are created. The file appears only for a 2xx answer; it is written as `<path>.part` first. |
 | `->onProgress(Closure $fn)` | `$fn(int $received, int $total)` about ten times a second while data arrives; `$total` is `-1` when unknown. |
@@ -159,6 +185,21 @@ headers joined with `, `), `body` (any bytes), `error` (`''` when the server ans
 why not: no network, unknown host, TLS, timeout, a file that can't be written, or the module
 missing), `ok()` (no error and a 2xx status) and `header($name)` (case-insensitive, `''` when
 missing). A 404 or 500 is a normal response with `ok()` false, not an error.
+
+A form with files, as an HTML form uploads them:
+
+```php
+use RageKit\Http\Multipart;
+
+$form = (new Multipart())
+    ->field('caption', 'Holiday')
+    ->file('images[]', 'beach.jpg', file_get_contents($path), 'image/jpeg');
+Http::post('https://example.com/upload', '')->multipart($form)->send(…);
+```
+
+`field($name, $value)` and `file($name, $filename, $content, $type = 'application/octet-stream')`
+take any bytes; quotes and line breaks in names are percent-encoded, as browsers do. `body()` and
+`contentType()` give the encoded form, e.g. to sign or hash it first.
 
 Redirects are followed (up to 10); `headers` are those of the final answer. Compressed answers
 are decompressed. Requests send `User-Agent: RageKit` unless you set your own.
@@ -173,8 +214,205 @@ What does the work:
 `demo/fetch` looks up a GitHub repository and downloads its README, with a progress bar and
 Cancel.
 
-Not in this version: WebSockets, streaming a body as it arrives, cookies, proxy settings and TLS
-options.
+Not in this version: WebSockets, streaming a body as it arrives or an upload from a file without
+reading it into memory, cookies, proxy settings and TLS options.
+
+## The crypto module
+
+Ed25519 signatures, SHA-256 and SHA-512, random bytes from the operating system, and OpenSSH's
+formats for keys and signatures. Enable it with `ragekit: { modules: [crypto] }`. It works the same
+in Nano builds, whose PHP has no `hash()` for every algorithm and no `sodium`.
+
+```php
+use RageKit\Crypto\Ed25519Key;
+use RageKit\Crypto\Hash;
+use RageKit\Crypto\Random;
+use RageKit\Crypto\Ssh;
+
+$key = Ed25519Key::generate();                 // or Ed25519Key::fromSeed($savedSeed)
+$seed = $key->seed();                          // 32 bytes: keep it safe (see the keyring module)
+
+$signature = $key->sign($message);             // 64 bytes
+Ed25519Key::verify($key->publicKey(), $message, $signature);   // true
+
+Ssh::publicKey($key, 'my laptop');             // "ssh-ed25519 AAAA… my laptop"
+Ssh::fingerprint($key);                        // "SHA256:…", as ssh-keygen -l prints it
+Ssh::sign($key, $message, 'my-namespace');     // what ssh-keygen -Y sign -n my-namespace makes
+
+Hash::sha256($data);                           // hex, like hash('sha256', $data)
+Hash::sha512($data, binary: true);             // 64 raw bytes
+Random::bytes(16);                             // 16 bytes from getrandom / BCryptGenRandom
+```
+
+| Class | Methods |
+|---|---|
+| `Ed25519Key` | `generate()`, `fromSeed(string $seed)` (32 bytes, else `InvalidArgumentException`), `seed()`, `publicKey()` (32 bytes), `sign(string $message)` (64 bytes), static `verify(string $publicKey, string $message, string $signature): bool` (false for wrong sizes too) |
+| `Ssh` | `publicKey(Ed25519Key, string $comment = '')`, `fingerprint(Ed25519Key)`, `sign(Ed25519Key, string $message, string $namespace)`, `publicKeyBlob(Ed25519Key)` (the key in SSH's wire format) |
+| `Hash` | `sha256(string $data, bool $binary = false)`, `sha512(...)` |
+| `Random` | `bytes(int $count)` (1 to 65536) |
+
+All of them take and return raw bytes, except the hex `Hash` results and the text SSH formats.
+
+`Ssh::sign()` returns the signature's base64 on one line, as an HTTP header carries it. It is the
+body of the armored file `ssh-keygen -Y sign` writes, and byte for byte the same signature
+(Ed25519 is deterministic). Wrap it to check it with OpenSSH:
+
+```sh
+printf -- '-----BEGIN SSH SIGNATURE-----\n%s\n-----END SSH SIGNATURE-----\n' "$sig" | fold -w 70 > msg.sig
+ssh-keygen -Y verify -f allowed_signers -I me -n my-namespace -s msg.sig < msg
+```
+
+What does the work: [Monocypher](https://monocypher.org) 4.0.2 (BSD-2-Clause or CC0, fetched by
+the build) for Ed25519 and SHA-512, a SHA-256 of RageKit's own, and the OS's random generator.
+Ed25519 is RFC 8032's, so keys and signatures are interchangeable with sodium, OpenSSH and
+others. Windows uses `BCryptGenRandom`. macOS: not yet.
+
+Not in this version: encryption, other key types (RSA, ECDSA), reading OpenSSH private key files.
+
+## The keyring module
+
+Secrets in the operating system's credential store, where they are encrypted and tied to the
+user's login: a device key, a token, a password. Enable it with `ragekit: { modules: [keyring] }`.
+
+```php
+use RageKit\Crypto\Ed25519Key;
+use RageKit\Keyring\Keyring;
+use RageKit\Keyring\KeyringException;
+
+if (!Keyring::available()) {
+    $this->status = Keyring::why();            // e.g. "no Secret Service: …"
+    return;
+}
+try {
+    $seed = Keyring::get('com.example.app', 'device-key');      // null when none is stored
+    if ($seed === null) {
+        $key = Ed25519Key::generate();
+        Keyring::set('com.example.app', 'device-key', $key->seed());
+    }
+} catch (KeyringException $e) {
+    $this->status = $e->getMessage();          // locked and not unlocked, the service went away, …
+}
+Keyring::delete('com.example.app', 'device-key');                // signing out
+```
+
+| Method | What it does |
+|---|---|
+| `available(): bool`, `why(): string` | Whether the store can be used, and if not why (`''` when it can). |
+| `set($service, $account, $secret)` | Stores the secret (any bytes), replacing one already there. |
+| `get($service, $account): ?string` | The secret, or `null` when none is stored. |
+| `delete($service, $account)` | Removes it; nothing happens when there is none. |
+
+One secret per service and account. Use your app's reverse-DNS name as the service. `set`, `get`
+and `delete` throw `KeyringException` when the store fails (also for names that aren't UTF-8), and
+`InvalidArgumentException` for an empty service or account, a NUL byte in either, or a `:` in the
+service.
+
+`get` tells "nothing stored" (`null`) apart from "stored, but the keyring is locked" (a
+`KeyringException`, e.g. when the user dismissed the unlock prompt), so an app doesn't mistake a
+locked keyring for a missing key and replace it.
+
+The calls wait for the store. That is quick, except when the keyring is locked: the OS then shows
+its own unlock prompt and the call returns once the user answered.
+
+What does the work:
+
+- **Linux:** the Secret Service over D-Bus, which GNOME Keyring, KWallet and KeePassXC provide,
+  through libsecret (`libsecret-1-0`, installed on desktop distributions). The library is loaded
+  at runtime, so building needs nothing extra, and without it the module reports itself
+  unavailable. Entries use the schema `org.ragekit.Secret` and show up in Seahorse as
+  "<service> (<account>)". The secret is stored as hex text.
+- **Windows:** Credential Manager, generic credentials named `<service>:<account>`, at most 2560
+  bytes. It needs a desktop logon: an app started over SSH with a key gets "the specified logon
+  session does not exist".
+- **macOS:** not yet (`why()` says so).
+
+There is no fallback to a plain file: when no store is available, your app decides what to do.
+
+## The notifications module
+
+Desktop notifications the user can click. Enable it with `ragekit: { modules: [notifications] }`.
+
+```php
+use RageKit\Notifications\Notification;
+
+if (Notification::available()) {
+    $n = Notification::show('Bob', 'Are you coming?',
+        onClick: fn() => $this->openConversation('bob'),
+        onClose: fn() => $this->notification = null);
+}
+$n->close();                                   // take it away, e.g. once the message was read
+```
+
+| Method | What it does |
+|---|---|
+| `available(): bool`, `why(): string` | Whether notifications can be shown, and if not why. |
+| `show($title, $body = '', ?Closure $onClick = null, ?Closure $onClose = null)` | Shows one; the body is plain text. Throws `RuntimeException` (with the reason) when it can't. |
+| `->id`, `->open()`, `->close()` | Its id, whether it's still shown, and taking it away. |
+
+`onClick` runs when the user clicks the notification, `onClose` when it goes away (clicked,
+dismissed, expired or closed by the app), on the UI thread like a click in a window.
+
+What does the work:
+
+- **Linux:** the desktop's notification service (`org.freedesktop.Notifications` on D-Bus: GNOME,
+  KDE, …) through GLib's GDBus, loaded at runtime (GLib is part of every desktop). A small thread
+  listens for clicks. The app name shown is the executable's name.
+- **Windows, macOS:** not yet (`why()` says so).
+
+Not in this version: replying from the notification (the freedesktop standard has no inline reply;
+GNOME doesn't offer one), buttons, icons and images, sounds, and the taskbar badge.
+
+## The tray module
+
+An icon in the system tray (the panel's status area) with a tooltip, a click and a menu. Enable it
+with `ragekit: { modules: [tray] }`. One icon per app.
+
+```php
+use RageKit\Tray\Tray;
+
+final class MyApp extends App
+{
+    protected function start(): void
+    {
+        if (!Tray::available()) {
+            return;                               // Tray::why() says why
+        }
+        Tray::show('assets/tray.png', 'My app', onClick: fn() => $this->main()->show())
+            ->item('Open', fn() => $this->main()->show())
+            ->separator()
+            ->item('Quit', fn() => $this->quit());
+    }
+
+    /** Keep running in the tray: closing the window only hides it. */
+    protected function mainWindowClosed(): void
+    {
+        $this->main()->hide();
+    }
+}
+```
+
+| Method | What it does |
+|---|---|
+| `available(): bool`, `why(): string` | Whether the desktop has a tray, and if not why. |
+| `show($icon, $tooltip = '', ?Closure $onClick = null)` | Shows the icon (a png or svg file; relative paths are the app's folder, so ship it with `ragekit: { assets: [...] }`), or updates it. `onClick` runs when the icon is clicked; the menu opens with the other mouse button. Throws `RuntimeException` when it can't. |
+| `item($label, Closure $fn)`, `separator()`, `clearMenu()` | The menu, in order. |
+| `tooltip($text)` | Changes the tooltip. |
+| `remove()` | Takes the icon away. |
+
+`Window::hide()` takes a window off the screen without closing it (its screens keep their state)
+and `Window::show()` brings it back to the front; any app can use them.
+
+What does the work:
+
+- **Linux:** the StatusNotifierItem protocol and com.canonical.dbusmenu over D-Bus, through GLib's
+  GDBus loaded at runtime. KDE, XFCE and most other desktops show these icons; **GNOME needs the
+  AppIndicator extension** ("AppIndicator and KStatusNotifierItem Support", preinstalled on Ubuntu).
+  Without a tray host, `available()` is false and `why()` says so. The icon is passed as a file
+  (its folder and name), so the desktop draws it at its own size.
+- **Windows, macOS:** not yet (`why()` says so).
+
+Not in this version: submenus, checkable items, icons in the menu, an attention or overlay icon, and
+scroll events.
 
 ## Events: from native threads to PHP
 

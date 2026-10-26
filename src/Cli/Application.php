@@ -9,6 +9,7 @@ use RageKit\Cli\Command\DevCommand;
 use RageKit\Cli\Command\DoctorCommand;
 use RageKit\Cli\Command\EjectCommand;
 use RageKit\Cli\Command\MakeCommand;
+use RageKit\Cli\Command\PackageCommand;
 use RageKit\Cli\Command\StubPublishCommand;
 use RageKit\Cli\Command\SetupCommand;
 use RageKit\Cli\Make\MakeKind;
@@ -29,6 +30,7 @@ final class Application extends ConsoleApplication
             new SetupCommand($rageKitRoot),
             new DoctorCommand($rageKitRoot),
             new EjectCommand($rageKitRoot),
+            new PackageCommand($rageKitRoot),
             new StubPublishCommand($rageKitRoot),
         ]);
         foreach (MakeKind::cases() as $kind) {
