@@ -42,6 +42,10 @@ else
     row1=111; row2=171; entry=58; second=52
 fi
 x="python3 -I $root/tests/e2e"
+# Before any click: Ctrl+F focuses the search box (ref="search"), so typing and Return go to it.
+$x/xkey.py Control_L+f "$window"; sleep 0.3
+$x/xtype.py ab "$window"
+$x/xkey.py Return "$window"; sleep 0.3
 $x/xmove.py "100,$row1" "100,$row2" 300,320               # hover ann, then bob, then away
 $x/xclick.py "100,$row1"                                   # press ann's row
 $x/xclick.py "370,$row2"                                   # bob's Wave: the button, not the row
@@ -60,7 +64,7 @@ wait "$pid" || fail "the app's exit code was $?"
 pid=
 window=
 
-expected=$(printf '%s\n' "hover in ann" "hover out ann" "hover in bob" "hover out bob" "hover in ann" "open ann" "hover out ann" \
+expected=$(printf '%s\n' "find" "submit ab" "hover in ann" "hover out ann" "hover in bob" "hover out bob" "hover in ann" "open ann" "hover out ann" \
     "hover in bob" "wave bob" "hover out bob" "hover in ann" "hover out ann" "remove ann" "find" "escape")
 [ "$(cat "$tmp/app.log")" = "$expected" ] || { diff <(echo "$expected") "$tmp/app.log"; fail "unexpected events"; }
 rm -rf "$tmp"

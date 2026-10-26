@@ -2,7 +2,7 @@
     <Shortcut keys="Ctrl+F" onPress="find" />
     <Shortcut keys="Escape" onPress="escape" />
     <Label text="{{ $status }}" />
-    <Entry value="{{ $query }}" />
+    <Entry value="{{ $query }}" ref="search" onSubmit="submit" />
     @foreach ($people as $p)
         <View style="row" onPress="open($p->name)" onHoverIn="hoverIn($p->name)" onHoverOut="hoverOut($p->name)">
             <Text>{{ $p->name }}</Text>

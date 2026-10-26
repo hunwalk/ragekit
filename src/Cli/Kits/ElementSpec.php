@@ -16,6 +16,8 @@ final class ElementSpec
      *                                             (onSelect: the clicked item, a string), handed to the handler
      * @param array<string, string>   $enables attribute => a bool property set to true when the template
      *                                         uses the event (a Textarea sends on Return only with onSubmit)
+     * @param string|null             $focus   an int property the compiler raises to focus the input
+     *                                         (ref="…" + Screen::focus()); null: it can't take a ref
      */
     public function __construct(
         public readonly string $component,
@@ -24,6 +26,7 @@ final class ElementSpec
         public readonly bool $children,
         public readonly array $eventValues = [],
         public readonly array $enables = [],
+        public readonly ?string $focus = null,
     ) {
     }
 
@@ -54,6 +57,7 @@ final class ElementSpec
                 $events[(string) $attribute] = (string) $event;
             }
         }
-        return new self((string) $raw['component'], $props, $events, (bool) ($raw['children'] ?? false), $values, $enables);
+        return new self((string) $raw['component'], $props, $events, (bool) ($raw['children'] ?? false), $values, $enables,
+            isset($raw['focus']) ? (string) $raw['focus'] : null);
     }
 }

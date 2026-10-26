@@ -32,6 +32,7 @@ elements:
       onClick: clicked
   Entry:
     component: RkEntry
+    focus: focus-request
     props:
       value: { type: string, property: text, twoWay: edited }
     events:
@@ -87,6 +88,7 @@ elements:
       checked: { type: bool, twoWay: toggled }
   Textarea:
     component: RkTextarea
+    focus: focus-request
     props:
       value: { type: string, property: text, twoWay: edited }
       placeholder: string

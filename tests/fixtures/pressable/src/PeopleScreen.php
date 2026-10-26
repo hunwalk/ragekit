@@ -57,9 +57,16 @@ final class PeopleScreen extends Screen
         $this->event("remove $name");
     }
 
+    /** Ctrl+F: the search box takes the keyboard focus. */
     public function find(): void
     {
+        $this->focus('search');
         $this->event('find');
+    }
+
+    public function submit(): void
+    {
+        $this->event('submit ' . $this->query);
     }
 
     public function escape(): void

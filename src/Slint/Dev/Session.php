@@ -397,6 +397,9 @@ final class Session
             if ($property->isStatic() || ($property->isReadOnly() && !$readonly) || !$property->isInitialized($component)) {
                 continue;
             }
+            if ($property->getDeclaringClass()->getName() === Screen::class) {
+                continue; // Screen's own (a focus request): not state to bring back after a PHP restart
+            }
             $value = $property->getValue($component);
             if ($value instanceof \RageKit\Collection) {
                 $props[$property->getName()] = self::collection($value);

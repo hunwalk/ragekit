@@ -49,7 +49,7 @@ Every kit that provides a core element accepts exactly these attributes for it:
 |---|---|
 | `Label` | `text`, `size` (`body`, `title`, `display`) |
 | `Button` | `text`, `variant` (`default`, `secondary`, `outline`, `ghost`, `destructive`), event `onClick` |
-| `Entry` | `value` (two-way string), `onSubmit` (Return pressed) |
+| `Entry` | `value` (two-way string), `onSubmit` (Return pressed); `focus:` (for `ref`) |
 | `Checkbox` | `text`, `checked` (two-way bool) |
 | `Slider` | `value` (two-way float), `min`, `max` (default 0 to 1) |
 | `Select` | `value` (two-way string), `options` (list) |
@@ -58,7 +58,7 @@ Every kit that provides a core element accepts exactly these attributes for it:
 | `Card` | `title`, contains other elements |
 | `Separator` | (none) |
 | `Switch` | `text`, `checked` (two-way bool) |
-| `Textarea` | `value` (two-way string), `placeholder`, `rows` (int), `maxRows` (int), `onSubmit` (Return; Shift/Alt+Return adds a line) |
+| `Textarea` | `value` (two-way string), `placeholder`, `rows` (int), `maxRows` (int), `onSubmit` (Return; Shift/Alt+Return adds a line); `focus:` (for `ref`) |
 | `RadioGroup` | `value` (two-way string), `options` (list) |
 | `Toggle` | `text`, `pressed` (two-way bool) |
 | `Badge` | `text`, `variant` (`default`, `secondary`, `outline`, `destructive`) |
@@ -241,6 +241,11 @@ elements:
   Return only when there's a handler for it.
 - **`children: true`**: the element can contain other elements. Its component places them with
   Slint's `@children`.
+- **`focus: <int property>`**: the element takes `ref="…"`, and `Screen::focus()` can give it the
+  keyboard focus. The compiler binds the property to a number that changes on every
+  `focus('that-ref')` (0 while another ref is asked for); the component focuses its input when it
+  changes to more than 0: `in property <int> focus-request; changed focus-request => { if
+  (self.focus-request > 0) { input.focus(); } }`. Entry and Textarea have it in both kits.
 
 Templates can only use attributes listed under `props` and `events` (plus `grow`, `when` and
 `each`, which every element has).

@@ -266,6 +266,29 @@ Inputs write the user's changes straight back into a property:
   the kitchen-sink demo does with `volumeText()` and `progress()`.
 - Two-way inputs can't be inside `@foreach` and can't be in child components.
 
+### Focus
+
+Mark an input with `ref`, and give it the keyboard focus from PHP with `$this->focus()`:
+
+```blade
+<Shortcut keys="Ctrl+F" onPress="focus('search')" />
+<Entry value="{{ $query }}" ref="search" onSubmit="search" />
+<Textarea value="{{ $draft }}" ref="composer" onSubmit="send" />
+```
+
+```php
+public function select(string $username): void
+{
+    // ...
+    $this->focus('composer'); // ready to type
+}
+```
+
+`focus()` is a method of every screen, so templates can call it directly as above. The input
+takes the focus when the window shows the handler's changes. `ref` works on Entry and Textarea in
+a screen's template (not a window's or a child component's); an input under an `@if` that isn't
+shown is skipped.
+
 ## Showing and repeating: @if and @foreach
 
 ```blade

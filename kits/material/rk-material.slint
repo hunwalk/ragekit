@@ -43,6 +43,13 @@ export component RkButton inherits HorizontalLayout {
 }
 
 export component RkEntry inherits TextField {
+    // ref="…" + Screen::focus(): the compiler raises this to focus the input.
+    in property <int> focus-request;
+    changed focus-request => {
+        if (self.focus-request > 0) {
+            self.focus(); // TextField forwards the focus to its input
+        }
+    }
     // Return was pressed (onSubmit).
     callback submitted();
     accepted(text) => { root.submitted(); }
@@ -253,6 +260,13 @@ export component RkSwitch inherits HorizontalLayout {
 
 export component RkTextarea inherits Rectangle {
     in-out property <string> text;
+    // ref="…" + Screen::focus(): the compiler raises this to focus the input.
+    in property <int> focus-request;
+    changed focus-request => {
+        if (self.focus-request > 0) {
+            input.focus();
+        }
+    }
     in property <string> placeholder;
     in property <int> rows: 3;
     // maxRows above rows: the box grows with its text up to that many rows, then scrolls.

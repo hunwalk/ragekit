@@ -38,8 +38,8 @@ final class PressableTest extends TestCase
     private function compile(string $rk, string $kit = 'shadcn'): CompiledViews
     {
         file_put_contents("$this->dir/S.rk", $rk);
-        $class = new ClassInfo('Demo\S', 'S', "$this->dir/S.php", true, "$this->dir/S.rk", props: ['items' => 'list'],
-            handlers: ['open' => ['string'], 'hover' => [], 'leave' => [], 'reply' => ['string'], 'find' => []]);
+        $class = new ClassInfo('Demo\S', 'S', "$this->dir/S.php", true, "$this->dir/S.rk", props: ['items' => 'list', 'q' => 'string', 'focusRef' => 'string', 'focusCount' => 'int'],
+            handlers: ['open' => ['string'], 'hover' => [], 'leave' => [], 'reply' => ['string'], 'find' => [], 'focus' => ['string']]);
         $root = (string) realpath(self::ROOT);
         $kits = KitRegistry::load(["$root/kits/material/kit.yml", "$root/kits/shadcn/kit.yml"], $root);
         return (new SlintCompiler($kits, $kit))->compile(['Demo\S' => $class]);
@@ -110,6 +110,30 @@ final class PressableTest extends TestCase
         $this->compile($rk);
     }
 
+    /** ref="search" + Screen::focus('search'): the kit's focus-request follows the screen's focus values. */
+    public function testRefFollowsScreenFocus(): void
+    {
+        $slint = $this->compile('<VStack><Entry value="{{ $q }}" ref="search" /><Textarea value="{{ $q }}" ref="notes" /><Button text="F" onClick="focus(\'search\')" /></VStack>')->slint;
+        self::assertMatchesRegularExpression('/ShadEntry \{.*?focus-request: root\.(p\d+) == "search" \? root\.(p\d+) : 0;/s', $slint);
+        self::assertMatchesRegularExpression('/ShadTextarea \{.*?focus-request: root\.p\d+ == "notes" \? root\.p\d+ : 0;/s', $slint);
+        self::assertStringContainsString('RkEntry', $this->compile('<VStack><Entry value="{{ $q }}" ref="search" /></VStack>', 'material')->slint);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function badRefs(): iterable
+    {
+        yield 'not a name' => ['<VStack><Entry value="{{ $q }}" ref="a b" /></VStack>', 'ref="a b": a name'];
+        yield 'not an input' => ['<VStack><Label text="x" ref="x" /></VStack>', "<Label> has no attribute 'ref'"];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('badRefs')]
+    public function testRefErrors(string $rk, string $message): void
+    {
+        $this->expectException(TemplateException::class);
+        $this->expectExceptionMessage($message);
+        $this->compile($rk);
+    }
+
     public function testSlintAcceptsItWithBothKits(): void
     {
         $compiler = InstalledToolchain::slintHome() . '/bin/slint-compiler';
@@ -117,7 +141,8 @@ final class PressableTest extends TestCase
             self::markTestSkipped('needs the Slint toolchain and Slint\'s Material library');
         }
         $rk = "<VStack>\n<Shortcut keys=\"Escape\" onPress=\"find\" />\n@foreach (\$items as \$i)\n<View onPress=\"open(\$i)\" onHoverIn=\"hover\">"
-            . "<Label text=\"{{ \$i }}\" /><ContextMenu><MenuItem text=\"Reply\" onClick=\"reply(\$i)\" /></ContextMenu></View>\n@endforeach\n</VStack>";
+            . "<Label text=\"{{ \$i }}\" /><ContextMenu><MenuItem text=\"Reply\" onClick=\"reply(\$i)\" /></ContextMenu></View>\n@endforeach\n"
+            . "<Entry value=\"{{ \$q }}\" ref=\"search\" /><Textarea value=\"{{ \$q }}\" ref=\"notes\" />\n</VStack>";
         foreach (['shadcn', 'material'] as $kit) {
             $out = $this->compile($rk, $kit);
             file_put_contents("$this->dir/app.slint", $out->slint);

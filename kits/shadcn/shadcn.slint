@@ -59,6 +59,13 @@ export component ShadButton inherits Rectangle {
 
 export component ShadEntry inherits Rectangle {
     in-out property <string> text;
+    // ref="…" + Screen::focus(): the compiler raises this to focus the input.
+    in property <int> focus-request;
+    changed focus-request => {
+        if (self.focus-request > 0) {
+            input.focus();
+        }
+    }
     callback edited(string);
     // Return was pressed (onSubmit).
     callback submitted();
@@ -404,6 +411,13 @@ export component ShadSwitch inherits HorizontalLayout {
 
 export component ShadTextarea inherits Rectangle {
     in-out property <string> text;
+    // ref="…" + Screen::focus(): the compiler raises this to focus the input.
+    in property <int> focus-request;
+    changed focus-request => {
+        if (self.focus-request > 0) {
+            input.focus();
+        }
+    }
     in property <string> placeholder;
     in property <int> rows: 3;
     // maxRows above rows: the box grows with its text up to that many rows, then scrolls.

@@ -39,7 +39,8 @@ final class KitElementCompiler implements ElementCompiler
     {
         [$kit, $spec] = $this->elementSpec($element);
         $hasImage = ($spec->props['source'] ?? null)?->type === 'image';
-        $this->context->checkAttributes($element, [...array_keys($spec->props), ...array_keys($spec->events), 'grow', 'when', 'each', ...($hasImage ? ['fallback'] : [])], styled: true);
+        $this->context->checkAttributes($element, [...array_keys($spec->props), ...array_keys($spec->events), 'grow', 'when', 'each',
+            ...($hasImage ? ['fallback'] : []), ...($spec->focus !== null ? ['ref'] : [])], styled: true);
         if ($element->children !== [] && !$spec->children) {
             throw new NoChildrenAllowed($element);
         }
@@ -72,6 +73,9 @@ final class KitElementCompiler implements ElementCompiler
             }
             $lines[] = "{$prop->property}: $value;";
         }
+        if (isset($element->attributes['ref']) && $spec->focus !== null) {
+            $lines[] = $this->focusLine($element, $element->attributes['ref'], $spec->focus, $scope);
+        }
         foreach ($spec->events as $attribute => $callback) {
             if (!isset($element->attributes[$attribute])) {
                 continue;
@@ -91,6 +95,23 @@ final class KitElementCompiler implements ElementCompiler
             $children .= $this->context->element($child, $scope, 'v');
         }
         return $this->context->withMargin(Code::block($spec->component, $lines, $children), $style, $element, $axis);
+    }
+
+    /**
+     * ref="search": the kit's focus property follows Screen::focus('search') (a new count each time,
+     * so asking again focuses again; 0 while another ref is asked for).
+     */
+    private function focusLine(Element $element, string $ref, string $property, Scope $scope): string
+    {
+        if (preg_match('/^[A-Za-z_][\w-]*$/', $ref) !== 1) {
+            throw TemplateException::at($element, "ref=\"$ref\": a name, e.g. ref=\"search\"");
+        }
+        if ($scope->model === null || !isset($scope->class->props['focusRef'])) {
+            throw TemplateException::at($element, 'ref="…" works in a screen\'s template (Screen::focus() focuses it), not in a window\'s or a child component\'s');
+        }
+        $which = $this->context->values->resolve('focusRef', $scope, $element)->slint;
+        $count = $this->context->values->resolve('focusCount', $scope, $element)->slint;
+        return "$property: $which == \"$ref\" ? $count : 0;";
     }
 
     /** onSelect="goTo": an event whose callback passes a value (the clicked item) to the handler. */
