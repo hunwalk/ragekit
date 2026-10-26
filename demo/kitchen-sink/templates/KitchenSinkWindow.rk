@@ -4,5 +4,19 @@
         <WindowControls />
     </WindowDrag>
     <Separator />
-    <Content />
+    <HStack padded="false" grow="true">
+        <View style="sidebar">
+            @foreach (self::SECTIONS as $section)
+                <View style="item" @style(['hovered' => $section === $hovered, 'active' => $section === $current]) onPress="go($section)" onHoverIn="hover($section)" onHoverOut="unhover">
+                    <Label text="{{ $section }}" />
+                    @if ($section === 'Chat' || $section === 'Desktop')
+                        <Badge text="new" variant="secondary" />
+                    @endif
+                </View>
+            @endforeach
+        </View>
+        <VStack grow="true">
+            <Content />
+        </VStack>
+    </HStack>
 </VStack>

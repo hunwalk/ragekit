@@ -2,15 +2,16 @@
 
 namespace Demo;
 
+use Demo\Screens\InputsScreen;
 use RageKit\App;
 use RageKit\Screen;
 
-/** Every core element, in a window with its own title bar. */
+/** Every core element and the desktop features, by section, in a window with its own title bar. */
 final class KitchenSinkApp extends App
 {
     protected function firstScreen(): Screen
     {
-        return new KitchenSinkScreen();
+        return new InputsScreen();
     }
 
     protected function title(): string
@@ -20,11 +21,11 @@ final class KitchenSinkApp extends App
 
     protected function width(): int
     {
-        return 680;
+        return 900;
     }
 
     protected function height(): int
     {
-        return 600;
+        return 640;
     }
 }

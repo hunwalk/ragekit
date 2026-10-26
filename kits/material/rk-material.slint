@@ -676,13 +676,13 @@ export component RkText {
         HorizontalLayout {
             alignment: root.variant == "code" ? start : stretch;
             Rectangle {
-                background: root.variant == "code" ? MaterialPalette.surface_container_highest : transparent;
+                background: root.variant == "code" && root.text != "" ? MaterialPalette.surface_container_highest : transparent;
                 border-radius: 4px;
                 HorizontalLayout {
-                    padding-left: root.variant == "code" ? 6px : 0px;
-                    padding-right: root.variant == "code" ? 6px : 0px;
-                    padding-top: root.variant == "code" ? 2px : 0px;
-                    padding-bottom: root.variant == "code" ? 2px : 0px;
+                    padding-left: root.variant == "code" && root.text != "" ? 6px : 0px;
+                    padding-right: root.variant == "code" && root.text != "" ? 6px : 0px;
+                    padding-top: root.variant == "code" && root.text != "" ? 2px : 0px;
+                    padding-bottom: root.variant == "code" && root.text != "" ? 2px : 0px;
                     // Empty text takes no room (an @if in a <View> hides a <Text> by emptying it).
                     if root.text != "" : Text {
                         text: root.text;

@@ -42,7 +42,7 @@ final class CompilerTest extends TestCase
         self::assertSame('/b/ragekit_slint.dll', $lib->output);
         self::assertSame('/b/ragekit_slint.lib', $lib->link);
         self::assertSame([
-            'cl.exe', '/nologo', '/LD', '/MD', '/O2', '/EHsc', '/utf-8', '/std:c++20', '/Zc:__cplusplus', '/DRK_BUILDING_BRIDGE', '/Fo/b/',
+            'cl.exe', '/nologo', '/LD', '/MD', '/O2', '/EHsc', '/utf-8', '/bigobj', '/std:c++20', '/Zc:__cplusplus', '/DRK_BUILDING_BRIDGE', '/Fo/b/',
             '/s/a.cc', '/g/glue.cc', '/I/s', '/I/g', '/Fe/b/ragekit_slint.dll', '/link', '/LIBPATH:/slint/lib', 'slint_cpp.lib',
         ], $lib->command);
     }
@@ -52,7 +52,7 @@ final class CompilerTest extends TestCase
         $program = (new Msvc())->program(new CppBuild('ragekit-devshell', '/b', ['/s/a.cc'], ['/s'], ['/slint/lib'], ['slint_cpp'], 'c++20', ['SLINT_FEATURE_EXPERIMENTAL']));
         self::assertSame('/b/ragekit-devshell.exe', $program->output);
         self::assertSame([
-            'cl.exe', '/nologo', '/MD', '/O1', '/EHsc', '/utf-8', '/std:c++20', '/Zc:__cplusplus', '/DSLINT_FEATURE_EXPERIMENTAL',
+            'cl.exe', '/nologo', '/MD', '/O1', '/EHsc', '/utf-8', '/bigobj', '/std:c++20', '/Zc:__cplusplus', '/DSLINT_FEATURE_EXPERIMENTAL',
             '/s/a.cc', '/I/s', '/Fe/b/ragekit-devshell.exe', '/link', '/LIBPATH:/slint/lib', 'slint_cpp.lib',
         ], $program->command);
     }

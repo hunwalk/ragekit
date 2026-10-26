@@ -1,0 +1,27 @@
+<VStack>
+    <Text variant="h3">Navigation</Text>
+    <HStack>
+        <Sidebar title="WORKSPACE">
+            <NavList items="{{ self::SECTIONS }}" selected="{{ $section }}" />
+        </Sidebar>
+        <VStack grow="true">
+            <Breadcrumb items="{{ trail() }}" onSelect="goTo" />
+            <Label text="{{ $section }}" size="title" />
+            <HStack>
+                <Pagination page="{{ $page }}" pages="5" />
+                <Label text="Page {{ $page }} of 5" />
+            </HStack>
+            <Accordion open="{{ $open }}">
+                <Section title="What is RageKit?">
+                    <Label text="PHP desktop apps, compiled, drawn by Slint." />
+                </Section>
+                <Section title="Which kits are there?">
+                    <Label text="shadcn and Material, or eject one and make it yours." />
+                </Section>
+                <Section title="Does it run on Windows?">
+                    <Label text="Yes: Windows and Linux." />
+                </Section>
+            </Accordion>
+        </VStack>
+    </HStack>
+</VStack>

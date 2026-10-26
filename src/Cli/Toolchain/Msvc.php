@@ -11,7 +11,9 @@ final class Msvc implements CppCompiler
     {
         $output = "{$build->dir}/{$build->name}.dll";
         $command = [
-            'cl.exe', '/nologo', '/LD', '/MD', '/O2', '/EHsc', '/utf-8', "/std:{$build->std}", '/Zc:__cplusplus',
+            // /bigobj: the generated views_glue.cc of a larger app (Slint's code for every screen) has more
+            // sections than an object file normally may (C1128).
+            'cl.exe', '/nologo', '/LD', '/MD', '/O2', '/EHsc', '/utf-8', '/bigobj', "/std:{$build->std}", '/Zc:__cplusplus',
             // The bridge exports its C API when this is defined (RK_API in ragekit_slint.h).
             '/DRK_BUILDING_BRIDGE', "/Fo{$build->dir}/",
             ...self::defines($build), ...$build->sources, ...self::includes($build),
@@ -24,7 +26,7 @@ final class Msvc implements CppCompiler
     {
         $output = "{$build->dir}/{$build->name}.exe";
         $command = [
-            'cl.exe', '/nologo', '/MD', '/O1', '/EHsc', '/utf-8', "/std:{$build->std}", '/Zc:__cplusplus',
+            'cl.exe', '/nologo', '/MD', '/O1', '/EHsc', '/utf-8', '/bigobj', "/std:{$build->std}", '/Zc:__cplusplus',
             ...self::defines($build), ...$build->sources, ...self::includes($build),
             "/Fe$output", '/link', ...self::libraries($build),
         ];

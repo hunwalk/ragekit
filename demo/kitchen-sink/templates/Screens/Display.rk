@@ -1,0 +1,54 @@
+<VStack>
+    <Text variant="h3">Display</Text>
+    <Tabs selected="{{ $tab }}">
+        <Tab title="Text">
+            <HStack>
+                <VStack grow="true">
+                    <Text variant="h1">Heading 1</Text>
+                    <Text variant="h2">Heading 2</Text>
+                    <Text variant="h3">Heading 3</Text>
+                    <Text variant="h4">Heading 4</Text>
+                </VStack>
+                <VStack grow="true">
+                    <Text variant="lead">A lead paragraph.</Text>
+                    <Text>A plain paragraph that wraps when the window is narrow, like text should.</Text>
+                    <Text variant="large">Large</Text>
+                    <Text variant="small">Small</Text>
+                    <Text variant="muted">Muted</Text>
+                    <Text variant="code">ragekit eject shadcn</Text>
+                    <Text variant="blockquote">"Compiled, GPU-rendered, no Chromium."</Text>
+                </VStack>
+            </HStack>
+        </Tab>
+        <Tab title="Labels &amp; images">
+            <VStack>
+                <Label text="Display" size="display" />
+                <Label text="Title" size="title" />
+                <Label text="Body text…" />
+                <Image source="assets/logo.svg" />
+            </VStack>
+        </Tab>
+        <Tab title="Feedback">
+            <VStack>
+                <HStack>
+                    <Badge text="Default" />
+                    <Badge text="Secondary" variant="secondary" />
+                    <Badge text="Outline" variant="outline" />
+                    <Badge text="Destructive" variant="destructive" />
+                </HStack>
+                <HStack>
+                    <Avatar text="RK" size="sm" />
+                    <Avatar text="AB" />
+                    <Avatar source="assets/logo.svg" size="lg" />
+                    <Spinner size="sm" />
+                    <Spinner />
+                    <Spinner size="lg" />
+                </HStack>
+                <Alert title="Heads up!" text="You can add components to your app with kits." />
+                <Alert title="Error" text="Your session has expired. Please log in again." variant="destructive" />
+                <Skeleton width="260" height="16" />
+                <Skeleton width="180" height="16" />
+            </VStack>
+        </Tab>
+    </Tabs>
+</VStack>

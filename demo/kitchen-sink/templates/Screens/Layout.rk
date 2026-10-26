@@ -1,0 +1,25 @@
+<VStack>
+    <Text variant="h3">Layout</Text>
+    <View style="showcase">
+        <View style="card">
+            <Label text="A card" size="title" />
+            <Text variant="muted">A View with a background, border and corners; the tags wrap onto the next line.</Text>
+            <View style="tags">
+                @foreach (self::TAGS as $tag)
+                    <Badge text="{{ $tag }}" variant="secondary" />
+                @endforeach
+            </View>
+            <Badge text="new" variant="destructive" style="corner" />
+        </View>
+        <View style="list">
+            @foreach (self::TASKS as $task)
+                <View style="row" @style(['rowSelected' => $task === $selectedTask]) onPress="select($task)">
+                    <Text>{{ $task }}</Text>
+                    @if ($task === $selectedTask)
+                        <Badge text="selected" variant="outline" />
+                    @endif
+                </View>
+            @endforeach
+        </View>
+    </View>
+</VStack>

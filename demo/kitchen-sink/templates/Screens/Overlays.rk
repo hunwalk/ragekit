@@ -1,0 +1,29 @@
+<VStack>
+    <Text variant="h3">Overlays</Text>
+    <Label text="{{ $status }}" />
+    <HStack>
+        <Button text="Delete…" variant="destructive" onClick="askDelete" />
+        <Button text="Save" variant="secondary" onClick="save" />
+        <DropdownMenu text="More ⋯">
+            <MenuItem text="Rename" onClick="picked('Rename')" />
+            <MenuItem text="Duplicate" onClick="picked('Duplicate')" />
+            <MenuItem text="Delete…" variant="destructive" onClick="askDelete" />
+        </DropdownMenu>
+    </HStack>
+    <View style="target">
+        <Text>Right-click here</Text>
+        <Text variant="muted">A ContextMenu opens at the pointer.</Text>
+        <ContextMenu>
+            <MenuItem text="Copy" onClick="picked('Copy')" />
+            <MenuItem text="Paste" onClick="picked('Paste')" />
+            <MenuItem text="Delete…" variant="destructive" onClick="askDelete" />
+        </ContextMenu>
+    </View>
+    <Dialog open="{{ $confirmDelete }}" title="Delete this project?">
+        <Text variant="muted">This can't be undone. The files stay on disk.</Text>
+        <HStack>
+            <Button text="Cancel" variant="outline" onClick="cancelDelete" />
+            <Button text="Delete" variant="destructive" onClick="deleteProject" />
+        </HStack>
+    </Dialog>
+</VStack>

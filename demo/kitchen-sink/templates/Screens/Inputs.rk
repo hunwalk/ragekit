@@ -1,0 +1,35 @@
+<VStack>
+    <Text variant="h3">Inputs</Text>
+    <Tabs selected="{{ $tab }}">
+        <Tab title="Buttons &amp; fields">
+            <VStack>
+                <HStack>
+                    <Button text="Default" onClick="press('default')" />
+                    <Button text="Secondary" variant="secondary" onClick="press('secondary')" />
+                    <Button text="Outline" variant="outline" onClick="press('outline')" />
+                    <Button text="Ghost" variant="ghost" onClick="press('ghost')" />
+                    <Button text="Destructive" variant="destructive" onClick="press('destructive')" />
+                </HStack>
+                <Label text="{{ $status }}" />
+                <Entry value="{{ $name }}" />
+                <Checkbox text="Subscribe to updates" checked="{{ $subscribed }}" />
+                <Label text="{{ volumeText() }}" />
+                <Slider value="{{ $volume }}" min="0" max="100" />
+                <Progress value="{{ progress() }}" />
+                <Select value="{{ $fruit }}" options="{{ self::FRUITS }}" />
+                <Label text="{{ summary() }}" />
+            </VStack>
+        </Tab>
+        <Tab title="More inputs">
+            <VStack>
+                <Switch text="Notifications" checked="{{ $notifications }}" />
+                <HStack>
+                    <Toggle text="Bold" pressed="{{ $bold }}" />
+                </HStack>
+                <RadioGroup value="{{ $size }}" options="{{ self::SIZES }}" />
+                <Textarea value="{{ $notes }}" placeholder="Notes…" rows="3" />
+                <Label text="{{ preferences() }}" />
+            </VStack>
+        </Tab>
+    </Tabs>
+</VStack>

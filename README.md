@@ -10,7 +10,7 @@ PHP to machine code with [TypePHP](https://github.com/swoole/typephp), turns the
 composer create-project ragekit/starter myapp   # a new app, ready to build (see Get started)
 ```
 
-![The kitchen-sink demo with the shadcn kit: its own title bar, badges, avatars, spinners, alerts and skeletons](docs/images/kitchen-sink.png)
+![The kitchen-sink demo with the shadcn kit: its own title bar, a sidebar of sections, and the chat section with message bubbles and a message box](docs/images/kitchen-sink.png)
 
 > **Status: experimental (0.x).** Linux is where it's built and tested. Windows works but is
 > tested less. macOS isn't supported yet: it hasn't been built or tested there. APIs will change.
@@ -92,6 +92,14 @@ function main(): void
 ```
 
 After every event the window shows the screen's new state; there is no manual re-rendering.
+
+More from `demo/kitchen-sink`:
+
+| Desktop features | Feedback elements |
+|---|---|
+| ![The Desktop section: a live clock from a timer, notification, tray, window, keys and microphone cards, with a new Ed25519 key's fingerprint](docs/images/kitchen-sink-desktop.png) | ![The Display section's Feedback tab: badges, avatars, spinners, alerts and skeletons](docs/images/kitchen-sink-feedback.png) |
+| **A dialog** | **The Material kit** |
+| ![A confirmation dialog over the Overlays section](docs/images/kitchen-sink-dialog.png) | ![The Inputs section built with the Material kit instead of shadcn](docs/images/kitchen-sink-material.png) |
 
 ## What you get
 
@@ -190,7 +198,7 @@ On Windows, run `setup.ps1` instead of `setup.sh`.
 |---|---|
 | `demo/calculator` | logic in plain PHP, a keypad from a constant with `each` |
 | `demo/counter-slint` | state, two-way input, a child component, a second window |
-| `demo/kitchen-sink` | every core element, in five tabs, with its own title bar (`--kit=material` to compare kits) |
+| `demo/kitchen-sink` | every core element and the desktop features (a chat, timers, notifications, tray, keys, recording), as sections in a sidebar, with its own title bar (`--kit=material` to compare kits) |
 | `demo/kit-demo` | an app's own kit (`kits/icons`) with SVG icons embedded at build time |
 | `demo/player` | the audio module: play, pause, progress, volume |
 | `demo/titlebar` | a `Window` subclass: frameless window, own title bar with a search box and window buttons |

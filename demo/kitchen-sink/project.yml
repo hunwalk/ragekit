@@ -1,4 +1,4 @@
-# Every core element in one window:
+# Every core element and the desktop features, by section, in one window:
 #   cd demo/kitchen-sink && ../../bin/ragekit run          (--kit=material to compare kits)
 name: kitchen-sink
 sources:
@@ -9,3 +9,6 @@ ragekit:
   backend: slint
   renderer: software
   kit: shadcn
+  modules: [notifications, tray, crypto, audio]
+  assets: [assets/]
+  icon: assets/logo.svg

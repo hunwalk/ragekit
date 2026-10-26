@@ -1,0 +1,40 @@
+<VStack>
+    <Text variant="h3">Desktop</Text>
+    <View style="grid">
+        <View style="card">
+            <Text variant="large">Timer</Text>
+            <Text variant="muted">Timer::every(1, …) and LocalTime</Text>
+            <Text variant="h2">{{ $clock }}</Text>
+        </View>
+        <View style="card">
+            <Text variant="large">Notification</Text>
+            <Text variant="muted">The notifications module (Linux desktops)</Text>
+            <Button text="Notify me" onClick="notify" />
+            <Text variant="small">{{ $notice }}</Text>
+        </View>
+        <View style="card">
+            <Text variant="large">Tray</Text>
+            <Text variant="muted">The tray module (on GNOME: the AppIndicator extension)</Text>
+            <Button text="{{ $trayLabel }}" variant="secondary" onClick="toggleTray" />
+            <Text variant="small">{{ $trayStatus }}</Text>
+        </View>
+        <View style="card">
+            <Text variant="large">Window</Text>
+            <Text variant="muted">Window::hide() and show()</Text>
+            <Button text="Hide for 3 seconds" variant="outline" onClick="hideForAWhile" />
+            <Text variant="small">{{ $windowStatus }}</Text>
+        </View>
+        <View style="card">
+            <Text variant="large">Keys</Text>
+            <Text variant="muted">The crypto module: an Ed25519 key, its SSH fingerprint</Text>
+            <Button text="New key" variant="outline" onClick="newKey" />
+            <Text variant="small">{{ $key }}</Text>
+        </View>
+        <View style="card">
+            <Text variant="large">Microphone</Text>
+            <Text variant="muted">The audio module: record, then play faster</Text>
+            <Button text="{{ $recordLabel }}" variant="outline" onClick="record" />
+            <Text variant="small">{{ $audioStatus }}</Text>
+        </View>
+    </View>
+</VStack>

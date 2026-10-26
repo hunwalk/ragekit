@@ -11,6 +11,18 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+### Changed
+
+- **`demo/kitchen-sink`** is organised as sections in a sidebar (Inputs, Display, Navigation,
+  Layout, Overlays, and the new Chat and Desktop sections showing 0.7's features), each a screen in
+  one window; the README shows it.
+
+### Fixed
+
+- **Windows: apps with many screens build again.** The generated `views_glue.cc` had more sections
+  than MSVC allows in an object file (C1128); libraries are now compiled with `/bigobj`.
+- An empty `<Text variant="code">` no longer draws an empty pill (both kits).
+
 ## [0.7.0] - 2026-10-26
 
 What a real desktop app needs around its UI, driven by a dev-null.sh client.

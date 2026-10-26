@@ -1,0 +1,24 @@
+<VStack grow="true">
+    <Shortcut keys="Escape" onPress="clearDraft" />
+    <HStack>
+        <Text variant="h3" grow="true">Chat</Text>
+        <Button text="+200 messages" variant="outline" onClick="addMany" />
+    </HStack>
+    <Text variant="muted">Enter sends, Shift+Enter adds a line, Escape empties the box. Right-click a message for its menu.</Text>
+    <ScrollView stickToBottom="true" anchor="{{ $anchor }}">
+        @foreach ($messages as $m)
+            <View style="row" @style(['mineRow' => $m->mine])>
+                <View style="bubble" @style(['mine' => $m->mine, 'hot' => $m->id === $hovered]) onHoverIn="hoverIn($m->id)" onHoverOut="hoverOut">
+                    <Text>{{ $m->text }}</Text>
+                    <Text variant="muted">{{ $m->time }}</Text>
+                    <ContextMenu>
+                        <MenuItem text="Quote" onClick="quote($m->id)" />
+                        <MenuItem text="Delete" variant="destructive" onClick="remove($m->id)" />
+                    </ContextMenu>
+                </View>
+            </View>
+        @endforeach
+    </ScrollView>
+    <Label text="{{ $status }}" />
+    <Textarea value="{{ $draft }}" rows="1" maxRows="5" onSubmit="send" placeholder="Message RageBot" />
+</VStack>
