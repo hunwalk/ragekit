@@ -1,0 +1,18 @@
+<VStack>
+    <Button text="Add a picture" onClick="addPicture" />
+    @foreach ($posts as $p)
+        <VStack>
+            <HStack>
+                <Label text="{{ $p->title }}" />
+                @foreach ($p->tags as $tag)
+                    <Badge text="{{ $tag }}" />
+                @endforeach
+            </HStack>
+            <HStack>
+                @foreach ($p->pictures as $picture)
+                    <Image source="{{ $picture }}" width="60" height="60" />
+                @endforeach
+            </HStack>
+        </VStack>
+    @endforeach
+</VStack>

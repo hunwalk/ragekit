@@ -28,6 +28,7 @@ sources:
   - src/Slint/SlintBackend.php
   - src/Slint/SlintWindow.php
   - src/Slint/ImageValue.php
+  - src/Slint/ImageList.php
   - src/Slint/RowsValue.php
   - src/Slint/Images.php
   - src/Slint/backend.php

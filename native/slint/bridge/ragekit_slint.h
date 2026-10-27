@@ -47,6 +47,9 @@ RK_API void rk_rows_float(double value);
 RK_API void rk_rows_bool(int value);
 RK_API void rk_rows_image_asset(int32_t index);
 RK_API int rk_rows_image_file(const char *path, size_t len);
+/** A list cell (an array member): the strings / image calls between these are its items. */
+RK_API void rk_rows_list_begin(void);
+RK_API void rk_rows_list_end(void);
 RK_API void rk_rows_end(void);
 RK_API void rk_close(int64_t window);
 /** Window controls for layouts (frameless windows); see native/slint/window. */

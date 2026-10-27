@@ -15,7 +15,7 @@ use RageKit\Cli\Templates\TemplateException;
  */
 final class RowType
 {
-    /** Member types a row can show. */
+    /** Member types a row can show (and arrays of strings: @foreach inside the row's). */
     private const SCALARS = ['string', 'int', 'float', 'bool'];
 
     /** @var array<string, RowField> by member (+ '()' for a method, ':image' for an image field) */
@@ -57,9 +57,12 @@ final class RowType
             throw TemplateException::at($at, "\$$var->$member is a method: write \$$var->$member()");
         }
         $type = $call ? $computed[$member] : $props[$member];
+        if ($type === 'list') {
+            // An array of strings: a @foreach inside the row's (its items as text or as images).
+            return $this->fields[$key] ??= new RowField($member, $call ? 'method' : 'property', $image ? 'images' : 'strings', 'f' . count($this->fields));
+        }
         if (!in_array($type, self::SCALARS, true)) {
             throw TemplateException::at($at, match (true) {
-                $type === 'list' => "$label is an array; rows can show string, int, float and bool members",
                 str_starts_with($type, '?') && in_array(substr($type, 1), self::SCALARS, true) => "$label is $type; rows can't show nullable members",
                 $call => "$label returns $type; rows can show string, int, float and bool members",
                 default => "$label is $type; rows can show string, int, float and bool members",
@@ -80,7 +83,7 @@ final class RowType
     /** The struct's Slint declaration. */
     public function slint(): string
     {
-        $lines = array_map(fn(RowField $f) => "    {$f->name}: {$f->type},", $this->fields());
+        $lines = array_map(fn(RowField $f) => "    {$f->name}: {$f->slintType()},", $this->fields());
         return "export struct {$this->struct} {\n" . implode("\n", $lines) . ($lines === [] ? '' : "\n") . '}';
     }
 }

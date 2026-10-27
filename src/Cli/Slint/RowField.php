@@ -7,7 +7,8 @@ namespace RageKit\Cli\Slint;
 /**
  * One field of a row struct: an item member a template reads ($item->member or $item->member()),
  * as the Slint field $name (f0, f1, …). A string member shown as an image is a field of its own
- * with type 'image'.
+ * with type 'image'; an array member (a @foreach inside the row's) is 'strings', and 'images' when
+ * its items are shown as images.
  */
 final class RowField
 {
@@ -17,5 +18,15 @@ final class RowField
         public readonly string $type,
         public readonly string $name,
     ) {
+    }
+
+    /** The field's Slint type. */
+    public function slintType(): string
+    {
+        return match ($this->type) {
+            'strings' => '[string]',
+            'images' => '[image]',
+            default => $this->type,
+        };
     }
 }

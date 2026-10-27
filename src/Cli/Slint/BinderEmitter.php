@@ -129,6 +129,8 @@ final class BinderEmitter
             $read = '$item->' . $field->member . ($field->source === 'method' ? '()' : '');
             $cells[] = match ($field->type) {
                 'image' => "new \\RageKit\\Slint\\ImageValue((string) $read)",
+                'strings' => "\\RageKit\\Slint\\RowsValue::strings($read)",
+                'images' => "new \\RageKit\\Slint\\ImageList(\\RageKit\\Slint\\RowsValue::strings($read))",
                 default => "({$field->type}) $read",
             };
         }

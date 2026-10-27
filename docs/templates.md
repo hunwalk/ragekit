@@ -423,7 +423,22 @@ final class DevicesScreen extends Screen
   `OutOfRangeException`.
 - Changing an item's property (`$device->image = $url;` when an API answers) updates its row with
   the next update, like any other value. Only rows that changed are redrawn.
-- A misspelled member, an array or nullable member, or a collection without `OF` stops the build
+- An array member (a list of strings: tags, image URLs) is shown with a `@foreach` inside the item's
+  loop; its items work as text and as image sources:
+
+  ```blade
+  @foreach ($posts as $post)
+      <Label text="{{ $post->title }}" />
+      <HStack>
+          @foreach ($post->pictures as $picture)
+              <Image source="{{ $picture }}" width="80" height="80" />
+          @endforeach
+      </HStack>
+  @endforeach
+  ```
+
+  Adding to an item's array (`$post->pictures[] = $url;`) updates its row like any other change.
+- A misspelled member, a nullable member, an array shown as one value, or a collection without `OF` stops the build
   with the line and what the item class has, e.g.
   `DevicesScreen.rk:3: $device->nmae: Device has no public property or method 'nmae' (it has: name, image, battery, label())`.
 

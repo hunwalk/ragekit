@@ -100,6 +100,11 @@ jobs:
           DISPLAY=:99 tests/e2e/pressable.sh --nano
           DISPLAY=:99 tests/e2e/pressable.sh --kit=material
 
+      - name: Arrays inside collection rows (normal and Nano builds)
+        run: |
+          DISPLAY=:99 tests/e2e/gallery.sh
+          DISPLAY=:99 tests/e2e/gallery.sh --nano
+
       - name: Markdown text and colour emoji (normal and Nano builds)
         run: |
           DISPLAY=:99 tests/e2e/rich-text.sh

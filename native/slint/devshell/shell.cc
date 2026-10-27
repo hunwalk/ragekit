@@ -555,11 +555,28 @@ bool Shell::setRows(Win &win, const std::string &property, const std::vector<std
         if (type == "b") {
             return Value(text == "1");
         }
-        auto image = text.empty() ? slint::Image() : slint::Image::load_from_path(slint::SharedString(text));
-        if (!text.empty() && image.size().width == 0) {
-            std::fprintf(stderr, "ragekit: image %s: couldn't be loaded\n", text.c_str());
+        auto load = [](const std::string &path) {
+            auto image = path.empty() ? slint::Image() : slint::Image::load_from_path(slint::SharedString(path));
+            if (!path.empty() && image.size().width == 0) {
+                std::fprintf(stderr, "ragekit: image %s: couldn't be loaded\n", path.c_str());
+            }
+            return image;
+        };
+        if (type == "ls" || type == "li") {
+            // A row's array member: its items joined by U+001F ('' = none).
+            slint::SharedVector<Value> items;
+            for (size_t start = 0; !text.empty() && start <= text.size();) {
+                size_t end = text.find('\x1f', start);
+                std::string item = text.substr(start, end == std::string::npos ? std::string::npos : end - start);
+                items.push_back(type == "ls" ? Value(slint::SharedString(item)) : Value(load(item)));
+                if (end == std::string::npos) {
+                    break;
+                }
+                start = end + 1;
+            }
+            return Value(items);
         }
-        return Value(image);
+        return Value(load(text));
     };
     auto &model = win.models[property];
     bool created = model == nullptr;

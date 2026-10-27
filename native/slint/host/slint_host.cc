@@ -148,6 +148,16 @@ Bool php_slint_rows_image_file(String path)
     return rk_rows_image_file(path.data(), path.length()) != 0;
 }
 
+void php_slint_rows_list_begin()
+{
+    rk_rows_list_begin();
+}
+
+void php_slint_rows_list_end()
+{
+    rk_rows_list_end();
+}
+
 void php_slint_rows_end()
 {
     rk_rows_end();

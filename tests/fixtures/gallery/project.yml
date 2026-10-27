@@ -1,0 +1,11 @@
+# Arrays inside collection rows (a @foreach inside a @foreach): tests/e2e/gallery.sh (normal and --nano).
+name: gallery
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software
+  assets: [assets/]

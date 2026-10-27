@@ -119,6 +119,8 @@ final class Bindings
                 $read = $field['source'] === 'method' ? $item->{$field['member']}() : $item->{$field['member']};
                 $cells[] = match ($field['type']) {
                     'image' => new \RageKit\Slint\ImageValue((string) $read),
+                    'strings' => \RageKit\Slint\RowsValue::strings((array) $read),
+                    'images' => new \RageKit\Slint\ImageList(\RageKit\Slint\RowsValue::strings((array) $read)),
                     'int' => (int) $read,
                     'float' => (float) $read,
                     'bool' => (bool) $read,

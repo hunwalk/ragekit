@@ -183,6 +183,7 @@ function slint_set_bool(int $window, int $id, bool $value): void
 
 /** @var array{0: int, 1: int, 2: list<string>}|null the list being pushed: window, id, items */
 $GLOBALS['__ragekit_dev_list'] = null;
+$GLOBALS['__ragekit_dev_rowlist'] = null;
 
 function slint_list_begin(int $window, int $id): void
 {
@@ -220,7 +221,27 @@ function slint_rows_next(): void
 function ragekit_dev_cell(string $type, string $text): void
 {
     $rows = &$GLOBALS['__ragekit_dev_rows'][2];
+    $list = &$GLOBALS['__ragekit_dev_rowlist'];
+    if ($list !== null) {
+        // An item of a list cell: its type says the list's ("ls" strings, "li" images).
+        $list[0] = $type === 'img' ? 'li' : 'ls';
+        $list[1][] = $text;
+        return;
+    }
     $rows[count($rows) - 1][] = [$type, $text];
+}
+
+/** A row's array member: the cells until slint_rows_list_end() are its items (one cell, items joined by U+001F). */
+function slint_rows_list_begin(): void
+{
+    $GLOBALS['__ragekit_dev_rowlist'] = ['ls', []];
+}
+
+function slint_rows_list_end(): void
+{
+    [$type, $items] = $GLOBALS['__ragekit_dev_rowlist'];
+    $GLOBALS['__ragekit_dev_rowlist'] = null;
+    ragekit_dev_cell($type, implode("\u{1f}", $items));
 }
 
 function slint_rows_string(string $value): void

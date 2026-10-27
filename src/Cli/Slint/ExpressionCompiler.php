@@ -139,6 +139,11 @@ final class ExpressionCompiler
             throw TemplateException::at($at, "\$$var->$member(): methods shown in templates can't take arguments");
         }
         $field = $item->row->field($var, $member, $call, false, $at);
+        if ($field->type === 'strings') {
+            // An array member: a list a @foreach inside the row's goes over; its items can be shown
+            // as images too (ValueCompiler::image() asks the row for an 'images' field by origin).
+            return new Ref('list', "$var.{$field->name}", 'string', origin: ['row', $var, $member, $call, $item->row]);
+        }
         return new Ref($field->type, "$var.{$field->name}");
     }
 

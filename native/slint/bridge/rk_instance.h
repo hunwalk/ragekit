@@ -17,7 +17,8 @@
 namespace rk {
 
 /** One cell of a pushed row (rk_rows_*): what the generated glue reads into a struct field. */
-using Cell = std::variant<std::monostate, slint::SharedString, int64_t, double, bool, slint::Image>;
+using Cell = std::variant<std::monostate, slint::SharedString, int64_t, double, bool, slint::Image,
+                          std::vector<slint::SharedString>, std::vector<slint::Image>>;
 using Row = std::vector<Cell>;
 using Rows = std::vector<Row>;
 
@@ -40,12 +41,40 @@ inline float cell_float(const Row &row, size_t i) { return static_cast<float>(ce
 inline bool cell_bool(const Row &row, size_t i) { return cell<bool>(row, i); }
 inline slint::Image cell_image(const Row &row, size_t i) { return cell<slint::Image>(row, i); }
 
+/** A list cell (an array member a @foreach inside the row's goes over) as a model. */
+template <class T>
+std::shared_ptr<slint::Model<T>> cell_list(const Row &row, size_t i)
+{
+    return std::make_shared<slint::VectorModel<T>>(cell<std::vector<T>>(row, i));
+}
+inline std::shared_ptr<slint::Model<slint::SharedString>> cell_strings(const Row &row, size_t i) { return cell_list<slint::SharedString>(row, i); }
+inline std::shared_ptr<slint::Model<slint::Image>> cell_images(const Row &row, size_t i) { return cell_list<slint::Image>(row, i); }
+
+/** Whether two list fields hold the same items (rows' models are new objects each push). */
+template <class T>
+bool same_list(const std::shared_ptr<slint::Model<T>> &a, const std::shared_ptr<slint::Model<T>> &b)
+{
+    if (a == b) {
+        return true;
+    }
+    size_t n = a ? a->row_count() : 0;
+    if (n != (b ? b->row_count() : 0)) {
+        return false;
+    }
+    for (size_t i = 0; i < n; ++i) {
+        if (!(a->row_data(i) == b->row_data(i))) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /**
  * Brings `model` to `rows` (each made into a T by `make`) with as few changes as it takes (see
  * sync_model()). Returns true when the model was just created (the caller sets the property to it once).
  */
-template <class T, class Make>
-bool update_model(std::shared_ptr<slint::VectorModel<T>> &model, const Rows &rows, Make make)
+template <class T, class Make, class Eq = Equal>
+bool update_model(std::shared_ptr<slint::VectorModel<T>> &model, const Rows &rows, Make make, Eq eq = Eq())
 {
     bool created = model == nullptr;
     if (created) {
@@ -56,7 +85,7 @@ bool update_model(std::shared_ptr<slint::VectorModel<T>> &model, const Rows &row
     for (const auto &row : rows) {
         values.push_back(make(row));
     }
-    sync_model(*model, values);
+    sync_model(*model, values, eq);
     return created;
 }
 

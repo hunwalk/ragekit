@@ -31,6 +31,10 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
   click = `onClick`, right click = the menu; png, ico or svg icons) and the notifications module
   shows toast notifications (clicks and `close()` work; the app registers itself under
   `HKCU\Software\Classes\AppUserModelId`, no installer needed). See docs/modules.md.
+- **Arrays inside collection rows:** an item's array member (strings, or image sources) can be shown
+  with a `@foreach` inside the item's loop, e.g. a post's pictures. The bridge exports
+  `rk_rows_list_begin`/`rk_rows_list_end`; rows with arrays compare them by content, so unchanged
+  rows stay as they are.
 - **Audio plays Opus in MP4** (voice notes recorded in browsers): libopus on Linux (loaded at runtime),
   Media Foundation on Windows (also AAC/M4A); `Sound::load()` errors say why a file can't be played
   (new module function `audio_load_error`).

@@ -305,6 +305,11 @@ final class ValueCompiler
         $item = $node->kind === 'var' ? $scope->item((string) $node->value) : null;
         if ($item !== null) {
             // An item of a bound list of strings: the same list again, shown as images, by index.
+            if ($item->origin !== null && $item->index !== null && $item->origin[0] === 'row') {
+                // An item of a row's array: the row's same array as images, by index.
+                [, $var, $member, $call, $row] = $item->origin;
+                return "$var." . $row->field($var, $member, $call, true, $element)->name . "[{$item->index}]";
+            }
             if ($item->origin === null || $item->index === null || $scope->model === null) {
                 throw TemplateException::at($element, "$attribute=\"$raw\": images in a loop over a constant aren't supported; use a property or method");
             }

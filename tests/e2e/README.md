@@ -69,6 +69,11 @@ window:
 
     DISPLAY=:99 tests/e2e/notifications.sh    # also with --nano
 
+`tests/e2e/gallery.sh` builds `tests/fixtures/gallery`: posts whose tags and pictures are arrays shown
+with a `@foreach` inside the posts' loop; adding a picture to the first post shows it in that row:
+
+    DISPLAY=:99 tests/e2e/gallery.sh          # also with --nano
+
 `tests/e2e/rich-text.sh` builds `tests/fixtures/richtext`: markdown bubbles from `@foreach` and a row
 of `<Emoji>`; it checks that the heart and the thumbs up are drawn in colour, and clicks a markdown link
 and a bare URL, which reach onLink:

@@ -73,7 +73,8 @@ final class GlueEmitter
                 $type = $binding->type === 'rows' ? $binding->row->struct : 'slint::Image';
                 $members[] = "std::shared_ptr<slint::VectorModel<$type>> $model;";
                 $make = $binding->type === 'rows' ? self::makeRow($binding->row) : '[](const rk::Row &r) { return rk::cell_image(r, 0); }';
-                $cases['rows'][] = "case {$binding->id}: if (rk::update_model($model, rows, $make)) { $setter($model); } break;";
+                $equal = $binding->type === 'rows' ? self::sameRow($binding->row) : '';
+                $cases['rows'][] = "case {$binding->id}: if (rk::update_model($model, rows, $make$equal)) { $setter($model); } break;";
                 continue;
             }
             $cases[$binding->type][] = "case {$binding->id}: " . match ($binding->type) {
@@ -109,6 +110,22 @@ final class GlueEmitter
             $fields .= " v.{$field->name} = rk::cell_{$field->type}(r, $i);";
         }
         return "[](const rk::Row &r) { {$row->struct} v;$fields return v; }";
+    }
+
+    /**
+     * For rows with list fields: an equality that compares those lists by content (each push makes
+     * new models, which == compares by identity: every row would look changed). '' otherwise.
+     */
+    private static function sameRow(RowType $row): string
+    {
+        $checks = [];
+        foreach ($row->fields() as $field) {
+            $checks[] = in_array($field->type, ['strings', 'images'], true)
+                ? "rk::same_list(a.{$field->name}, b.{$field->name})"
+                : "a.{$field->name} == b.{$field->name}";
+        }
+        $lists = array_filter($row->fields(), fn(RowField $f) => in_array($f->type, ['strings', 'images'], true));
+        return $lists === [] ? '' : ", [](const {$row->struct} &a, const {$row->struct} &b) { return " . implode(' && ', $checks) . '; }';
     }
 
     /** @param array<string, string> $values */

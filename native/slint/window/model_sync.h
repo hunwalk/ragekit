@@ -12,15 +12,21 @@
 
 namespace rk {
 
-template <class T>
-void sync_model(slint::VectorModel<T> &model, const std::vector<T> &values)
+/** Rows compare with == (structs whose fields are models compare those by content: see rk::same_rows). */
+struct Equal {
+    template <class T>
+    bool operator()(const T &a, const T &b) const { return a == b; }
+};
+
+template <class T, class Eq = Equal>
+void sync_model(slint::VectorModel<T> &model, const std::vector<T> &values, Eq eq = Eq())
 {
     size_t count = model.row_count();
     size_t n = values.size();
     // Whether the model's rows [from, from + length) equal values [at, at + length).
     auto equal = [&](size_t from, size_t at, size_t length) {
         for (size_t i = 0; i < length; ++i) {
-            if (!(*model.row_data(from + i) == values[at + i])) {
+            if (!eq(*model.row_data(from + i), values[at + i])) {
                 return false;
             }
         }
@@ -41,7 +47,7 @@ void sync_model(slint::VectorModel<T> &model, const std::vector<T> &values)
     for (size_t i = 0; i < n; ++i) {
         if (i >= count) {
             model.push_back(values[i]);
-        } else if (!(*model.row_data(i) == values[i])) {
+        } else if (!eq(*model.row_data(i), values[i])) {
             model.set_row_data(i, values[i]);
         }
     }

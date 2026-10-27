@@ -167,6 +167,15 @@ final class CollectionCompileTest extends TestCase
         $this->fails('$devices is a collection; show its items with @foreach', [$this->collection(), $this->screen('<Label text="{{ $devices }}" />')]);
     }
 
+    /** An array member: a @foreach inside the row's, its items as text ([string]) and as images ([image]). */
+    public function testArrayMemberInANestedLoop(): void
+    {
+        $rk = $this->loop("<VStack>\n@foreach (\$d->tags as \$t)\n<Label text=\"{{ \$t }}\" />\n@endforeach\n@foreach (\$d->tags as \$t)\n<Image source=\"{{ \$t }}\" />\n@endforeach\n</VStack>");
+        $out = $this->compile([$this->collection(), $this->screen($rk)], slint: true);
+        self::assertMatchesRegularExpression('/export struct RkRowDevice \{\s+f0: \[string\],\s+f1: \[image\],\s+\}/', $out->slint);
+        self::assertMatchesRegularExpression('/for t\[(rk-i2)\] in d\.f0 : .*?source: d\.f1\[\1\];/s', $out->slint);
+    }
+
     public function testErrors(): void
     {
         $c = $this->collection();
@@ -174,7 +183,7 @@ final class CollectionCompileTest extends TestCase
         $this->fails("\$d->label(): methods shown in templates can't take arguments", [$c, $this->screen($this->loop('<Label text="{{ $d->label(1) }}" />'))]);
         $this->fails('$d->label is a method: write $d->label()', [$c, $this->screen($this->loop('<Label text="{{ $d->label }}" />'))]);
         $this->fails('$d->name is a property: write $d->name', [$c, $this->screen($this->loop('<Label text="{{ $d->name() }}" />'))]);
-        $this->fails('$d->tags is an array; rows can show string, int, float and bool members', [$c, $this->screen($this->loop('<Label text="{{ $d->tags }}" />'))]);
+        $this->fails('$d->tags is a list; show its items with @foreach', [$c, $this->screen($this->loop('<Label text="{{ $d->tags }}" />'))]);
         $this->fails("\$d->nick is ?string; rows can't show nullable members", [$c, $this->screen($this->loop('<Label text="{{ $d->nick }}" />'))]);
         $this->fails('$d->rename() returns void; rows can show string, int, float and bool members', [$c, $this->screen($this->loop('<Label text="{{ $d->rename() }}" />'))]);
         $this->fails('Devices::OF is empty; set public const OF = Item::class', [$this->collection(of: '', found: false), $this->screen($this->loop('<Label text="x" />'))]);

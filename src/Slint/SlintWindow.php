@@ -121,7 +121,15 @@ final class SlintWindow
         foreach ($rows->rows as $row) {
             $cells = [];
             foreach ($row as $cell) {
-                $cells[] = $cell instanceof ImageValue ? [Images::state($this->app->backend(), $cell->source)] : $cell;
+                if ($cell instanceof ImageList) {
+                    $states = [];
+                    foreach ($cell->sources as $source) {
+                        $states[] = Images::state($this->app->backend(), $source);
+                    }
+                    $cells[] = ['images', $states];
+                } else {
+                    $cells[] = $cell instanceof ImageValue ? [Images::state($this->app->backend(), $cell->source)] : $cell;
+                }
             }
             $out[] = $cells;
         }
@@ -136,12 +144,19 @@ final class SlintWindow
             \slint_rows_next();
             foreach ($row as $c => $cell) {
                 if ($cell instanceof ImageValue) {
-                    $state = (string) $shown[$r][$c][0];
-                    if (str_starts_with($state, 'asset:')) {
-                        \slint_rows_image_asset((int) substr($state, 6));
-                    } elseif (!\slint_rows_image_file(str_starts_with($state, 'file:') ? substr($state, 5) : '')) {
-                        Images::loadFailed($this->app->backend(), $cell->source);
+                    $this->pushRowImage((string) $shown[$r][$c][0], $cell->source);
+                } elseif ($cell instanceof ImageList) {
+                    \slint_rows_list_begin();
+                    foreach ($cell->sources as $i => $source) {
+                        $this->pushRowImage((string) $shown[$r][$c][1][$i], $source);
                     }
+                    \slint_rows_list_end();
+                } elseif (is_array($cell)) {
+                    \slint_rows_list_begin();
+                    foreach ($cell as $item) {
+                        \slint_rows_string((string) $item);
+                    }
+                    \slint_rows_list_end();
                 } elseif (is_bool($cell)) {
                     \slint_rows_bool($cell);
                 } elseif (is_int($cell)) {
@@ -154,6 +169,16 @@ final class SlintWindow
             }
         }
         \slint_rows_end();
+    }
+
+    /** One image cell (or list item) of a row, by its Images::state(). */
+    private function pushRowImage(string $state, string $source): void
+    {
+        if (str_starts_with($state, 'asset:')) {
+            \slint_rows_image_asset((int) substr($state, 6));
+        } elseif (!\slint_rows_image_file(str_starts_with($state, 'file:') ? substr($state, 5) : '')) {
+            Images::loadFailed($this->app->backend(), $source);
+        }
     }
 
     /** $state from Images::state(): 'none', 'asset:<index>' or 'file:<path>'. */

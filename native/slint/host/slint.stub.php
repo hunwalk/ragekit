@@ -47,6 +47,10 @@ function slint_rows_image_asset(int $index): void {}
 
 function slint_rows_image_file(string $path): bool {}
 
+function slint_rows_list_begin(): void {}
+
+function slint_rows_list_end(): void {}
+
 function slint_rows_end(): void {}
 
 function slint_close(int $window): void {}

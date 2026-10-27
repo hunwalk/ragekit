@@ -259,11 +259,31 @@ namespace {
 int64_t rowsWindow = 0;
 int32_t rowsId = 0;
 rk::Rows rows;
+bool inList = false; // between rk_rows_list_begin and _end: cells are the list cell's items
 
 void add_cell(rk::Cell cell)
 {
     if (rows.empty()) {
         rows.emplace_back();
+    }
+    if (inList && !rows.back().empty()) {
+        rk::Cell &list = rows.back().back();
+        if (auto *text = std::get_if<slint::SharedString>(&cell)) {
+            if (std::holds_alternative<std::monostate>(list)) {
+                list = std::vector<slint::SharedString>();
+            }
+            if (auto *items = std::get_if<std::vector<slint::SharedString>>(&list)) {
+                items->push_back(*text);
+            }
+        } else if (auto *image = std::get_if<slint::Image>(&cell)) {
+            if (std::holds_alternative<std::monostate>(list)) {
+                list = std::vector<slint::Image>();
+            }
+            if (auto *items = std::get_if<std::vector<slint::Image>>(&list)) {
+                items->push_back(*image);
+            }
+        }
+        return;
     }
     rows.back().push_back(std::move(cell));
 }
@@ -319,8 +339,20 @@ RK_API int rk_rows_image_file(const char *path, size_t len)
     return loaded ? 1 : 0;
 }
 
+RK_API void rk_rows_list_begin(void)
+{
+    add_cell(std::monostate()); // the list cell; an empty list stays empty (cell_list's default)
+    inList = true;
+}
+
+RK_API void rk_rows_list_end(void)
+{
+    inList = false;
+}
+
 RK_API void rk_rows_end(void)
 {
+    inList = false;
     if (auto *instance = find(rowsWindow)) {
         instance->set_rows(rowsId, rows);
     }
