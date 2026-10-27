@@ -1,6 +1,9 @@
-handle_->global<RkEmoji>().on_images([](slint::SharedString text) {
+handle_->global<RkEmoji>().on_images([weak = slint::ComponentWeakHandle<{{ name }}>(handle_)](slint::SharedString text, float size) {
     auto images = std::make_shared<slint::VectorModel<slint::Image>>();
-    for (const slint::Image &image : rk::emoji::images(std::string_view(text.data(), text.size()))) {
+    auto handle = weak.lock();
+    float scale = handle ? (*handle)->window().scale_factor() : 1.0f;
+    int pixels = static_cast<int>(std::lround(size * scale));
+    for (const slint::Image &image : rk::emoji::images(std::string_view(text.data(), text.size()), pixels)) {
         images->push_back(image);
     }
     return std::shared_ptr<slint::Model<slint::Image>>(images);

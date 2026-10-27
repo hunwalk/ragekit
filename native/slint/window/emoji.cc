@@ -1,6 +1,8 @@
 // rk::emoji (emoji.h): splitting text into emoji sequences, and the cache in front of draw().
 #include "emoji.h"
 
+#include <algorithm>
+#include <cmath>
 #include <map>
 
 namespace rk::emoji {
@@ -73,6 +75,55 @@ char32_t peek(std::string_view text, size_t i)
     return i < text.size() ? next(text, i) : 0;
 }
 
+/**
+ * The image scaled down to fit `pixels` × `pixels`, each new pixel the average of the source pixels
+ * it covers (with their fractions at the edges), in premultiplied alpha so transparent pixels
+ * don't darken the edges. Smaller images, and sizes it can't read, come back as they are.
+ */
+slint::Image shrink(const slint::Image &image, int pixels)
+{
+    auto size = image.size();
+    if (pixels <= 0 || size.width == 0 || size.height == 0 || (size.width <= static_cast<uint32_t>(pixels) && size.height <= static_cast<uint32_t>(pixels))) {
+        return image;
+    }
+    auto source = image.to_rgba8_premultiplied();
+    if (!source) {
+        return image;
+    }
+    double scale = static_cast<double>(pixels) / std::max(size.width, size.height);
+    uint32_t width = std::max<uint32_t>(1, static_cast<uint32_t>(std::lround(size.width * scale)));
+    uint32_t height = std::max<uint32_t>(1, static_cast<uint32_t>(std::lround(size.height * scale)));
+    double stepX = static_cast<double>(size.width) / width, stepY = static_cast<double>(size.height) / height;
+    const slint::Rgba8Pixel *in = source->begin();
+    slint::SharedPixelBuffer<slint::Rgba8Pixel> result(width, height);
+    slint::Rgba8Pixel *out = result.begin();
+    for (uint32_t y = 0; y < height; y++) {
+        double top = y * stepY, bottom = top + stepY;
+        for (uint32_t x = 0; x < width; x++) {
+            double left = x * stepX, right = left + stepX;
+            double sum[4] = {0, 0, 0, 0}, area = 0;
+            for (uint32_t sy = static_cast<uint32_t>(top); sy < size.height && sy < bottom; sy++) {
+                double h = std::min<double>(sy + 1, bottom) - std::max<double>(sy, top);
+                for (uint32_t sx = static_cast<uint32_t>(left); sx < size.width && sx < right; sx++) {
+                    double w = (std::min<double>(sx + 1, right) - std::max<double>(sx, left)) * h;
+                    const slint::Rgba8Pixel &p = in[static_cast<size_t>(sy) * size.width + sx];
+                    sum[0] += p.r * w;
+                    sum[1] += p.g * w;
+                    sum[2] += p.b * w;
+                    sum[3] += p.a * w;
+                    area += w;
+                }
+            }
+            double a = sum[3] / area;
+            auto straight = [a, area](double v) {
+                return static_cast<uint8_t>(a <= 0 ? 0 : std::clamp(std::lround(v / area * 255.0 / a), 0L, 255L));
+            };
+            out[static_cast<size_t>(y) * width + x] = slint::Rgba8Pixel{straight(sum[0]), straight(sum[1]), straight(sum[2]), static_cast<uint8_t>(std::lround(a))};
+        }
+    }
+    return slint::Image(result);
+}
+
 } // namespace
 
 std::vector<std::string> sequences(std::string_view text)
@@ -110,14 +161,19 @@ std::vector<std::string> sequences(std::string_view text)
     return out;
 }
 
-std::vector<slint::Image> images(std::string_view text)
+std::vector<slint::Image> images(std::string_view text, int pixels)
 {
-    static std::map<std::string, slint::Image, std::less<>> cache;
+    static std::map<std::string, slint::Image, std::less<>> drawn;
+    static std::map<std::pair<std::string, int>, slint::Image> sized;
     std::vector<slint::Image> out;
     for (const std::string &sequence : sequences(text)) {
-        auto it = cache.find(sequence);
-        if (it == cache.end()) {
-            it = cache.emplace(sequence, draw(sequence)).first;
+        auto it = sized.find({sequence, pixels});
+        if (it == sized.end()) {
+            auto master = drawn.find(sequence);
+            if (master == drawn.end()) {
+                master = drawn.emplace(sequence, draw(sequence)).first;
+            }
+            it = sized.emplace(std::make_pair(sequence, pixels), shrink(master->second, pixels)).first;
         }
         if (it->second.size().width > 0) {
             out.push_back(it->second);

@@ -12,6 +12,7 @@
 
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -199,10 +200,13 @@ Shell::Instance Shell::create(int64_t id, const std::string &screen, const std::
         });
         return slint::interpreter::Value();
     });
-    instance->set_global_callback("RkEmoji", "images", [](auto args) {
+    instance->set_global_callback("RkEmoji", "images", [weak = slint::ComponentWeakHandle<slint::interpreter::ComponentInstance>(instance)](auto args) {
         auto text = args[0].to_string().value_or("");
+        auto handle = weak.lock();
+        float scale = handle ? (*handle)->window().scale_factor() : 1.0f;
+        int pixels = static_cast<int>(std::lround(args[1].to_number().value_or(20) * scale));
         slint::SharedVector<slint::interpreter::Value> images;
-        for (const slint::Image &image : rk::emoji::images(std::string_view(text.data(), text.size()))) {
+        for (const slint::Image &image : rk::emoji::images(std::string_view(text.data(), text.size()), pixels)) {
             images.push_back(slint::interpreter::Value(image));
         }
         return slint::interpreter::Value(images);

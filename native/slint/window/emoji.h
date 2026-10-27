@@ -20,8 +20,13 @@ namespace rk::emoji {
  */
 std::vector<std::string> sequences(std::string_view text);
 
-/** One image per emoji in the text (see sequences()); one the font can't draw is left out. Cached. */
-std::vector<slint::Image> images(std::string_view text);
+/**
+ * One image per emoji in the text (see sequences()), each `pixels` wide and high (physical pixels:
+ * the size it's shown at times the window's scale factor); one the font can't draw is left out.
+ * The font's picture is bigger and is averaged down here: Slint's own scaling samples only the
+ * nearest four pixels, which made emoji shown at a fraction of that size jagged. Cached.
+ */
+std::vector<slint::Image> images(std::string_view text, int pixels);
 
 /** Platform part: the sequence drawn by the colour emoji font (an empty Image if it can't be). */
 slint::Image draw(const std::string &sequence);

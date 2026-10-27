@@ -42,7 +42,7 @@ final class EmojiCompiler implements ElementCompiler
         }
         $text = $context->values->value($element->attributes['text'], 'string', null, $scope, $element, 'text');
         $id = $context->nextId('rk-emoji');
-        $image = Code::block('Image', ["source: $id;", "width: {$size}px;", "height: {$size}px;", 'image-rendering: smooth;'], '', "for $id in RkEmoji.images($text) : ");
+        $image = Code::block('Image', ["source: $id;", "width: {$size}px;", "height: {$size}px;", 'image-rendering: smooth;'], '', "for $id in RkEmoji.images($text, {$size}px) : ");
         return Code::block('HorizontalLayout', [
             'alignment: start;',
             'spacing: ' . max(1, intdiv((int) $size, 10)) . 'px;',

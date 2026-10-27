@@ -95,7 +95,7 @@ final class GlueEmitter
             'name' => self::cppName($window->name),
             'windowCommands' => $framed ? self::stub('glue-window-commands', []) : '',
             'rich' => $rich ? self::stub('glue-rich', ['name' => self::cppName($window->name)]) : '',
-            'emoji' => $emoji ? self::stub('glue-emoji', []) : '',
+            'emoji' => $emoji ? self::stub('glue-emoji', ['name' => self::cppName($window->name)]) : '',
             'frameless' => $framed ? self::stub('glue-frameless', []) : '',
             'setters' => $setters . ($assets ? self::stub('glue-asset', []) : ''),
             'members' => implode("\n", $members),

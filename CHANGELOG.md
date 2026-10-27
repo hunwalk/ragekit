@@ -77,6 +77,10 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ### Fixed
 
+- **`<Emoji>` is smooth at every size:** the emoji font's picture (96 px on Windows, 136 px from Noto on
+  Linux) is averaged down to the exact pixel size it's shown at, scale factor included, instead of
+  Slint's own scaling, which samples only four pixels and left a big emoji jagged. `RkEmoji.images`
+  takes the size as a second argument.
 - **Windows: no black window after minimising.** With an input focused (its caret blinking), a
   window restored from the taskbar or the tray stayed black except for the input: Slint's software
   renderer copies only what changed to the window, and it went on drawing while minimised. RageKit now

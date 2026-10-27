@@ -5,6 +5,7 @@
 #include "markdown.h"
 #include "app.h"
 
+#include <cmath>
 #include <memory>
 #include <optional>
 #include <string_view>

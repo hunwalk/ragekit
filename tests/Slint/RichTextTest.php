@@ -59,8 +59,8 @@ final class RichTextTest extends TestCase
     public function testEmojiRepeatsTheNativeImages(): void
     {
         $slint = $this->compile('<VStack><Emoji text="{{ $body }}" size="32" /></VStack>')->slint;
-        self::assertMatchesRegularExpression('/for (rk-emoji-\d+) in RkEmoji\.images\("\\\\\{root\.p\d+\}"\) : Image \{\s+source: \1;\s+width: 32px;\s+height: 32px;/', $slint);
-        self::assertStringContainsString('RkEmoji.images("👍")', $this->compile('<VStack><Emoji text="👍" /></VStack>')->slint);
+        self::assertMatchesRegularExpression('/for (rk-emoji-\d+) in RkEmoji\.images\("\\\\\{root\.p\d+\}", 32px\) : Image \{\s+source: \1;\s+width: 32px;\s+height: 32px;/', $slint);
+        self::assertStringContainsString('RkEmoji.images("👍", 20px)', $this->compile('<VStack><Emoji text="👍" /></VStack>')->slint);
     }
 
     public function testImageViewerZoomsInSlint(): void

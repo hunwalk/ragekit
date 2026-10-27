@@ -8,7 +8,7 @@ export global RkRich {
     callback click(length, length);
 }
 export global RkEmoji {
-    pure callback images(string) -> [image];
+    pure callback images(string, length) -> [image]; // the text's emoji, at this size
 }
 
 {{ components }}
