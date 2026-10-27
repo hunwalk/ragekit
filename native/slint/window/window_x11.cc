@@ -156,6 +156,10 @@ void make_floating(slint::Window &)
 {
 }
 
+void skip_frames_while_minimised(slint::Window &)
+{
+}
+
 bool double_click()
 {
     static DoubleClick clicks;

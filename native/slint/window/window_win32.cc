@@ -9,6 +9,9 @@
 #include <windows.h>
 #include <dwmapi.h>
 
+#include <unordered_map>
+#include <unordered_set>
+
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "user32.lib")
 
@@ -45,9 +48,87 @@ void post(slint::Window &window, WPARAM hit)
     });
 }
 
+// The windows skip_frames_while_minimised() watches, with the window procedure it replaced. UI thread only.
+std::unordered_map<HWND, WNDPROC> watched;
+std::unordered_map<HWND, slint::Window *> window_of;
+std::unordered_set<HWND> was_minimised;
+
+LRESULT CALLBACK watch_proc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    auto it = watched.find(hwnd);
+    if (it == watched.end()) {
+        return DefWindowProcW(hwnd, message, wParam, lParam);
+    }
+    WNDPROC previous = it->second;
+    if (message == WM_NCDESTROY) {
+        SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(previous));
+        watched.erase(it);
+        window_of.erase(hwnd);
+        was_minimised.erase(hwnd);
+    } else if (message == WM_PAINT && IsIconic(hwnd)) {
+        // Slint's software renderer copies only what changed to the window, and a frame drawn
+        // while minimised (a blinking caret asks for one every half second) left the window, once
+        // restored, empty except for those parts. Minimised, nothing is drawn.
+        PAINTSTRUCT paint;
+        BeginPaint(hwnd, &paint);
+        EndPaint(hwnd, &paint);
+        return 0;
+    }
+    LRESULT result = CallWindowProcW(previous, hwnd, message, wParam, lParam);
+    if (message == WM_SIZE && wParam != SIZE_MINIMIZED && wParam != SIZE_MAXHIDE) {
+        // Restored (or resized): every item changes size, by a pixel and back, so the next frame
+        // draws all of them (winit never reports the window as occluded on Windows, which is
+        // what makes Slint redraw everything elsewhere).
+        auto target = window_of.find(hwnd);
+        if (target != window_of.end() && was_minimised.erase(hwnd) != 0) {
+            slint::Window *window = target->second;
+            slint::invoke_from_event_loop([window, hwnd] {
+                if (!IsWindow(hwnd)) {
+                    return;
+                }
+                float scale = window->scale_factor();
+                slint::PhysicalSize size = window->size();
+                float width = static_cast<float>(size.width) / scale, height = static_cast<float>(size.height) / scale;
+                window->dispatch_resize_event(slint::LogicalSize({width, height + 1}));
+                window->dispatch_resize_event(slint::LogicalSize({width, height}));
+                window->request_redraw();
+            });
+        }
+    } else if (message == WM_SIZE) {
+        was_minimised.insert(hwnd);
+    }
+    return result;
+}
+
+// The first window gets its HWND only once Slint's event loop runs: until then, try again on each
+// turn of the loop (a few dozen at most).
+void watch(slint::Window *window, int tries)
+{
+    HWND hwnd = window->win32_hwnd();
+    if (hwnd == nullptr) {
+        if (tries > 0) {
+            slint::invoke_from_event_loop([window, tries] { watch(window, tries - 1); });
+        }
+        return;
+    }
+    if (watched.count(hwnd) != 0) {
+        return;
+    }
+    auto previous = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(watch_proc)));
+    if (previous != nullptr) {
+        watched[hwnd] = previous;
+        window_of[hwnd] = window;
+    }
+}
+
 } // namespace
 
 namespace rk::win {
+
+void skip_frames_while_minimised(slint::Window &window)
+{
+    watch(&window, 50);
+}
 
 void prefer_x11()
 {

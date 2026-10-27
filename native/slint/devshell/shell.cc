@@ -250,6 +250,7 @@ void Shell::show(Instance &instance, const std::string &screen)
     if (frameless(screen)) {
         rk::win::make_floating(mutableWindow(*instance));
     }
+    rk::win::skip_frames_while_minimised(mutableWindow(*instance));
 }
 
 // A frameless window's rk-window(command): the same as the bridge's rk::window_command.

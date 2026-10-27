@@ -185,6 +185,7 @@ RK_API int64_t rk_open(const char *screen, size_t screen_len, const char *title,
     if (instance->frameless()) {
         rk::win::make_floating(instance->window());
     }
+    rk::win::skip_frames_while_minimised(instance->window());
     windows.emplace(id, std::move(instance));
     platformIsReady(); // the UI thread has created a window: Slint's platform lives here now
     return id;

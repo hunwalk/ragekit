@@ -18,6 +18,13 @@ enum class Edge { TopLeft = 0, Top, TopRight, Right, BottomRight, Bottom, Bottom
 void make_floating(slint::Window &window);
 
 /**
+ * After the window is shown (Windows; elsewhere a no-op): no frames are drawn while it's minimised.
+ * Slint's software renderer copies only the changed parts to the window, and one drawn while
+ * minimised (a blinking caret's) left the restored window black except for those parts.
+ */
+void skip_frames_while_minimised(slint::Window &window);
+
+/**
  * The primary button was just pressed on a drag area: whether this press completes a double-click
  * (then maximise instead of moving). Uses the OS's double-click time and distance.
  */

@@ -75,6 +75,10 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ### Fixed
 
+- **Windows: no black window after minimising.** With an input focused (its caret blinking), a
+  window restored from the taskbar or the tray stayed black except for the input: Slint's software
+  renderer copies only what changed to the window, and it went on drawing while minimised. RageKit now
+  skips frames while a window is minimised and has the first one after a restore draw everything.
 - **No more "Recursion detected" for a View in a View:** a plain column `<View>` inside another
   `<View>` (a quote inside a chat bubble) with wrapping text made Slint's layout recurse at run time;
   such a View is now laid out as a column without a flexbox, like the ones in a `@foreach` (same look).
