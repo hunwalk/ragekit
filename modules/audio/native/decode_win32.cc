@@ -41,7 +41,7 @@ bool decode(const std::string &path, Decoded &out, std::string &why)
             DWORD flags = 0;
             IMFSample *sample = nullptr;
             if (FAILED(reader->ReadSample(MF_SOURCE_READER_FIRST_AUDIO_STREAM, 0, nullptr, &flags, nullptr, &sample))
-                || (flags & MF_SOURCE_READERF_ENDOFSTREAM)) {
+                || (flags & (MF_SOURCE_READERF_ENDOFSTREAM | MF_SOURCE_READERF_ERROR))) {
                 if (sample != nullptr) {
                     sample->Release();
                 }

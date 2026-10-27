@@ -294,6 +294,7 @@ RK_API void rk_rows_begin(int64_t window, int32_t id)
     rowsWindow = window;
     rowsId = id;
     rows.clear();
+    inList = false; // a push that threw halfway never reached rk_rows_list_end
 }
 
 RK_API void rk_rows_next(void)

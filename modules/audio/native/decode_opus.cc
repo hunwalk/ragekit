@@ -18,8 +18,12 @@ namespace rk::audio {
 
 namespace {
 
+// 0 past the end: every number in the file is untrusted (a voice note comes from someone else).
 uint32_t be32(const std::string &d, size_t at)
 {
+    if (at > d.size() || d.size() - at < 4) {
+        return 0;
+    }
     return (uint32_t(uint8_t(d[at])) << 24) | (uint32_t(uint8_t(d[at + 1])) << 16) | (uint32_t(uint8_t(d[at + 2])) << 8) | uint8_t(d[at + 3]);
 }
 
@@ -40,7 +44,7 @@ bool child(const std::string &d, size_t start, size_t end, const char *type, siz
         } else if (size == 0) {
             size = end - at;
         }
-        if (size < header || at + size > end) {
+        if (size < header || size > end - at) {
             return false;
         }
         if (std::memcmp(d.data() + at + 4, type, 4) == 0) {
@@ -154,19 +158,29 @@ bool decode(const std::string &file, Decoded &out, std::string &why)
     }
     uint32_t fixed = be32(d, za + 4), count = be32(d, za + 8);
     uint32_t chunks = be32(d, ca + 4), runs = be32(d, ta + 4);
+    // Each table must hold the entries it claims (sizes in 64 bits, so a huge count can't wrap).
+    if (zb - za < 12 || cb - ca < 8 || tb - ta < 8 || (fixed == 0 && uint64_t(zb - za - 12) < uint64_t(count) * 4)
+        || uint64_t(cb - ca - 8) < uint64_t(chunks) * (co64 ? 8 : 4) || uint64_t(tb - ta - 8) < uint64_t(runs) * 12
+        || (fixed != 0 && count > d.size() / fixed)) {
+        why = "an Opus track with broken sample tables";
+        return false;
+    }
     std::vector<uint64_t> offsets;
     size_t sample = 0;
     for (uint32_t c = 0; c < chunks; c++) {
-        uint64_t offset = co64 ? be64(d, ca + 8 + c * 8) : be32(d, ca + 8 + c * 4);
+        uint64_t offset = co64 ? be64(d, ca + 8 + size_t(c) * 8) : be32(d, ca + 8 + size_t(c) * 4);
         uint32_t perChunk = 0;
         for (uint32_t r = 0; r < runs; r++) {
-            if (be32(d, ta + 8 + r * 12) <= c + 1) {
-                perChunk = be32(d, ta + 8 + r * 12 + 4);
+            if (be32(d, ta + 8 + size_t(r) * 12) <= uint64_t(c) + 1) {
+                perChunk = be32(d, ta + 8 + size_t(r) * 12 + 4);
             }
         }
         for (uint32_t s = 0; s < perChunk && sample < count; s++, sample++) {
             offsets.push_back(offset);
             offset += fixed != 0 ? fixed : be32(d, za + 12 + sample * 4);
+            if (offset > d.size()) {
+                break; // the rest of this chunk lies outside the file
+            }
         }
     }
     Opus &o = opus();
@@ -183,7 +197,7 @@ bool decode(const std::string &file, Decoded &out, std::string &why)
     std::vector<float> frame(5760 * channels);
     for (size_t i = 0; i < offsets.size(); i++) {
         uint32_t size = fixed != 0 ? fixed : be32(d, za + 12 + i * 4);
-        if (offsets[i] + size > d.size()) {
+        if (offsets[i] > d.size() || size > d.size() - offsets[i]) {
             break;
         }
         int frames = o.decode(decoder, reinterpret_cast<const unsigned char *>(d.data() + offsets[i]), static_cast<int32_t>(size), frame.data(), 5760, 0);

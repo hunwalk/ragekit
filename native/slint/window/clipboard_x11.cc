@@ -32,6 +32,7 @@ constexpr int kSelectionNotify = 31;
 constexpr int kPropertyNotify = 28;
 constexpr long kPropertyChangeMask = 1L << 22;
 constexpr int kPropertyNewValue = 0;
+constexpr size_t kMaxBytes = 64u << 20; // a pasted image or file list larger than 64 MB is refused
 
 struct SelectionEvent {
     int type;
@@ -186,6 +187,9 @@ public:
                     return true;
                 }
                 out += piece;
+                if (out.size() > kMaxBytes) {
+                    return false; // an owner that never stops sending
+                }
                 deadline = Clock::now() + timeout; // a large image: the time limit is per piece
             }
             return false;

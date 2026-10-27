@@ -241,7 +241,15 @@ bool badge(int64_t count, std::string &why)
         why = "no window to badge yet";
         return false;
     }
-    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    struct Com {
+        HRESULT hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        ~Com()
+        {
+            if (SUCCEEDED(hr)) {
+                CoUninitialize(); // each successful init needs its own uninit
+            }
+        }
+    } com;
     ITaskbarList3 *taskbar = nullptr;
     if (FAILED(CoCreateInstance(CLSID_TaskbarList, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&taskbar))) || FAILED(taskbar->HrInit())) {
         if (taskbar != nullptr) {
