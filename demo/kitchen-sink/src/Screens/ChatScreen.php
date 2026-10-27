@@ -4,6 +4,7 @@ namespace Demo\Screens;
 
 use Demo\Chat\Message;
 use Demo\Chat\Messages;
+use RageKit\Links;
 use RageKit\LocalTime;
 use RageKit\Timer;
 
@@ -41,7 +42,8 @@ final class ChatScreen extends Page
         $this->messages = new Messages();
         $this->say('Hi! I\'m RageBot.', false);
         $this->say('Wait, is this window PHP?', true);
-        $this->say('Compiled PHP, drawn by Slint. No Chromium in here.', false);
+        $this->say('**Compiled** PHP, drawn by [Slint](https://slint.dev). No Chromium in here. :rocket:', false);
+        $this->say('🎉', true);
         $this->say('Long messages wrap inside their bubble, and the list stays at the bottom while new ones arrive. Scroll up and it stays where you are.', false);
         $this->say('Nice. What else?', true);
         $this->say('Right-click a message for its menu, or hover one. Say something!', false);
@@ -66,6 +68,16 @@ final class ChatScreen extends Page
             $this->status = '';
             $this->say(self::REPLIES[$this->replies++ % count(self::REPLIES)], false);
         });
+    }
+
+    /** A link in a message (markdown). */
+    public function openLink(string $url): void
+    {
+        try {
+            Links::openInBrowser($url);
+        } catch (\InvalidArgumentException $e) {
+            $this->toast($e->getMessage());
+        }
     }
 
     /** Escape. */

@@ -4,12 +4,16 @@
         <Text variant="h3" grow="true">Chat</Text>
         <Button text="+200 messages" variant="outline" onClick="addMany" />
     </HStack>
-    <Text variant="muted">Enter sends, Shift+Enter adds a line, Escape empties the box. Right-click a message for its menu.</Text>
+    <Text variant="muted">Enter sends, Shift+Enter adds a line, Escape empties the box. Right-click a message for its menu. Messages take markdown and :shortcodes:.</Text>
     <ScrollView virtual="true" stickToBottom="true">
         @foreach ($messages as $m)
             <View style="row" @style(['mineRow' => $m->mine])>
                 <View style="bubble" @style(['mine' => $m->mine, 'hot' => $m->id === $hovered]) onHoverIn="hoverIn($m->id)" onHoverOut="hoverOut">
-                    <Text>{{ $m->text }}</Text>
+                    @if ($m->bigEmoji())
+                        <Emoji text="{{ $m->text }}" size="40" />
+                    @else
+                        <Text markdown="true" onLink="openLink">{{ $m->text }}</Text>
+                    @endif
                     <Text variant="muted">{{ $m->time }}</Text>
                     <ContextMenu>
                         <MenuItem text="Quote" onClick="quote($m->id)" />
