@@ -341,7 +341,8 @@ final class SlintCompiler
 
     /**
      * A screen in a plain window: a root <View> fills the window itself ($alone: the window's only
-     * page; among several, the pages' layout stretches it); anything else sits in a padded column.
+     * page; among several, the pages' layout stretches it); anything else sits in a padded column,
+     * except a root stack with padded="false", which reaches the window's edges.
      */
     private function pageBody(Page $page, string $guard, bool $alone): string
     {
@@ -354,7 +355,8 @@ final class SlintCompiler
             return $prefix . $this->elements->element($root, $page->scope, 'v');
         }
         $body = $this->elements->element($root, $page->scope, 'v');
-        return Code::block('VerticalLayout', ['padding: 16px;', 'alignment: ' . ($this->elements->flag($root, 'grow') ? 'stretch' : 'start') . ';'], $body, $prefix);
+        $flush = $root->namespace === null && in_array($root->tag, ['VStack', 'HStack'], true) && ($root->attributes['padded'] ?? '') === 'false';
+        return Code::block('VerticalLayout', ['padding: ' . ($flush ? '0px' : '16px') . ';', 'alignment: ' . ($this->elements->flag($root, 'grow') ? 'stretch' : 'start') . ';'], $body, $prefix);
     }
 
     /**

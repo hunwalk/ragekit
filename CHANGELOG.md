@@ -11,6 +11,11 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+### Added
+
+- **A screen's root `<VStack padded="false">` / `<HStack padded="false">` reaches the window's
+  edges** (no 16 px margin), for a sidebar along the edge; a root `<View>` already did.
+
 ## [0.8.0] - 2026-10-27
 
 The rest of what a chat app needs, driven by the dev-null.sh client: formatted text and colour emoji,

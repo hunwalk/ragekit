@@ -135,6 +135,15 @@ final class ViewTest extends TestCase
         self::assertSame(1, substr_count($slint, 'FlexboxLayout {'), 'only the outer View is a flexbox');
     }
 
+    /** A root stack sits 16 px in from the window's edges; padded="false" lets it reach them. */
+    public function testRootStackWithoutPaddingReachesTheEdges(): void
+    {
+        self::assertStringContainsString('padding: 16px;', $this->compile('<HStack><Label text="a" /></HStack>')->slint);
+        $flush = $this->compile('<HStack padded="false"><Label text="a" /></HStack>')->slint;
+        self::assertStringNotContainsString('padding: 16px;', $flush);
+        self::assertStringContainsString('padding: 0px;', $flush);
+    }
+
     public function testRootViewFillsTheWindow(): void
     {
         $out = $this->compile('<View style="card"><Label text="a" /></View>');

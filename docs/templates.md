@@ -460,6 +460,8 @@ final class DevicesScreen extends Screen
 ```
 
 - Children are 8 px apart. `padded="false"` removes the spacing (or set `gap` in a style).
+- A screen's root stack sits 16 px in from the window's edges; with `padded="false"` it reaches them
+  (a sidebar along the window's edge).
 - Children keep their natural size and line up at the start, unless one of them has
   `grow="true"` (or a `flex` style).
 
@@ -532,6 +534,18 @@ Slint lays out `<View>`s with its flexbox, which has two known limits (Slint 1.1
   inside another `<View>`, with wrapping text in it (a list of cards). RageKit lays out such a
   repeated View as a plain column instead, which looks the same; one with `alignItems` (other than
   stretch), `columnGap`, `flexWrap` or children with `alignSelf` stays a flexbox and may still hit it.
+
+Also found while building a chat screen (Slint 1.18; each has a workaround):
+
+- **A `<ScrollView>` inside a `<View>` doesn't take the rest of its height** (it stays 0 high). Put
+  it in a `<VStack>` instead; a View only around parts with a fixed size (a header, a footer).
+- **An empty `<View>` (a 1 px rule between two columns) caps the window's height** at its own: give
+  it `maxHeight` (e.g. 100000) next to its `width`.
+- **A `<Textarea maxRows>` in a `<View>` makes the layout recurse at run time**: put it in an
+  `<HStack>` (which takes padding styles) instead.
+- **A column `<View>` with a child that has `alignSelf`, or a row `<View>` inside it, stays a
+  flexbox**: its wrapped text then comes out a line short, or the layout recurses. Inside a
+  repeated bubble, use `<HStack>`/`<Label>` for small rows, and no `alignSelf`.
 
 ### ScrollView: lists longer than the window
 
