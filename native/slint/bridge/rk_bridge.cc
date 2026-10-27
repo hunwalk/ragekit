@@ -381,6 +381,12 @@ RK_API void rk_window_minimize(int64_t window)
     }
 }
 
+RK_API int rk_window_is_minimized(int64_t window)
+{
+    auto *instance = find(window);
+    return instance != nullptr && instance->window().is_minimized() ? 1 : 0;
+}
+
 RK_API void rk_window_set_maximized(int64_t window, int maximized)
 {
     if (auto *instance = find(window)) {

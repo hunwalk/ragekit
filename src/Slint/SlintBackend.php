@@ -59,6 +59,11 @@ final class SlintBackend implements Backend
         \slint_window_minimize($window);
     }
 
+    public function isMinimized(int $window): bool
+    {
+        return \slint_window_is_minimized($window);
+    }
+
     public function setMaximized(int $window, bool $maximized): void
     {
         \slint_window_set_maximized($window, $maximized);

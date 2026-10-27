@@ -399,6 +399,12 @@ void Shell::onPhpLine(unsigned generation, const std::string &line)
         child_.send(encode({"result", rk::clip::save_image(f[1])})); // RageKit\Clipboard::image()
         return;
     }
+    if (cmd == "is-minimized" && f.size() >= 2) {
+        auto it = windows_.find(std::atoll(f[1].c_str()));
+        bool minimized = it != windows_.end() && it->second.instance->window().is_minimized();
+        child_.send(encode({"result", minimized ? "1" : "0"})); // Window::minimized()
+        return;
+    }
     if (cmd == "clipboard-has-image") {
         child_.send(encode({"result", rk::clip::has_image() ? "1" : "0"}));
         return;

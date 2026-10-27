@@ -98,6 +98,12 @@ function slint_clipboard_image(string $folder): string
     return $reply[1] ?? '';
 }
 
+function slint_window_is_minimized(int $window): bool
+{
+    $reply = Session::channel()->request('is-minimized', (string) $window);
+    return ($reply[1] ?? '') === '1';
+}
+
 function slint_clipboard_has_image(): bool
 {
     $reply = Session::channel()->request('clipboard-has-image');

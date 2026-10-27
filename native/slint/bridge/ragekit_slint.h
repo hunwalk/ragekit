@@ -54,6 +54,7 @@ RK_API void rk_rows_end(void);
 RK_API void rk_close(int64_t window);
 /** Window controls for layouts (frameless windows); see native/slint/window. */
 RK_API void rk_window_minimize(int64_t window);
+RK_API int rk_window_is_minimized(int64_t window);
 RK_API void rk_window_set_maximized(int64_t window, int maximized);
 
 /* Native modules (modules/<name>): loaded at runtime, never linked (rk_modules.cc). */

@@ -58,6 +58,9 @@ function slint_close(int $window): void {}
 /** Minimises a window (layouts' minimize()). */
 function slint_window_minimize(int $window): void {}
 
+/** Whether a window is minimised (Window::minimized()). */
+function slint_window_is_minimized(int $window): bool {}
+
 function slint_window_set_maximized(int $window, bool $maximized): void {}
 
 /** Starts timer $id (RageKit\Timer): a "@timer" event every $milliseconds, or once. */

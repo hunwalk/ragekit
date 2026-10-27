@@ -27,6 +27,8 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 - **Collections update in place at the front too**: rows added at the front of a collection (older
   messages) are inserted there, and rows dropped from the front are removed there, instead of every
   row being rewritten (bridge and `ragekit dev`).
+- **`Window::minimized()`**: whether a window is minimised to the taskbar or dock (`visible()` only
+  covers `hide()`). Backends gain `isMinimized()`; the bridge exports `rk_window_is_minimized`.
 - **Tray and notifications on Windows:** the tray module uses the taskbar's notification area (left
   click = `onClick`, right click = the menu; png, ico or svg icons) and the notifications module
   shows toast notifications (clicks and `close()` work; the app registers itself under

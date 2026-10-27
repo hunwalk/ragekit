@@ -87,6 +87,12 @@ class Window extends Component
         return !$this->hidden;
     }
 
+    /** Minimised to the taskbar or dock (by the user or minimize()); a hidden window isn't. */
+    public function minimized(): bool
+    {
+        return $this->app->backend()->isMinimized($this->id);
+    }
+
     /** Brings the window to the front (as far as the desktop allows: some only mark it as wanting attention). */
     public function raise(): void
     {

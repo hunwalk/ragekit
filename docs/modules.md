@@ -422,7 +422,9 @@ final class MyApp extends App
 | `remove()` | Takes the icon away. |
 
 `Window::hide()` takes a window off the screen without closing it (its screens keep their state)
-and `Window::show()` brings it back to the front; any app can use them.
+and `Window::show()` brings it back to the front; any app can use them. `visible()` is false only
+for a hidden window; `minimized()` says whether it's minimised to the taskbar or dock. A chat app
+that skips notifications for the conversation on screen checks both: a minimised window isn't being read.
 
 What does the work:
 

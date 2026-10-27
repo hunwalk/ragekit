@@ -16,6 +16,8 @@ interface Backend
 
     public function minimize(int $window): void;
 
+    public function isMinimized(int $window): bool;
+
     public function setMaximized(int $window, bool $maximized): void;
 
     /** Closes every window and ends run(). */

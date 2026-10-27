@@ -33,6 +33,11 @@ final class RecordingBackend implements Backend
         $this->calls[] = "close $window->id";
     }
 
+    public function isMinimized(int $window): bool
+    {
+        return false;
+    }
+
     public function minimize(int $window): void
     {
         $this->calls[] = "minimize $window";
