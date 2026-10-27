@@ -11,6 +11,20 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-27
+
+The rest of what a chat app needs, driven by the dev-null.sh client: formatted text and colour emoji,
+the OS's file dialogs, pasting images, long lists that stay fast, scrolling to a message, an image
+viewer, notification replies and an unread badge, Opus voice notes, and lists inside list rows. The
+tray and notifications now work on Windows too. Tested on Linux (Xvfb) and by hand on Windows 11;
+macOS isn't supported. Nothing changes for 0.7 apps. Custom backends: see "Changed".
+
+### Changed
+
+- **The `Backend` interface gained methods** for the features above (`copyText`/`pasteText`,
+  `pasteImage`/`clipboardHasImage`, `isMinimized`, …): a custom backend implements them (RageKit's
+  Slint backend does; `tests/Core/RecordingBackend.php` shows the minimum).
+
 ### Added
 
 - **Focus from PHP:** `ref="search"` on an Entry or Textarea, and `$this->focus('search')` in a

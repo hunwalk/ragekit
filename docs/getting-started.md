@@ -67,7 +67,7 @@ write a minimal app.
 RageKit is a Composer package, `ragekit/ragekit`:
 
 ```sh
-composer require ragekit/ragekit:^0.7
+composer require ragekit/ragekit:^0.8
 ```
 
 Your classes need an autoloader entry in `composer.json`, for example:
