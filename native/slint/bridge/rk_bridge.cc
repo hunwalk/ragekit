@@ -6,6 +6,7 @@
 #endif
 #include "ragekit_slint.h"
 #include "rk_instance.h"
+#include "clipboard.h"
 #include "window.h"
 
 #ifdef _WIN32
@@ -409,6 +410,19 @@ RK_API const char *rk_clipboard_get(size_t *len)
     text = windows.empty() ? std::string() : windows.begin()->second->paste_text();
     *len = text.size();
     return text.data();
+}
+
+RK_API const char *rk_clipboard_image(const char *folder, size_t folder_len, size_t *len)
+{
+    static std::string path;
+    path = rk::clip::save_image(std::string(folder, folder_len));
+    *len = path.size();
+    return path.data();
+}
+
+RK_API int rk_clipboard_has_image(void)
+{
+    return rk::clip::has_image() ? 1 : 0;
 }
 
 RK_API void rk_run(void)

@@ -44,6 +44,7 @@ from screenshots, how far the messages move: one row for a new message at the bo
 one while scrolled up, and no jump when older messages load above:
 
     DISPLAY=:99 tests/e2e/scroll.sh           # also with --nano
+    VIRTUAL=1 DISPLAY=:99 tests/e2e/scroll.sh # the same checks on <ScrollView virtual="true">
 
 `tests/e2e/pressable.sh` builds `tests/fixtures/pressable`: Ctrl+F before any click focuses the search
 box (`ref` + `focus()`), then hovers, presses and right-clicks `<View>` rows (onHoverIn/onHoverOut,
@@ -67,6 +68,24 @@ notification is shown, clicked through the service's test hook, and the app's ha
 window:
 
     DISPLAY=:99 tests/e2e/notifications.sh    # also with --nano
+
+`tests/e2e/rich-text.sh` builds `tests/fixtures/richtext`: markdown bubbles from `@foreach` and a row
+of `<Emoji>`; it checks that the heart and the thumbs up are drawn in colour, and clicks a markdown link
+and a bare URL, which reach onLink:
+
+    DISPLAY=:99 tests/e2e/rich-text.sh        # also with --nano
+
+`tests/e2e/paste-image.sh` builds `tests/fixtures/pasteimage` (`<PasteImage>` next to a Textarea) and,
+with the text box focused, presses Ctrl+V three times: with an image on the clipboard (saved as png),
+a copied image file (saved with its own bytes), and text (pasted into the text box as usual):
+
+    DISPLAY=:99 tests/e2e/paste-image.sh      # also with --nano
+
+`tests/e2e/dialogs.sh` builds `tests/fixtures/filepick` and runs it in a throwaway D-Bus session with
+a fake file chooser portal (`tests/fixtures/portal/fake_portal.py`) that answers each dialog at once:
+two files, a cancel, a save and a folder; the test checks what the app got and what the portal was asked:
+
+    DISPLAY=:99 tests/e2e/dialogs.sh          # also with --nano
 
 `tests/e2e/links.sh` builds `tests/fixtures/links` (links: [rktest]) and, with temporary XDG folders,
 checks the registration (`xdg-mime`), a `gio open rktest://…` handed to the running app, a plain

@@ -15,6 +15,7 @@
 #include "miniaudio.h"
 
 #include "rk_module_audio.h"
+#include "decode.h"
 
 #include <atomic>
 #include <chrono>
@@ -39,6 +40,15 @@ struct Sound {
     ma_sound sound;
     bool wasPlaying = false;   // playing at the last tick (or started since)
     bool finishedSent = false; // "finished" posted for the current run to the end
+    // A file miniaudio can't open (Opus in MP4, …): decoded here, played from memory.
+    rk::audio::Decoded decoded;
+    std::unique_ptr<ma_audio_buffer> buffer;
+    ~Sound()
+    {
+        if (buffer != nullptr) {
+            ma_audio_buffer_uninit(buffer.get()); // after ma_sound_uninit, which the owner calls first
+        }
+    }
 };
 
 struct Event {
@@ -286,6 +296,7 @@ std::string waveform(const std::vector<int16_t> &pcm)
 }
 
 thread_local std::string recordResult;
+std::string loadError; // why the last audio_load failed ('' when it didn't); under `state`
 
 // The app normally resets modules when its event loop ends; if it exits some other way, everything
 // must still be shut down before the statics above are destroyed: a running std::thread aborts, and
@@ -324,8 +335,28 @@ RKM_API int64_t rkm_audio_load(const char *path, size_t path_len)
     ma_result result = ma_sound_init_from_file(&engine, file.c_str(), 0, nullptr, nullptr, &s->sound);
 #endif
     if (result != MA_SUCCESS) {
-        return 0;
+        // Not a format miniaudio decodes (WAV, MP3, FLAC): Opus in MP4 and, on Windows, what Media
+        // Foundation reads, decoded whole into memory (voice notes are short).
+        std::string why;
+        if (!rk::audio::decode(file, s->decoded, why)) {
+            loadError = why;
+            return 0;
+        }
+        ma_audio_buffer_config config = ma_audio_buffer_config_init(ma_format_f32, s->decoded.channels,
+            s->decoded.samples.size() / s->decoded.channels, s->decoded.samples.data(), nullptr);
+        config.sampleRate = s->decoded.rate;
+        s->buffer = std::make_unique<ma_audio_buffer>();
+        if (ma_audio_buffer_init(&config, s->buffer.get()) != MA_SUCCESS) {
+            s->buffer.reset();
+            loadError = "couldn't play the decoded sound";
+            return 0;
+        }
+        if (ma_sound_init_from_data_source(&engine, s->buffer.get(), 0, nullptr, &s->sound) != MA_SUCCESS) {
+            loadError = "couldn't play the decoded sound";
+            return 0;
+        }
     }
+    loadError.clear();
     int64_t id = nextId++;
     sounds.emplace(id, std::move(s));
     startTicker();
@@ -513,6 +544,13 @@ RKM_API void rkm_audio_record_cancel(void)
     stopRecording();
     std::lock_guard<std::mutex> lock(recordLock);
     samples.clear();
+}
+
+RKM_API const char *rkm_audio_load_error(void)
+{
+    std::lock_guard<std::mutex> lock(state);
+    recordResult = loadError;
+    return recordResult.c_str();
 }
 
 RKM_API const char *rkm_audio_record_error(void)

@@ -1,0 +1,11 @@
+<VStack>
+    @foreach ($messages as $m)
+        <View style="bubble">
+            <Text markdown="true" onLink="open">{{ $m }}</Text>
+            <ContextMenu>
+                <MenuItem text="Reply" onClick="reply($m)" />
+            </ContextMenu>
+        </View>
+    @endforeach
+    <Emoji text="{{ $reaction }}" size="32" />
+</VStack>

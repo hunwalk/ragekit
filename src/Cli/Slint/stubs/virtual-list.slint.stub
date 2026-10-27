@@ -1,0 +1,17 @@
+// <ScrollView virtual="true">: Slint creates only the rows in view for a `for` that is the single
+// child of a component named ListView whose base has a ScrollView's properties (content-*,
+// visible-*, viewport-*). Its content height is an estimate from the rows seen so far.
+component RkVirtualScroll {
+    out property <length> visible-width <=> rk-flick.width;
+    out property <length> visible-height <=> rk-flick.height;
+    in-out property <length> content-width <=> rk-flick.content-width;
+    in-out property <length> content-height <=> rk-flick.content-height;
+    in-out property <length> content-x <=> rk-flick.content-x;
+    in-out property <length> content-y <=> rk-flick.content-y;
+    in-out property <length> viewport-width <=> content-width;
+    in-out property <length> viewport-height <=> content-height;
+    rk-flick := Flickable {
+        @children
+    }
+}
+component ListView inherits RkVirtualScroll { }

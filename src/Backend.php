@@ -71,4 +71,10 @@ interface Backend
 
     /** The clipboard's text ('' if none, not text, or no window is open). */
     public function pasteText(): string;
+
+    /** The clipboard's image saved as a file in $folder: its path, or '' when it holds no image. */
+    public function pasteImage(string $folder): string;
+
+    /** Whether the clipboard holds an image. */
+    public function clipboardHasImage(): bool;
 }

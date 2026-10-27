@@ -111,6 +111,13 @@ RK_API void rk_window_raise(int64_t window, const char *title, size_t title_len)
 RK_API void rk_clipboard_set(const char *text, size_t len);
 /** The clipboard's text ('' if none, not text, or no window is open); valid until the next call. */
 RK_API const char *rk_clipboard_get(size_t *len);
+/**
+ * The clipboard's image saved as a file in `folder` (pasted-<hash>.<ext>); its path, or '' when the
+ * clipboard holds no image. Valid until the next call.
+ */
+RK_API const char *rk_clipboard_image(const char *folder, size_t folder_len, size_t *len);
+/** Whether the clipboard holds an image (1) or not (0). */
+RK_API int rk_clipboard_has_image(void);
 RK_API void rk_run(void);
 RK_API void rk_quit(void);
 

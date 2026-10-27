@@ -142,6 +142,16 @@ final class SlintBackend implements Backend
         return \slint_clipboard_get();
     }
 
+    public function pasteImage(string $folder): string
+    {
+        return \slint_clipboard_image($folder);
+    }
+
+    public function clipboardHasImage(): bool
+    {
+        return \slint_clipboard_has_image();
+    }
+
     public function utcOffset(int $at): int
     {
         return \slint_utc_offset($at);

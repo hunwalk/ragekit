@@ -27,6 +27,8 @@ fail() {
 xwininfo -root -tree | grep -q '("chat"' && { echo "!! scroll: a chat window is already open"; exit 1; }
 
 cp -r "$root/tests/fixtures/chat" "$app"
+# VIRTUAL=1: the same checks on <ScrollView virtual="true"> (only the rows in view exist).
+[ "${VIRTUAL:-}" = "1" ] && sed -i 's/<ScrollView /<ScrollView virtual="true" /' "$app/templates/ChatScreen.rk"
 [ -z "${RAGEKIT_TOOLCHAIN:-}" ] && [ -d "$root/.ragekit" ] && export RAGEKIT_TOOLCHAIN="$root/.ragekit"
 (cd "$app" && "$root/bin/ragekit" build "$@") || fail "build failed"
 (cd "$app/build/slint" && env -u WAYLAND_DISPLAY ./chat >"$tmp/app.log" 2>&1; echo $? >"$tmp/exit") &
@@ -45,6 +47,8 @@ moved() { python3 -I "$root/tests/e2e/xshift.py" "$tmp/$((n - 1)).png" "$tmp/$n.
 receive() { python3 -I "$root/tests/e2e/xclick.py" 59,33; sleep 0.4; }
 wheel() { python3 -I "$root/tests/e2e/xscroll.py" 200,200 "$1" "$2"; sleep 0.4; }
 # Whether the message count (right of the button, whose hover comes and goes) changed between the last two shots.
+# One row (25 px); a virtual list's positions come from an estimate, so ±1 px there.
+row() { [ "$1" = "25" ] || { [ "${VIRTUAL:-}" = "1" ] && [ "$1" != "none" ] && [ "$1" -ge 24 ] && [ "$1" -le 26 ]; }; }
 header() { [ "$(compare -metric AE "$tmp/$((n - 1)).png[360x52+110+0]" "$tmp/$n.png[360x52+110+0]" null: 2>&1 | cut -d' ' -f1)" != "0" ]; }
 
 shot
@@ -55,13 +59,13 @@ python3 -I "$root/tests/e2e/xdrag.py" 459,290 459,330; sleep 0.3; shot
 [ "$(compare -metric AE "$tmp/1.png[440x280+0+60]" "$tmp/$n.png[440x280+0+60]" null: 2>&1 | cut -d' ' -f1)" = "0" ] \
     || fail "dragging the scrollbar back down didn't return to the bottom"
 receive; shot
-[ "$(moved)" = "25" ] || fail "a new message at the bottom moved the content by $(moved), not one row (25)"
+row "$(moved)" || fail "a new message at the bottom moved the content by $(moved), not one row (25)"
 # The message box (a Textarea, rows 1, maxRows 4): Return sends (onSubmit), the message shows at
 # the bottom; Shift+Return adds a line, the box grows and the messages move up with it.
 python3 -I "$root/tests/e2e/xclick.py" 240,368
 python3 -I "$root/tests/e2e/xtype.py" hello "$window"
 python3 -I "$root/tests/e2e/xkey.py" Return "$window"; sleep 0.4; shot
-[ "$(moved)" = "25" ] || fail "sending with Return didn't add a row at the bottom ($(moved))"
+row "$(moved)" || fail "sending with Return didn't add a row at the bottom ($(moved))"
 python3 -I "$root/tests/e2e/xtype.py" line1 "$window"
 python3 -I "$root/tests/e2e/xkey.py" Shift_L+Return "$window"
 python3 -I "$root/tests/e2e/xtype.py" line2 "$window"; sleep 0.4; shot
@@ -91,12 +95,17 @@ convert "$tmp/$((n - 1)).png" -crop 440x140+0+206 +repage "$tmp/before.png"
 convert "$tmp/$n.png" -crop 440x140+0+66 +repage "$tmp/after.png"
 [ "$(compare -metric AE "$tmp/before.png" "$tmp/after.png" null: 2>&1 | cut -d' ' -f1)" = "0" ] \
     || fail "shrinking the window at the bottom didn't keep the bottom in view"
+# 300 messages at once while at the bottom: the view ends on the last one (scrolling further changes nothing).
+python3 -I "$root/tests/e2e/xkey.py" Control_L+m "$window"; sleep 1; shot
+wheel down 80; shot
+[ "$(compare -metric AE "$tmp/$((n - 1)).png[440x150+0+60]" "$tmp/$n.png[440x150+0+60]" null: 2>&1 | cut -d' ' -f1)" = "0" ] \
+    || fail "after 300 messages at once, the view wasn't at the bottom"
 
 python3 -I "$root/tests/e2e/xclose.py" "$window"
 window=
 wait
 [ "$(cat "$tmp/exit")" = "0" ] || fail "exit code $(cat "$tmp/exit")"
-expected=$(printf '%s\n' "received 101" "sent hello" "sent line1" "line2" "loaded 61" "received 104" "loaded 51" "loaded 41" "loaded 31" "loaded 21" "loaded 11" "loaded 1" "no older")
+expected=$(printf '%s\n' "received 101" "sent hello" "sent line1" "line2" "loaded 61" "received 104" "loaded 51" "loaded 41" "loaded 31" "loaded 21" "loaded 11" "loaded 1" "no older" "received many")
 [ "$(uniq "$tmp/app.log")" = "$expected" ] || fail "unexpected events"
 
 # A short chat (3 messages): it asks for older ones until the view is full (13, then 23 rows), and

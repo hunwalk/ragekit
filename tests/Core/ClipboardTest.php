@@ -24,9 +24,24 @@ final class ClipboardTest extends TestCase
         self::assertSame("two\nlines ✓", Clipboard::paste());
     }
 
+    public function testAnImageIsSavedInTheCacheFolder(): void
+    {
+        $backend = new RecordingBackend();
+        Clipboard::attach($backend);
+        self::assertFalse(Clipboard::hasImage());
+        self::assertSame('', Clipboard::image());
+        $backend->clipboardImage = 'pasted-1.png';
+        self::assertTrue(Clipboard::hasImage());
+        $folder = $backend->cacheDir() . '/pasted';
+        self::assertSame($folder . '/pasted-1.png', Clipboard::image());
+        self::assertSame(['paste image into ' . $folder, 'paste image into ' . $folder], $backend->calls);
+    }
+
     public function testNothingWithoutAnApp(): void
     {
         Clipboard::copy('x');
         self::assertSame('', Clipboard::paste());
+        self::assertSame('', Clipboard::image());
+        self::assertFalse(Clipboard::hasImage());
     }
 }

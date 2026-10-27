@@ -76,6 +76,12 @@ function slint_clipboard_set(string $text): void {}
 /** The clipboard's text ('' if none). */
 function slint_clipboard_get(): string {}
 
+/** The clipboard's image saved into $folder; its path ('' if there's no image). */
+function slint_clipboard_image(string $folder): string {}
+
+/** Whether the clipboard holds an image. */
+function slint_clipboard_has_image(): bool {}
+
 /** Seconds east of UTC of the computer's local time at unix time $at. */
 function slint_utc_offset(int $at): int {}
 

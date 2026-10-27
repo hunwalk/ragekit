@@ -2,7 +2,11 @@
 
 #include "platform.h"
 #include "protocol.h"
+#include "model_sync.h"
 #include "window.h"
+#include "clipboard.h"
+#include "emoji.h"
+#include "markdown.h"
 
 #include <slint-testing.h>
 
@@ -152,6 +156,24 @@ bool Shell::startPhp()
     return running_;
 }
 
+namespace {
+
+/**
+ * A StyledText as an interpreter Value (<Text markdown>): the C++ API has no constructor for it,
+ * so the Value's one member, its handle, is swapped for one the interpreter's C API made.
+ */
+slint::interpreter::Value styledValue(const slint::StyledText &text)
+{
+    static_assert(sizeof(slint::interpreter::Value) == sizeof(slint::cbindgen_private::Value *));
+    slint::interpreter::Value value;
+    auto *handle = reinterpret_cast<slint::cbindgen_private::Value **>(&value);
+    slint::cbindgen_private::slint_interpreter_value_destructor(*handle);
+    *handle = slint::cbindgen_private::slint_interpreter_value_new_styled_text(&text);
+    return value;
+}
+
+} // namespace
+
 Shell::Instance Shell::create(int64_t id, const std::string &screen, const std::string &title)
 {
     auto instance = defs_.at(screen).create();
@@ -160,6 +182,30 @@ Shell::Instance Shell::create(int64_t id, const std::string &screen, const std::
     instance->set_callback("action", [this, id](auto args) {
         emit(id, static_cast<int>(args[0].to_number().value_or(0)), std::string(args[1].to_string().value_or("")));
         return slint::interpreter::Value();
+    });
+    instance->set_callback("rk-has-image", [](auto) { return slint::interpreter::Value(rk::clip::has_image()); });
+    instance->set_global_callback("RkRich", "markdown", [](auto args) {
+        auto text = args[0].to_string().value_or("");
+        return styledValue(rk::rich::markdown(std::string_view(text.data(), text.size())));
+    });
+    instance->set_global_callback("RkRich", "click", [weak = slint::ComponentWeakHandle<slint::interpreter::ComponentInstance>(instance)](auto args) {
+        float x = static_cast<float>(args[0].to_number().value_or(0));
+        float y = static_cast<float>(args[1].to_number().value_or(0));
+        slint::Timer::single_shot(std::chrono::milliseconds(0), [weak, x, y] {
+            if (auto handle = weak.lock()) {
+                // The interpreter's windows are const (see create_window); dispatching is fine.
+                rk::rich::click(const_cast<slint::Window &>((*handle)->window()), x, y);
+            }
+        });
+        return slint::interpreter::Value();
+    });
+    instance->set_global_callback("RkEmoji", "images", [](auto args) {
+        auto text = args[0].to_string().value_or("");
+        slint::SharedVector<slint::interpreter::Value> images;
+        for (const slint::Image &image : rk::emoji::images(std::string_view(text.data(), text.size()))) {
+            images.push_back(slint::interpreter::Value(image));
+        }
+        return slint::interpreter::Value(images);
     });
     if (frameless(screen)) {
         instance->set_callback("rk-window", [this, id](auto args) {
@@ -348,6 +394,14 @@ void Shell::onPhpLine(unsigned generation, const std::string &line)
         child_.send(encode({"result", text}));
         return;
     }
+    if (cmd == "clipboard-image" && f.size() >= 2) {
+        child_.send(encode({"result", rk::clip::save_image(f[1])})); // RageKit\Clipboard::image()
+        return;
+    }
+    if (cmd == "clipboard-has-image") {
+        child_.send(encode({"result", rk::clip::has_image() ? "1" : "0"}));
+        return;
+    }
     if ((cmd == "hide" || cmd == "show") && f.size() >= 2) {
         // Window::hide() / show(): a tray app's main window.
         auto it = windows_.find(std::atoll(f[1].c_str()));
@@ -512,6 +566,7 @@ bool Shell::setRows(Win &win, const std::string &property, const std::vector<std
     if (created) {
         model = std::make_shared<slint::VectorModel<Value>>();
     }
+    std::vector<Value> values;
     for (size_t row = 0; row < count; ++row) {
         Value value;
         if (images) {
@@ -523,15 +578,9 @@ bool Shell::setRows(Win &win, const std::string &property, const std::vector<std
             }
             value = Value(fields);
         }
-        if (row >= model->row_count()) {
-            model->push_back(value);
-        } else if (!(*model->row_data(row) == value)) {
-            model->set_row_data(row, value);
-        }
+        values.push_back(value);
     }
-    while (model->row_count() > count) {
-        model->erase(model->row_count() - 1);
-    }
+    rk::sync_model(*model, values);
     bool ok = !created || win.instance->set_property(property, Value(std::shared_ptr<slint::Model<Value>>(model)));
     log("rows " + f[1] + " " + property + " " + std::to_string(count));
     return ok;

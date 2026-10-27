@@ -25,15 +25,18 @@ final class GlueEmitter
     /**
      * @param list<WindowModel> $windows
      * @param bool $assets whether app.slint has the RkAssets global (registered images)
+     * @param bool $rich   whether app.slint uses the RkRich global (<Text markdown>); slint-compiler
+     *                     leaves out globals nothing uses, and their C++ with them
+     * @param bool $emoji  whether app.slint uses the RkEmoji global (<Emoji>)
      */
-    public static function emit(array $windows, bool $assets = false): string
+    public static function emit(array $windows, bool $assets = false, bool $rich = false, bool $emoji = false): string
     {
         $instances = [];
         $creators = [];
         $frameless = false;
         foreach ($windows as $window) {
             $class = self::cppName($window->name) . 'Instance';
-            $instances[] = self::instance($window, $assets);
+            $instances[] = self::instance($window, $assets, $rich, $emoji);
             $creators[] = "if (screen == \"{$window->name}\") {\n    return std::make_unique<$class>(window);\n}";
             $frameless = $frameless || $window->frame !== null;
         }
@@ -50,7 +53,7 @@ final class GlueEmitter
         return str_replace('-', '_', $component);
     }
 
-    private static function instance(WindowModel $window, bool $assets): string
+    private static function instance(WindowModel $window, bool $assets, bool $rich = false, bool $emoji = false): string
     {
         $cases = array_fill_keys(array_keys(self::SETTERS), []);
         // Property id 0 picks the page: the screen on top of the window's navigator.
@@ -90,6 +93,8 @@ final class GlueEmitter
         return self::stub('glue-instance', [
             'name' => self::cppName($window->name),
             'windowCommands' => $framed ? self::stub('glue-window-commands', []) : '',
+            'rich' => $rich ? self::stub('glue-rich', ['name' => self::cppName($window->name)]) : '',
+            'emoji' => $emoji ? self::stub('glue-emoji', []) : '',
             'frameless' => $framed ? self::stub('glue-frameless', []) : '',
             'setters' => $setters . ($assets ? self::stub('glue-asset', []) : ''),
             'members' => implode("\n", $members),

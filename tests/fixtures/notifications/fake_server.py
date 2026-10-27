@@ -4,6 +4,7 @@ line in the log file (argv[1]) and, through the extra interface org.ragekit.Test
 notification (ActionInvoked) the way a user would:
     gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications \
         --method org.ragekit.Test.Click 1
+    gdbus call … --method org.ragekit.Test.Reply 2 "On my way"
 """
 import sys
 from gi.repository import Gio, GLib
@@ -24,9 +25,11 @@ XML = """
     </method>
     <signal name="ActionInvoked"><arg type="u"/><arg type="s"/></signal>
     <signal name="NotificationClosed"><arg type="u"/><arg type="u"/></signal>
+    <signal name="NotificationReplied"><arg type="u"/><arg type="s"/></signal>
   </interface>
   <interface name="org.ragekit.Test">
     <method name="Click"><arg type="u" direction="in"/></method>
+    <method name="Reply"><arg type="u" direction="in"/><arg type="s" direction="in"/></method>
   </interface>
 </node>
 """
@@ -47,7 +50,8 @@ def call(conn, sender, path, iface, method, params, invocation):
         app, replaces, icon, summary, body, actions, hints, timeout = params.unpack()
         nid = replaces or state["next"]
         state["next"] = max(state["next"], nid + 1)
-        log("notify %d app=%s summary=%s body=%s actions=%s" % (nid, app, summary, body, ",".join(actions)))
+        reply = hints.get("x-kde-reply-placeholder-text")
+        log("notify %d app=%s summary=%s body=%s actions=%s%s" % (nid, app, summary, body, ",".join(actions), " reply=" + reply if reply else ""))
         invocation.return_value(GLib.Variant("(u)", (nid,)))
     elif method == "CloseNotification":
         (nid,) = params.unpack()
@@ -64,9 +68,22 @@ def call(conn, sender, path, iface, method, params, invocation):
         invocation.return_value(None)
         emit(conn, "ActionInvoked", GLib.Variant("(us)", (nid, "default")))
         emit(conn, "NotificationClosed", GLib.Variant("(uu)", (nid, 2)))
+    elif method == "Reply":
+        nid, text = params.unpack()
+        log("reply %d %s" % (nid, text))
+        invocation.return_value(None)
+        emit(conn, "ActionInvoked", GLib.Variant("(us)", (nid, "inline-reply")))
+        emit(conn, "NotificationReplied", GLib.Variant("(us)", (nid, text)))
+        emit(conn, "NotificationClosed", GLib.Variant("(uu)", (nid, 2)))
+
+
+def badge(conn, sender, path, iface, signal, params):
+    uri, props = params.unpack()
+    log("badge %s count=%s visible=%s" % (uri, props.get("count"), props.get("count-visible")))
 
 
 def acquired(conn, name):
+    conn.signal_subscribe(None, "com.canonical.Unity.LauncherEntry", "Update", None, None, Gio.DBusSignalFlags.NONE, badge)
     node = Gio.DBusNodeInfo.new_for_xml(XML)
     for iface in node.interfaces:
         conn.register_object("/org/freedesktop/Notifications", iface, call, None, None)

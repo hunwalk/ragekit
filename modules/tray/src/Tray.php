@@ -16,6 +16,7 @@ use RageKit\Modules;
  *
  * To keep running with the main window closed, hide it instead (App::mainWindowClosed()). Linux:
  * desktops with a StatusNotifierItem host (KDE, XFCE, GNOME with the AppIndicator extension).
+ * Windows: the taskbar's notification area. macOS: not yet.
  */
 final class Tray
 {

@@ -63,7 +63,7 @@ final class PrepareModulesTest extends TestCase
     public function testUnknownModule(): void
     {
         $this->expectException(RageKitException::class);
-        $this->expectExceptionMessage("unknown module 'gps' (installed: audio, crypto, http, keyring, notifications, tray)");
+        $this->expectExceptionMessage("unknown module 'gps' (installed: audio, crypto, dialogs, http, keyring, notifications, tray)");
         (new PrepareModules())->run($this->context("  modules: [gps]\n"));
     }
 

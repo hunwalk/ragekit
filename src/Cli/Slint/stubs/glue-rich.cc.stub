@@ -1,0 +1,10 @@
+handle_->global<RkRich>().on_markdown([](slint::SharedString text) {
+    return rk::rich::markdown(std::string_view(text.data(), text.size()));
+});
+handle_->global<RkRich>().on_click([weak = slint::ComponentWeakHandle<{{ name }}>(handle_)](float x, float y) {
+    slint::Timer::single_shot(std::chrono::milliseconds(0), [weak, x, y] {
+        if (auto handle = weak.lock()) {
+            rk::rich::click((*handle)->window(), x, y);
+        }
+    });
+});

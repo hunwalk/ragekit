@@ -1,7 +1,7 @@
 # RageKit's notifications module: desktop notifications that can be clicked. Linux: the
 # org.freedesktop.Notifications D-Bus service (GNOME, KDE, …) through GLib's GDBus, loaded at
 # runtime (building needs nothing extra; without GLib or a notification service it reports itself
-# unavailable). Windows and macOS: not yet.
+# unavailable). Windows: toast notifications (C++/WinRT, part of the Windows SDK). macOS: not yet.
 name: notifications
 php: [src]
 library:
@@ -9,11 +9,15 @@ library:
   include-paths: [native]
   platforms:
     linux: { link-libs: [dl, pthread] }
+    windows: { link-libs: [windowsapp, ole32, advapi32, user32, gdi32] }
 functions:
   # '' when notifications can be shown, otherwise why not.
   notifications_available: { returns: string }
-  # Shows one; returns its id (0 if it couldn't be shown: notifications_error() says why).
-  # Events for the id: "clicked", "closed".
-  notifications_show:      { params: { title: string, body: string }, returns: int }
+  # Shows one; returns its id (0 if it couldn't be shown: notifications_error() says why). reply: the
+  # placeholder of a reply field ('' = none; Windows, KDE). Events for the id: "clicked", "replied"
+  # (data: the text), "closed".
+  notifications_show:      { params: { title: string, body: string, reply: string }, returns: int }
   notifications_close:     { params: { notification: int } }
   notifications_error:     { returns: string }
+  # The number on the app's taskbar/dock icon (0 = none); '' when shown, otherwise why not.
+  notifications_badge:     { params: { count: int }, returns: string }

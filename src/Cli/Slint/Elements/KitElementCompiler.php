@@ -73,6 +73,20 @@ final class KitElementCompiler implements ElementCompiler
             }
             $lines[] = "{$prop->property}: $value;";
         }
+        if (isset($spec->props['markdown'], $element->attributes['markdown']) && trim($element->attributes['markdown']) !== 'false') {
+            // The kit draws `styled` instead of the text: the text parsed natively (rk::rich).
+            $text = $this->context->values->value($element->attributes['text'] ?? '', 'string', null, $scope, $element, 'text');
+            $lines[] = "styled: RkRich.markdown($text);";
+            $menu = $this->context->enclosingMenu();
+            if ($menu !== null) {
+                // StyledText takes every press on its text, so the View's menu would never see a
+                // right-click there: the kit catches presses on top, opens the menu itself and sends
+                // other clicks again to the text underneath (its links; RkRich.click).
+                $lines[] = 'menu: true;';
+                $lines[] = "menu-requested(x, y) => { $menu.open(x - $menu-area.absolute-position.x, y - $menu-area.absolute-position.y); }";
+                $lines[] = 'forward-click(x, y) => { RkRich.click(x, y); }';
+            }
+        }
         if (isset($element->attributes['ref']) && $spec->focus !== null) {
             $lines[] = $this->focusLine($element, $element->attributes['ref'], $spec->focus, $scope);
         }

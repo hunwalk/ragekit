@@ -3,6 +3,11 @@ export component {{ name }} inherits {{ window }} {
     title: root.rk-title;
     in property <int> rk-page;
     callback action(int, string);
+    // Whether the clipboard holds an image (<PasteImage>): answered natively (rk::clip).
+    callback rk-has-image() -> bool;
+    // Page Up / Page Down presses, counted (a <ScrollView keys="true"> follows them).
+    in-out property <int> rk-page-up;
+    in-out property <int> rk-page-down;
     {{ dev }}
     {{ frameless }}
     {{ properties }}
@@ -13,6 +18,7 @@ export component {{ name }} inherits {{ window }} {
     changed rk-page => { back-keys.focus(); }
     back-keys := FocusScope {
         init => { self.focus(); }
+        {{ captures }}
         key-pressed(event) => {
             {{ shortcuts }}
             if (event.modifiers.alt && event.text == Key.LeftArrow) {

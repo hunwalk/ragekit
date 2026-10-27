@@ -288,9 +288,29 @@ Clipboard::copy($message->text);     // e.g. a context menu's "Copy"
 $this->draft .= Clipboard::paste();  // '' when the clipboard is empty or holds something else
 ```
 
-Text only. It works once a window is open (it goes through one). Inputs (Entry, Textarea) have the
+Text works once a window is open (it goes through one). Inputs (Entry, Textarea) have the
 usual Ctrl+C / Ctrl+V of their own. On Wayland a desktop may not let a window in the background
 change the clipboard.
+
+Images can be read, not written:
+
+```php
+if (Clipboard::hasImage()) {
+    $path = Clipboard::image();   // '' when there's no image
+}
+```
+
+`image()` saves the clipboard's image into the app's cache folder (`<cache>/<app>/pasted/`) and
+returns the file's path. The file is named by its content (`pasted-<hash>.png`), so the same image
+pasted twice is one file. It understands:
+
+- an image (png, jpeg, gif, webp or bmp; png preferred), as browsers, screenshot tools and image
+  editors copy one; Windows bitmaps (PrintScreen) are saved as png;
+- one image file copied in a file manager (its own bytes and extension).
+
+Linux reads the X11 clipboard (on GNOME and KDE Wayland that's XWayland's, which the desktop keeps in
+sync); a session without X uses `wl-paste` (wl-clipboard) when it's installed. To paste with Ctrl+V,
+put `<PasteImage onPaste="…" />` in the template (docs/templates.md, "Pasting images").
 
 ## Tests
 

@@ -1,4 +1,5 @@
 <VStack padded="false" grow="true">
+    <Shortcut keys="Ctrl+M" onPress="receiveMany" />
     <HStack>
         <Button text="Receive" onClick="receive" />
         <Label text="{{ $status }}" />

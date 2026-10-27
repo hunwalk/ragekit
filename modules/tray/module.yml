@@ -1,6 +1,7 @@
 # RageKit's tray module: an icon in the system tray / panel with a tooltip, a click and a menu.
 # Linux: the StatusNotifierItem protocol (KDE, GNOME with the AppIndicator extension, XFCE, …) and
-# com.canonical.dbusmenu over D-Bus, through GLib's GDBus loaded at runtime. Windows, macOS: not yet.
+# com.canonical.dbusmenu over D-Bus, through GLib's GDBus loaded at runtime. Windows: the taskbar's
+# notification area (Shell_NotifyIcon). macOS: not yet.
 name: tray
 php: [src]
 library:
@@ -8,6 +9,7 @@ library:
   include-paths: [native]
   platforms:
     linux: { link-libs: [dl, pthread] }
+    windows: { link-libs: [user32, shell32, gdi32, ole32, windowscodecs, d2d1, shlwapi] }
 functions:
   # '' when a tray host is there, otherwise why not.
   tray_available: { returns: string }

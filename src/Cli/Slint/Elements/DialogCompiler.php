@@ -16,7 +16,8 @@ use RageKit\Cli\Templates\TemplateException;
  * <Dialog open="{{ $confirm }}" title="…">…</Dialog>: the kit's Dialog (a scrim over the whole
  * window with a centred panel) shown while the two-way bool `open` is true. It's placed at the
  * window's top level, wherever it's written, so it covers everything (also a window template's title
- * bar); an outside click or Esc sets `open` back to false. Leaves nothing where it's written.
+ * bar); an outside click or Esc sets `open` back to false, then runs onDismiss="method" if given.
+ * Leaves nothing where it's written.
  */
 final class DialogCompiler implements ElementCompiler
 {
@@ -32,7 +33,7 @@ final class DialogCompiler implements ElementCompiler
     public function compile(Element $element, Scope $scope, string $axis): string
     {
         $context = $this->context;
-        $context->checkAttributes($element, ['open', 'title']);
+        $context->checkAttributes($element, ['open', 'title', 'onDismiss']);
         if ($scope->model === null) {
             throw TemplateException::at($element, "<Dialog> can't be in a child component's template; put it in the screen's (or window's) template");
         }
@@ -54,7 +55,9 @@ final class DialogCompiler implements ElementCompiler
             $title = $spec->props['title']->property ?? 'title';
             $lines[] = "$title: " . $context->values->value($element->attributes['title'], 'string', null, $scope, $element, 'title') . ';';
         }
-        $lines[] = "$dismissed => { $p = false; root.action({$action->id}, \"0\"); }";
+        // onDismiss: a handler of the app's for Esc / an outside click, after `open` turned false.
+        $handler = isset($element->attributes['onDismiss']) ? ' ' . $context->values->handler($element->attributes['onDismiss'], $scope, $element) : '';
+        $lines[] = "$dismissed => { $p = false; root.action({$action->id}, \"0\");$handler }";
         // Its slot comes first, so a dialog inside it (compiled below) is drawn on top of it.
         $slot = $context->reserveOverlay();
         $children = '';

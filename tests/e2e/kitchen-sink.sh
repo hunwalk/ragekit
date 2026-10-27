@@ -8,7 +8,8 @@ set -uo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
 demo="$root/demo/kitchen-sink"
-fail() { echo "!! kitchen-sink: $*"; kill "$pid" 2>/dev/null; exit 1; }
+tmp=$(mktemp -d)
+fail() { echo "!! kitchen-sink: $* (files in $tmp)"; kill "$pid" 2>/dev/null; exit 1; }
 
 (cd "$demo" && "$root/bin/ragekit" build "$@") || { echo "!! kitchen-sink: build failed"; exit 1; }
 # No D-Bus session (no real notifications from a test) and no microphone.
@@ -40,8 +41,17 @@ step "Layout: select a row" 80,173 400,263
 step "Overlays: right-click the card" 80,211 3@533,200
 python3 -I "$root/tests/e2e/xkey.py" Escape "$window"
 step "Chat: 200 more messages" 80,249 811,67
+# Bursts of 200 into the virtual list: it stays on the last message (scrolling down changes nothing).
+for _ in 1 2 3; do python3 -I "$root/tests/e2e/xclick.py" 811,67; done
+python3 -I "$root/tests/e2e/xmove.py" 870,620; sleep 1
+timeout 5 import -window "$window" "$tmp/burst.png"
+python3 -I "$root/tests/e2e/xscroll.py" 500,300 down 30; sleep 0.8
+timeout 5 import -window "$window" "$tmp/burst-down.png"
+[ "$(compare -metric AE "$tmp/burst.png[700x440+180+115]" "$tmp/burst-down.png[700x440+180+115]" null: 2>&1 | cut -d' ' -f1)" = "0" ] \
+    || fail "after bursts of messages, the chat wasn't at its last message"
 step "Desktop: new key, tray, notification" 80,287 343,468 343,318 675,168
 step "back to Inputs" 80,59
 python3 -I "$root/tests/e2e/xclose.py" "$window"
 wait "$pid"
+rm -rf "$tmp"
 echo "ok kitchen-sink: every section and tab, window stays $expected"

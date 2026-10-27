@@ -64,7 +64,7 @@ final class AudioRecordTest extends TestCase
         $module = Module::load("$root/modules/audio/module.yml", $root);
         file_put_contents("$dir/rk_module_audio.h", ModuleEmitter::header($module));
         file_put_contents("$dir/rk_module_audio_call.cc", ModuleEmitter::callEntry($module));
-        exec("g++ -std=c++17 -O1 -shared -fPIC -fvisibility=hidden $root/modules/audio/native/audio.cc $dir/rk_module_audio_call.cc -I$dir -I$root/native/include"
+        exec("g++ -std=c++17 -O1 -shared -fPIC -fvisibility=hidden $root/modules/audio/native/audio.cc $root/modules/audio/native/decode_opus.cc $dir/rk_module_audio_call.cc -I$dir -I$root/native/include"
             . " -I$root/modules/audio/native -I$root/modules/audio/native/third_party/miniaudio -ldl -lpthread -lm -o $dir/librk_module_audio.so 2>&1"
             . " && g++ -std=c++17 $root/tests/fixtures/modules/probe_record.cc -ldl -lpthread -o $dir/probe 2>&1", $build, $code);
         self::assertSame(0, $code, implode("\n", $build));

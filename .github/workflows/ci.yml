@@ -44,7 +44,7 @@ jobs:
             libx11-xcb1 libxcursor1 libxi6 libxrandr2 libxtst6 imagemagick \
             php8.4-dev libphp8.4-embed cmake libgmp-dev libmpfr-dev \
             libcurl4-openssl-dev \
-            libsecret-1-0 gnome-keyring dbus openssh-client python3-gi gir1.2-glib-2.0 gir1.2-gtk-3.0 libglib2.0-bin xdg-utils \
+            fonts-noto-color-emoji libharfbuzz0b libsecret-1-0 gnome-keyring dbus openssh-client python3-gi gir1.2-glib-2.0 gir1.2-gtk-3.0 libglib2.0-bin xdg-utils \
             dpkg-dev fakeroot desktop-file-utils
 
       # The pinned toolchain (TypePHP + Slint) and the third-party code kits and modules fetch.
@@ -92,6 +92,7 @@ jobs:
         run: |
           DISPLAY=:99 tests/e2e/scroll.sh
           DISPLAY=:99 tests/e2e/scroll.sh --nano
+          VIRTUAL=1 DISPLAY=:99 tests/e2e/scroll.sh
 
       - name: Pressable Views, context menus and shortcuts (normal, Nano, Material)
         run: |
@@ -99,10 +100,17 @@ jobs:
           DISPLAY=:99 tests/e2e/pressable.sh --nano
           DISPLAY=:99 tests/e2e/pressable.sh --kit=material
 
-      - name: Clipboard (normal and Nano builds)
+      - name: Markdown text and colour emoji (normal and Nano builds)
+        run: |
+          DISPLAY=:99 tests/e2e/rich-text.sh
+          DISPLAY=:99 tests/e2e/rich-text.sh --nano
+
+      - name: Clipboard, text and pasted images (normal and Nano builds)
         run: |
           DISPLAY=:99 tests/e2e/clipboard.sh
           DISPLAY=:99 tests/e2e/clipboard.sh --nano
+          DISPLAY=:99 tests/e2e/paste-image.sh
+          DISPLAY=:99 tests/e2e/paste-image.sh --nano
 
       - name: Multipart upload through the http module (normal and Nano builds)
         run: |
@@ -133,6 +141,11 @@ jobs:
         run: |
           DISPLAY=:99 tests/e2e/notifications.sh
           DISPLAY=:99 tests/e2e/notifications.sh --nano
+
+      - name: Dialogs module, file dialogs answered by a fake portal (normal and Nano builds)
+        run: |
+          DISPLAY=:99 tests/e2e/dialogs.sh
+          DISPLAY=:99 tests/e2e/dialogs.sh --nano
 
       - name: Keyring module, a device key in a throwaway keyring (normal and Nano builds)
         run: |

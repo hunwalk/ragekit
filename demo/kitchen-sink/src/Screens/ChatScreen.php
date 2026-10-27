@@ -8,7 +8,7 @@ use RageKit\LocalTime;
 use RageKit\Timer;
 
 /**
- * A chat: a ScrollView that stays at the bottom, a box that grows (Enter sends, Shift+Enter adds a
+ * A chat: a virtual ScrollView (only the rows in view exist) that stays at the bottom, a box that grows (Enter sends, Shift+Enter adds a
  * line, Escape empties it), a bot that answers on a timer, and a menu on each bubble.
  */
 final class ChatScreen extends Page
@@ -32,7 +32,6 @@ final class ChatScreen extends Page
     public Messages $messages;
     public string $draft = '';
     public string $status = '';
-    public string $anchor = 'top';
     public int $hovered = 0;
     private int $next = 1;
     private int $replies = 0;
@@ -116,7 +115,6 @@ final class ChatScreen extends Page
 
     private function say(string $text, bool $mine): void
     {
-        $this->anchor = 'top';
         $this->messages->add(new Message($this->next++, $text, $mine, LocalTime::format('H:i', time())));
     }
 }

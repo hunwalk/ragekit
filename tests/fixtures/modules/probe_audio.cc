@@ -67,6 +67,13 @@ int main(int, char **argv)
     say("load " + std::to_string(s));
     say("load-missing " + std::to_string(load(missing.data(), missing.size())));
     say("duration " + num(duration(s)));
+    if (argv[3] != nullptr) { // Opus in MP4 (a voice note as dev-null's server stores it), decoded by libopus
+        std::string opus = argv[3];
+        int64_t o = load(opus.data(), opus.size());
+        say("opus-load " + std::to_string(o > 0 ? 1 : 0));
+        say("opus-duration " + num(duration(o)));
+        unload(o);
+    }
 
     play(s);
     sleepMs(300);

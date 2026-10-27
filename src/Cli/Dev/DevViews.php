@@ -53,7 +53,7 @@ final class DevViews
         $entries = [];
         foreach ($compiled->windows as $window) {
             $entries[$window->name] = "$outDir/screens/{$window->name}.slint";
-            $changed = GeneratedFile::write($entries[$window->name], "export { {$window->name} } from " . TextAttribute::slintString("$outDir/app.slint") . ";\n") || $changed;
+            $changed = GeneratedFile::write($entries[$window->name], "export { {$window->name}, RkRich, RkEmoji } from " . TextAttribute::slintString("$outDir/app.slint") . ";\n") || $changed;
         }
         GeneratedFile::write("$outDir/screens.json", ScreensJson::emit($compiled->windows));
 

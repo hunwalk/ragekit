@@ -119,4 +119,75 @@ final class ScrollViewTest extends TestCase
             self::assertSame(0, $code, "$kit:\n" . implode("\n", $lines));
         }
     }
+
+    /** virtual="true": Slint's virtual repeater (only the rows in view exist) under a generated ListView. */
+    public function testVirtualListIsSlintsListView(): void
+    {
+        $out = $this->compile(sprintf(self::LIST, ' virtual="true" stickToBottom="true" onTop="loadOlder"'));
+        $slint = $out->slint;
+        self::assertSame(1, substr_count($slint, 'component ListView inherits RkVirtualScroll { }'), 'the helper components, once');
+        self::assertMatchesRegularExpression('/(rk-scroll-\d+) := ListView \{.*?for item in root\.p\d+ : VerticalLayout \{\s+padding-bottom: 8px;/s', $slint, 'the rows\' gap goes inside each row');
+        self::assertStringContainsString('property <bool> rk-stuck: true;', $slint);
+        self::assertMatchesRegularExpression('/rk-near-top = true;\s+root\.action\(\d+, ""\);/', $slint, 'onTop');
+        $compiler = InstalledToolchain::slintHome() . '/bin/slint-compiler';
+        if (!is_file($compiler)) {
+            self::markTestSkipped('needs the Slint toolchain');
+        }
+        file_put_contents("$this->dir/app.slint", $slint);
+        $command = [$compiler, "$this->dir/app.slint", '-f', 'cpp', '-o', "$this->dir/app.h"];
+        foreach ($out->libraries as $name => $path) {
+            array_push($command, '-L', "$name=$path");
+        }
+        exec(implode(' ', array_map('escapeshellarg', $command)) . ' 2>&1', $lines, $code);
+        self::assertSame(0, $code, implode("\n", $lines));
+        self::assertStringContainsString('ensure_updated_listview', (string) file_get_contents("$this->dir/app.h"), 'Slint virtualizes the rows');
+    }
+
+    public function testVirtualListNeedsOneForeach(): void
+    {
+        $this->expectException(TemplateException::class);
+        $this->expectExceptionMessage('<ScrollView virtual="true"> holds exactly one @foreach');
+        $this->compile('<VStack><ScrollView virtual="true"><Label text="a" /></ScrollView></VStack>');
+    }
+
+    /** ref="…" + Screen::scrollTo(): each row watches for its index; a virtual list estimates first. */
+    public function testScrollToRow(): void
+    {
+        foreach (['', ' virtual="true"'] as $virtual) {
+            $slint = $this->scrollTo("<VStack><ScrollView ref=\"list\"$virtual>\n@foreach (\$items as \$item)\n<Label text=\"{{ \$item }}\" />\n@endforeach\n</ScrollView></VStack>");
+            self::assertMatchesRegularExpression('/for item\[rk-row\] in root\.p\d+ : VerticalLayout \{.*?property <bool> rk-hit: rk-row == (rk-scroll-\d+)\.rk-goal;/s', $slint);
+            self::assertMatchesRegularExpression('/changed rk-asked => \{\s+if \(root\.p\d+ == "list" && root\.p\d+ == -2\) \{\s+\/\/ scrollToEnd.*?\} else if \(root\.p\d+ == "list"\) \{\s+self\.rk-goal = -1;\s+self\.rk-goal = root\.p\d+;/s', $slint);
+            self::assertSame($virtual !== '', str_contains($slint, '-again := Timer'));
+        }
+    }
+
+    public function testPageKeysScrollEvenFromAnInput(): void
+    {
+        $slint = $this->scrollTo("<VStack><ScrollView keys=\"true\">\n@foreach (\$items as \$item)\n<Label text=\"{{ \$item }}\" />\n@endforeach\n</ScrollView><Textarea value=\"x\" /></VStack>");
+        self::assertMatchesRegularExpression('/capture-key-pressed\(event\) => \{\s+if \(event\.text == Key\.PageUp\) \{\s+root\.rk-page-up \+= 1;/', $slint);
+        self::assertStringContainsString('property <int> rk-ups: root.rk-page-up;', $slint);
+    }
+
+    public function testScrollToNeedsOneForeachInAScreen(): void
+    {
+        $this->expectException(TemplateException::class);
+        $this->expectExceptionMessage('holds exactly one @foreach');
+        $this->scrollTo('<VStack><ScrollView ref="list"><Label text="a" /></ScrollView></VStack>');
+    }
+
+    private function scrollTo(string $rk): string
+    {
+        $dir = sys_get_temp_dir() . '/rk-scrollto-' . uniqid();
+        mkdir($dir);
+        file_put_contents("$dir/S.rk", $rk);
+        $class = new ClassInfo('Demo\\S', 'S', "$dir/S.php", true, "$dir/S.rk",
+            props: ['items' => 'list', 'scrollRef' => 'string', 'scrollRow' => 'int', 'scrollCount' => 'int']);
+        $root = (string) realpath(__DIR__ . '/../..');
+        $kits = KitRegistry::load(["$root/kits/material/kit.yml", "$root/kits/shadcn/kit.yml"], $root);
+        try {
+            return (new SlintCompiler($kits, 'shadcn'))->compile(['Demo\\S' => $class])->slint;
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    }
 }

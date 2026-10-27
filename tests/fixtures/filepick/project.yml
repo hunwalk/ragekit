@@ -1,0 +1,11 @@
+# File dialogs through a fake portal: tests/e2e/dialogs.sh (normal and --nano).
+name: filepick
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software
+  modules: [dialogs]

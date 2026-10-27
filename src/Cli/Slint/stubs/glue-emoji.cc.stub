@@ -1,0 +1,7 @@
+handle_->global<RkEmoji>().on_images([](slint::SharedString text) {
+    auto images = std::make_shared<slint::VectorModel<slint::Image>>();
+    for (const slint::Image &image : rk::emoji::images(std::string_view(text.data(), text.size()))) {
+        images->push_back(image);
+    }
+    return std::shared_ptr<slint::Model<slint::Image>>(images);
+});

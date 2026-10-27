@@ -207,8 +207,9 @@ function describe(ReflectionClass $class, string $projectDir, array $sourceDirs)
     $state = $class->isSubclassOf('RageKit\\RootStore') || $class->isSubclassOf('RageKit\\Store');
     // What Window itself offers templates: its maximised flag, window buttons and back button.
     $windowMembers = ['maximized', 'minimize', 'toggleMaximize', 'close', 'back', 'canGoBack',
-        // ...and what Screen does: focus('ref') and the two values the template's ref="…" inputs follow.
-        'focus', 'focusRef', 'focusCount'];
+        // ...and what Screen does: focus('ref') / scrollTo('ref', row) and the values the template's
+        // ref="…" inputs and ScrollViews follow.
+        'focus', 'focusRef', 'focusCount', 'scrollTo', 'scrollRef', 'scrollRow', 'scrollCount'];
     $inherited = fn(ReflectionProperty|ReflectionMethod $member): bool => in_array($member->getDeclaringClass()->getName(), $base, true)
         && !in_array($member->getName(), $windowMembers, true);
     $props = [];

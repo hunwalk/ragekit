@@ -59,6 +59,8 @@ final class CompileContext
 
     /** @var list<string> the window's keyboard shortcuts so far: Slint statements for its key handler */
     private array $shortcuts = [];
+    /** @var list<string> keys the window sees before a focused input does (<PasteImage>) */
+    private array $captures = [];
 
     /** While a window's page compiles: its condition (root.rk-page == N), '' when the window has one page. */
     private string $pageGuard = '';
@@ -256,6 +258,19 @@ final class CompileContext
         return $this->pageGuard;
     }
 
+    private bool $virtualList = false;
+
+    /** A <ScrollView virtual="true"> needs the ListView components in app.slint (once). */
+    public function useVirtualList(): void
+    {
+        $this->virtualList = true;
+    }
+
+    public function usesVirtualList(): bool
+    {
+        return $this->virtualList;
+    }
+
     /** Compiles a loop's body (@foreach): what it compiles knows it's repeated (inLoop()). */
     public function loop(\Closure $compile): string
     {
@@ -286,6 +301,12 @@ final class CompileContext
         }
     }
 
+    /** Whether a <View>'s children are being compiled (at any depth). */
+    public function insideView(): bool
+    {
+        return $this->columns !== [];
+    }
+
     /** Whether the <View> whose children are being compiled is a plain column, not a flexbox. */
     public function viewIsColumn(): bool
     {
@@ -310,6 +331,48 @@ final class CompileContext
         $shortcuts = implode("\n", $this->shortcuts);
         $this->shortcuts = [];
         return $shortcuts;
+    }
+
+    /** The ContextMenu of the nearest enclosing <View> that has one (its id), while compiling inside it. */
+    private ?string $menu = null;
+
+    /**
+     * @template T
+     * @param \Closure(): T $compile
+     * @return T
+     */
+    public function withMenu(?string $menu, \Closure $compile): mixed
+    {
+        if ($menu === null) {
+            return $compile();
+        }
+        $outer = $this->menu;
+        $this->menu = $menu;
+        try {
+            return $compile();
+        } finally {
+            $this->menu = $outer;
+        }
+    }
+
+    /** The id of the enclosing View's ContextMenu (its TouchArea is "<id>-area"), or null. */
+    public function enclosingMenu(): ?string
+    {
+        return $this->menu;
+    }
+
+    /** A key the window takes before the focused element: an `if (…) { …; return accept; }` statement. */
+    public function addCapture(string $statement): void
+    {
+        $this->captures[] = $statement;
+    }
+
+    /** @return string the captured keys collected since the last call */
+    public function takeCaptures(): string
+    {
+        $captures = implode("\n", $this->captures);
+        $this->captures = [];
+        return $captures;
     }
 
     /** Reserves the next place at the window's top level; fill it with setOverlay(). */

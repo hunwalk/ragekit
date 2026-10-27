@@ -25,7 +25,7 @@ final class ClassScannerTest extends TestCase
         self::assertTrue($screen->isScreen);
         self::assertSame('CounterScreen', $screen->short);
         self::assertSame(Paths::normalize((string) realpath(self::APP)) . '/templates/counter.rk', $screen->template);
-        self::assertSame(['count' => 'int', 'showHistory' => 'bool', 'history' => 'list', 'focusRef' => 'string', 'focusCount' => 'int'], $screen->props);
+        self::assertSame(['count' => 'int', 'showHistory' => 'bool', 'history' => 'list', 'focusRef' => 'string', 'focusCount' => 'int', 'scrollRef' => 'string', 'scrollRow' => 'int', 'scrollCount' => 'int'], $screen->props);
         self::assertSame('string', $screen->computed['greeting']);
         self::assertSame(['string'], $screen->handlers['press']);
         self::assertSame([], $screen->handlers['increment']);
@@ -76,7 +76,7 @@ final class ClassScannerTest extends TestCase
         self::assertTrue($screen->isScreen);
         self::assertSame('Fix\AppWindow', $screen->window);
         self::assertContains('Fix\TitleBarContext', $screen->interfaces);
-        self::assertSame(['count' => 'int', 'focusRef' => 'string', 'focusCount' => 'int'], $screen->props, 'Screen::focus() values are there for ref="…"');
+        self::assertSame(['count' => 'int', 'focusRef' => 'string', 'focusCount' => 'int', 'scrollRef' => 'string', 'scrollRow' => 'int', 'scrollCount' => 'int'], $screen->props, 'Screen::focus() / scrollTo() values are there for ref="…"');
         self::assertArrayNotHasKey('useWindow', $screen->handlers);
         self::assertArrayNotHasKey('currentWindow', $screen->handlers);
     }

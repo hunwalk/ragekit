@@ -29,7 +29,8 @@ final class Sound
         Modules::require('audio');
         $id = \audio_load(App::resolve($path));
         if ($id === 0) {
-            throw new \RuntimeException("can't load sound $path");
+            $why = \audio_load_error();
+            throw new \RuntimeException("can't load sound $path" . ($why !== '' ? ": $why" : ''));
         }
         return new Sound($id);
     }

@@ -4,6 +4,8 @@
 
 #include <slint.h>
 
+#include "model_sync.h"
+
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -39,9 +41,8 @@ inline bool cell_bool(const Row &row, size_t i) { return cell<bool>(row, i); }
 inline slint::Image cell_image(const Row &row, size_t i) { return cell<slint::Image>(row, i); }
 
 /**
- * Brings `model` to `rows` (each made into a T by `make`) in place: only rows that differ are
- * replaced, then rows are added or removed at the end, so unchanged rows keep their Slint items.
- * Returns true when the model was just created (the caller sets the property to it once).
+ * Brings `model` to `rows` (each made into a T by `make`) with as few changes as it takes (see
+ * sync_model()). Returns true when the model was just created (the caller sets the property to it once).
  */
 template <class T, class Make>
 bool update_model(std::shared_ptr<slint::VectorModel<T>> &model, const Rows &rows, Make make)
@@ -50,18 +51,12 @@ bool update_model(std::shared_ptr<slint::VectorModel<T>> &model, const Rows &row
     if (created) {
         model = std::make_shared<slint::VectorModel<T>>();
     }
-    size_t count = model->row_count();
-    for (size_t i = 0; i < rows.size(); ++i) {
-        T value = make(rows[i]);
-        if (i >= count) {
-            model->push_back(std::move(value));
-        } else if (!(*model->row_data(i) == value)) {
-            model->set_row_data(i, std::move(value));
-        }
+    std::vector<T> values;
+    values.reserve(rows.size());
+    for (const auto &row : rows) {
+        values.push_back(make(row));
     }
-    while (model->row_count() > rows.size()) {
-        model->erase(model->row_count() - 1);
-    }
+    sync_model(*model, values);
     return created;
 }
 

@@ -111,6 +111,8 @@ final class RecordingBackend implements Backend
     public int $offset = 0;
 
     public string $clipboard = '';
+    /** The clipboard image's file name ('' = none). */
+    public string $clipboardImage = '';
 
     public function copyText(string $text): void
     {
@@ -121,6 +123,17 @@ final class RecordingBackend implements Backend
     public function pasteText(): string
     {
         return $this->clipboard;
+    }
+
+    public function pasteImage(string $folder): string
+    {
+        $this->calls[] = 'paste image into ' . $folder;
+        return $this->clipboardImage === '' ? '' : $folder . '/' . $this->clipboardImage;
+    }
+
+    public function clipboardHasImage(): bool
+    {
+        return $this->clipboardImage !== '';
     }
 
     public function utcOffset(int $at): int

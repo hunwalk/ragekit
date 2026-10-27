@@ -14,6 +14,8 @@ use RageKit\Cli\Slint\Elements\DialogCompiler;
 use RageKit\Cli\Slint\Elements\ContextMenuCompiler;
 use RageKit\Cli\Slint\Elements\DropdownMenuCompiler;
 use RageKit\Cli\Slint\Elements\ShortcutCompiler;
+use RageKit\Cli\Slint\Elements\EmojiCompiler;
+use RageKit\Cli\Slint\Elements\ImageViewerCompiler;
 use RageKit\Cli\Slint\Elements\ElementCompiler;
 use RageKit\Cli\Slint\Elements\KitElementCompiler;
 use RageKit\Cli\Slint\Elements\ScrollViewCompiler;
@@ -53,6 +55,8 @@ final class ElementDispatcher
             new ViewCompiler($this->context, $contextMenus = new ContextMenuCompiler($this->context)),
             $contextMenus,
             new ShortcutCompiler($this->context),
+            new EmojiCompiler($this->context),
+            new ImageViewerCompiler($this->context),
             new WindowFrameCompiler($this->context, $stacks),
             new TabsCompiler($this->context),
             new DialogCompiler($this->context),
@@ -114,10 +118,21 @@ final class ElementDispatcher
         return $this->context->takeOverlays();
     }
 
+    public function usesVirtualList(): bool
+    {
+        return $this->context->usesVirtualList();
+    }
+
     /** The keyboard shortcuts (<Shortcut>) collected since the last call, for the window's key handler. */
     public function takeShortcuts(): string
     {
         return $this->context->takeShortcuts();
+    }
+
+    /** Keys the window takes before a focused input (<PasteImage>), collected since the last call. */
+    public function takeCaptures(): string
+    {
+        return $this->context->takeCaptures();
     }
 
     /** Dialogs compiled from now on show only while this page is (see CompileContext::pageGuard). */

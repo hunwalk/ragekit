@@ -128,6 +128,13 @@ final class ViewTest extends TestCase
         self::assertDoesNotMatchRegularExpression('/for i in root\.p\d+ : Rectangle \{\s+[^{}]*\s+VerticalLayout/s', $centred, 'a row (or one with alignItems) stays a flexbox');
     }
 
+    /** The same loop at run time: a column View with wrapping text inside another View (a quote in a bubble). */
+    public function testNestedColumnViewIsAVerticalLayout(): void
+    {
+        $slint = $this->compile('<VStack><View style="card"><View><Text>{{ $name }}</Text></View><Label text="x" /></View></VStack>')->slint;
+        self::assertSame(1, substr_count($slint, 'FlexboxLayout {'), 'only the outer View is a flexbox');
+    }
+
     public function testRootViewFillsTheWindow(): void
     {
         $out = $this->compile('<View style="card"><Label text="a" /></View>');

@@ -1,0 +1,10 @@
+# Ctrl+V with an image on the clipboard (<PasteImage>, RageKit\Clipboard::image()): tests/e2e/paste-image.sh.
+name: pasteimage
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software

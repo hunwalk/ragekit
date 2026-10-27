@@ -67,6 +67,19 @@ final class ChatScreen extends Screen
         $this->draft = '';
     }
 
+    /** Ctrl+M: 300 messages at once (a virtual list re-estimates its height). */
+    public function receiveMany(): void
+    {
+        for ($i = 0; $i < 300; $i++) {
+            $this->newest++;
+            // Every third one two lines tall: rows of different heights change a virtual list's estimate.
+            $this->messages->add(new Message($this->newest, $i % 3 === 0 ? "Message $this->newest\nsecond line" : "Message $this->newest"));
+        }
+        $this->anchor = 'top';
+        $this->status = count($this->messages) . ' messages';
+        echo "received many\n";
+    }
+
     public function receive(): void
     {
         $this->newest++;

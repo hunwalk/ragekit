@@ -51,7 +51,7 @@ int main(int, char **argv)
     auto init = reinterpret_cast<void (*)(PostFn)>(dlsym(lib, "rkm_notifications_init"));
     auto reset = reinterpret_cast<void (*)()>(dlsym(lib, "rkm_notifications_reset"));
     auto available = reinterpret_cast<const char *(*)()>(dlsym(lib, "rkm_notifications_available"));
-    auto show = reinterpret_cast<int64_t (*)(const char *, size_t, const char *, size_t)>(dlsym(lib, "rkm_notifications_show"));
+    auto show = reinterpret_cast<int64_t (*)(const char *, size_t, const char *, size_t, const char *, size_t)>(dlsym(lib, "rkm_notifications_show"));
     auto close = reinterpret_cast<void (*)(int64_t)>(dlsym(lib, "rkm_notifications_close"));
     auto error = reinterpret_cast<const char *(*)()>(dlsym(lib, "rkm_notifications_error"));
     init(post);
@@ -61,7 +61,7 @@ int main(int, char **argv)
         return 0;
     }
     std::string body = "a <b> & c";
-    int64_t first = show("Bob", 3, body.data(), body.size());
+    int64_t first = show("Bob", 3, body.data(), body.size(), "", 0);
     std::printf("show %lld [%s]\n", static_cast<long long>(first), error());
     std::fflush(stdout);
     std::string click = "gdbus call --session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications"
@@ -69,13 +69,13 @@ int main(int, char **argv)
     std::system(click.c_str());
     std::printf("clicked %s\n", waitFor("notifications " + std::to_string(first) + " clicked") ? "yes" : "no");
     std::printf("closed-after-click %s\n", waitFor("notifications " + std::to_string(first) + " closed") ? "yes" : "no");
-    int64_t second = show("Cyd", 3, "", 0);
+    int64_t second = show("Cyd", 3, "", 0, "", 0);
     std::printf("show %lld\n", static_cast<long long>(second));
     close(second);
     std::printf("closed-by-app %s\n", waitFor("notifications " + std::to_string(second) + " closed") ? "yes" : "no");
     std::fflush(stdout);
     reset(); // stops the worker thread
-    int64_t third = show("Dan", 3, "", 0); // works again after a reset
+    int64_t third = show("Dan", 3, "", 0, "", 0); // works again after a reset
     std::printf("show-after-reset %lld\n", static_cast<long long>(third));
     reset();
     std::printf("done\n");

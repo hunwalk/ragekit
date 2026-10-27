@@ -1,0 +1,12 @@
+# Loads an Opus-in-MP4 voice note (as dev-null's server stores them) and prints its length: Windows check.
+name: voiceplay
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software
+  modules: [audio]
+  assets: [assets/]

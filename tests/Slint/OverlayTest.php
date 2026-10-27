@@ -122,6 +122,13 @@ final class OverlayTest extends TestCase
         $this->compile([$this->screen('<VStack><Dialog title="x"><Label text="x" /></Dialog></VStack>')]);
     }
 
+    public function testDialogOnDismissRunsAfterOpenTurnsFalse(): void
+    {
+        $rk = '<VStack><Dialog open="{{ $confirm }}" title="Delete?" onDismiss="cancel"><Label text="x" /></Dialog></VStack>';
+        $out = $this->compile([$this->screen($rk)]);
+        self::assertMatchesRegularExpression('/dismissed => \{ root\.p\d+ = false; root\.action\(\d+, "0"\); root\.action\(\d+, ""\); \}/', $out->slint);
+    }
+
     public function testDialogUnderIfIsAnError(): void
     {
         $this->expectException(TemplateException::class);

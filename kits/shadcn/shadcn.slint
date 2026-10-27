@@ -80,6 +80,9 @@ export component ShadEntry inherits Rectangle {
         triggered => {
             self.running = false;
             input.focus();
+            // The caret at the end: PHP may have just set the text (a picked suggestion).
+            input.select-all();
+            input.clear-selection();
         }
     }
     callback edited(string);
@@ -448,6 +451,9 @@ export component ShadTextarea inherits Rectangle {
         triggered => {
             self.running = false;
             input.focus();
+            // The caret at the end: PHP may have just set the text (a picked suggestion).
+            input.select-all();
+            input.clear-selection();
         }
     }
     in property <string> placeholder;
@@ -886,6 +892,19 @@ export component ShadText {
         : root.variant == "h2" || root.variant == "h3" || root.variant == "h4" || root.variant == "large" ? 600
         : root.variant == "small" ? 500 : 400;
     in property <TextHorizontalAlignment> horizontal-alignment: left;
+    // markdown="true": the compiler passes the text parsed (RkRich.markdown) as `styled`, drawn
+    // instead of the plain text; a click on a link calls link-clicked with its URL.
+    in property <bool> markdown;
+    in property <styled-text> styled;
+    in property <color> link-color: #60a5fa;
+    callback link-clicked(string);
+    // Inside a <View> with a <ContextMenu> (the compiler sets menu): StyledText takes every press on
+    // its text, so a TouchArea on top takes them first. A right-click asks for the menu, a click is
+    // sent again to the text underneath while this one steps aside (its links; window coordinates).
+    in property <bool> menu;
+    callback menu-requested(length, length);
+    callback forward-click(length, length);
+    property <bool> forwarding;
     // code hugs its text (start-aligned); the other variants fill the width, so long text wraps.
     VerticalLayout {
         padding-left: root.variant == "blockquote" ? 14px : 0px;
@@ -900,7 +919,7 @@ export component ShadText {
                     padding-top: root.variant == "code" && root.text != "" ? 2px : 0px;
                     padding-bottom: root.variant == "code" && root.text != "" ? 2px : 0px;
                     // Empty text takes no room (an @if in a <View> hides a <Text> by emptying it).
-                    if root.text != "" : Text {
+                    if root.text != "" && !root.markdown : Text {
                         text: root.text;
                         color: root.color;
                         font-size: root.font-size;
@@ -910,8 +929,41 @@ export component ShadText {
                         horizontal-alignment: root.horizontal-alignment;
                         wrap: word-wrap;
                     }
+                    if root.text != "" && root.markdown : StyledText {
+                        text: root.styled;
+                        default-color: root.color;
+                        default-font-size: root.font-size;
+                        link-color: root.link-color;
+                        horizontal-alignment: root.horizontal-alignment;
+                        link-clicked(url) => { root.link-clicked(url); }
+                    }
                 }
             }
+        }
+    }
+    if root.markdown && root.menu : TouchArea {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        enabled: !root.forwarding;
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.right && event.kind == PointerEventKind.down) {
+                root.menu-requested(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+            }
+        }
+        clicked => {
+            root.forwarding = true;
+            step-aside.running = true;
+            root.forward-click(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+        }
+    }
+    step-aside := Timer {
+        interval: 150ms;
+        running: false;
+        triggered => {
+            self.running = false;
+            root.forwarding = false;
         }
     }
     if root.variant == "blockquote" : Rectangle {

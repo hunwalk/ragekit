@@ -91,6 +91,19 @@ function slint_clipboard_get(): string
     return $reply[1] ?? '';
 }
 
+/** The shell reads the clipboard's image (as in a built app). */
+function slint_clipboard_image(string $folder): string
+{
+    $reply = Session::channel()->request('clipboard-image', $folder);
+    return $reply[1] ?? '';
+}
+
+function slint_clipboard_has_image(): bool
+{
+    $reply = Session::channel()->request('clipboard-has-image');
+    return ($reply[1] ?? '') === '1';
+}
+
 /** Dev mode runs full PHP: it opens the browser itself. */
 function slint_open_url(string $url): string
 {

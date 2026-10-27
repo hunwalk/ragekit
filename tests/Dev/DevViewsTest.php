@@ -26,7 +26,7 @@ final class DevViewsTest extends TestCase
         $result = DevViews::write(new ViewProject(['Demo\\S' => $class], $kits, 'material', $out, $dir), $out);
 
         self::assertSame(['rk-screens' => "$out/screens/rk-screens.slint"], $result->entries);
-        self::assertSame("export { rk-screens } from \"$out/app.slint\";\n", file_get_contents("$out/screens/rk-screens.slint"));
+        self::assertSame("export { rk-screens, RkRich, RkEmoji } from \"$out/app.slint\";\n", file_get_contents("$out/screens/rk-screens.slint"));
         $app = (string) file_get_contents("$out/app.slint");
         self::assertStringContainsString("from \"$out/kits/material/rk-material.slint\"", $app);
         self::assertStringContainsString('in property <bool> rk-on-top;', $app);

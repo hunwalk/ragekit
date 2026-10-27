@@ -55,6 +55,8 @@ struct Gio {
     void (*invoke)(Ptr context, int (*fn)(Ptr), Ptr data) = nullptr;
     void (*objectUnref)(Ptr object) = nullptr;
     void (*errorFree)(GError *error) = nullptr;
+    int (*emitSignal)(Ptr connection, const char *destination, const char *path, const char *iface, const char *signal,
+                      Ptr parameters, GError **error) = nullptr;
 };
 
 template <typename T>
@@ -84,7 +86,8 @@ Gio &gio()
             && find(l.handle, "g_main_loop_new", l.loopNew) && find(l.handle, "g_main_loop_run", l.loopRun)
             && find(l.handle, "g_main_loop_quit", l.loopQuit) && find(l.handle, "g_main_loop_unref", l.loopUnref)
             && find(l.handle, "g_main_context_invoke", l.invoke)
-            && find(l.handle, "g_object_unref", l.objectUnref) && find(l.handle, "g_error_free", l.errorFree);
+            && find(l.handle, "g_object_unref", l.objectUnref) && find(l.handle, "g_error_free", l.errorFree)
+            && find(l.handle, "g_dbus_connection_emit_signal", l.emitSignal);
         if (!ok) {
             l.error = "GLib is too old (a function is missing)";
         }
@@ -148,10 +151,19 @@ void onSignal(Ptr, const char *, const char *, const char *, const char *signal,
     Gio &g = gio();
     uint32_t id = 0;
     std::string kind;
+    std::string data;
     if (std::string(signal) == "ActionInvoked") {
         const char *action = nullptr;
         g.variantGet(parameters, "(u&s)", &id, &action);
+        if (action != nullptr && std::string(action) == "inline-reply") {
+            return; // KDE also sends NotificationReplied, with the text
+        }
         kind = "clicked";
+    } else if (std::string(signal) == "NotificationReplied") {
+        const char *text = nullptr;
+        g.variantGet(parameters, "(u&s)", &id, &text);
+        kind = "replied";
+        data = text != nullptr ? text : "";
     } else {
         uint32_t reason = 0;
         g.variantGet(parameters, "(uu)", &id, &reason);
@@ -164,7 +176,7 @@ void onSignal(Ptr, const char *, const char *, const char *, const char *signal,
     if (kind == "closed") {
         ours.erase(id);
     }
-    post("notifications", static_cast<int64_t>(id), kind.c_str(), "", 0);
+    post("notifications", static_cast<int64_t>(id), kind.c_str(), data.c_str(), data.size());
 }
 
 /** Connects and starts the worker that hears the service's signals; under lock. '' or an error. */
@@ -193,6 +205,7 @@ std::string connect()
         g.contextPush(context); // signals subscribed here are delivered in this thread's loop
         unsigned invoked = g.subscribe(bus, kService, kService, "ActionInvoked", kPath, nullptr, 0, onSignal, nullptr, nullptr);
         unsigned closed = g.subscribe(bus, kService, kService, "NotificationClosed", kPath, nullptr, 0, onSignal, nullptr, nullptr);
+        unsigned replied = g.subscribe(bus, kService, kService, "NotificationReplied", kPath, nullptr, 0, onSignal, nullptr, nullptr);
         Ptr own = g.loopNew(context, 0);
         {
             std::lock_guard<std::mutex> guard(readyLock);
@@ -204,6 +217,7 @@ std::string connect()
         g.loopRun(own);
         g.unsubscribe(bus, invoked);
         g.unsubscribe(bus, closed);
+        g.unsubscribe(bus, replied);
         g.contextPop(context);
         g.loopUnref(own);
         g.contextUnref(context);
@@ -276,7 +290,8 @@ RKM_API const char *rkm_notifications_available(void)
     return answer("");
 }
 
-RKM_API int64_t rkm_notifications_show(const char *title, size_t title_len, const char *body, size_t body_len)
+RKM_API int64_t rkm_notifications_show(const char *title, size_t title_len, const char *body, size_t body_len, const char *reply,
+                                       size_t reply_len)
 {
     std::lock_guard<std::mutex> guard(lock);
     lastError = connect();
@@ -288,6 +303,13 @@ RKM_API int64_t rkm_notifications_show(const char *title, size_t title_len, cons
     g.builderAdd(actions, "s", "default"); // clicking the notification invokes "default"
     g.builderAdd(actions, "s", "Open");
     Ptr hints = g.builderNew(const_cast<char *>("a{sv}"));
+    std::string placeholder(reply, reply_len);
+    if (!placeholder.empty()) {
+        // KDE's inline reply (GNOME and others leave it out): the text comes as NotificationReplied.
+        g.builderAdd(actions, "s", "inline-reply");
+        g.builderAdd(actions, "s", "Reply");
+        g.builderAdd(hints, "{sv}", "x-kde-reply-placeholder-text", g.variantNew("s", placeholder.c_str()));
+    }
     std::string summary(title, title_len);
     std::string text = escaped(std::string(body, body_len));
     std::string app = appName();
@@ -295,14 +317,14 @@ RKM_API int64_t rkm_notifications_show(const char *title, size_t title_len, cons
     g.builderUnref(actions);
     g.builderUnref(hints);
     GError *failure = nullptr;
-    Ptr reply = g.callSync(connection, kService, kPath, kService, "Notify", params, nullptr, 0, 5000, nullptr, &failure);
-    if (reply == nullptr) {
+    Ptr response = g.callSync(connection, kService, kPath, kService, "Notify", params, nullptr, 0, 5000, nullptr, &failure);
+    if (response == nullptr) {
         lastError = "the notification service failed: " + take(g, failure, "unknown error");
         return 0;
     }
     uint32_t id = 0;
-    g.variantGet(reply, "(u)", &id);
-    g.variantUnref(reply);
+    g.variantGet(response, "(u)", &id);
+    g.variantUnref(response);
     ours.insert(id);
     return static_cast<int64_t>(id);
 }
@@ -330,17 +352,33 @@ RKM_API const char *rkm_notifications_error(void)
     return answer(lastError);
 }
 
-} // extern "C"
-
-#else // Windows (and anything else without GLib): not yet
-
-extern "C" {
-RKM_API void rkm_notifications_init(rk_post_fn) {}
-RKM_API void rkm_notifications_reset(void) {}
-RKM_API const char *rkm_notifications_available(void) { return "notifications aren't supported on this OS yet"; }
-RKM_API int64_t rkm_notifications_show(const char *, size_t, const char *, size_t) { return 0; }
-RKM_API void rkm_notifications_close(int64_t) {}
-RKM_API const char *rkm_notifications_error(void) { return "notifications aren't supported on this OS yet"; }
+RKM_API const char *rkm_notifications_badge(int64_t count)
+{
+    std::lock_guard<std::mutex> guard(lock);
+    std::string error = connect();
+    if (!error.empty()) {
+        return answer(error);
+    }
+    // The Unity launcher API, which KDE's task manager, Ubuntu's dock and Dash to Dock show; the dock
+    // finds the app by its .desktop file: the one `ragekit package` installs, or the one links register.
+    Gio &g = gio();
+    std::string app = appName();
+    for (const std::string &desktop : {app + ".desktop", "ragekit-" + app + ".desktop"}) {
+        Ptr props = g.builderNew(const_cast<char *>("a{sv}"));
+        g.builderAdd(props, "{sv}", "count", g.variantNew("x", static_cast<int64_t>(count)));
+        g.builderAdd(props, "{sv}", "count-visible", g.variantNew("b", count > 0 ? 1 : 0));
+        std::string uri = "application://" + desktop;
+        Ptr params = g.variantNew("(sa{sv})", uri.c_str(), props);
+        g.builderUnref(props);
+        GError *failure = nullptr;
+        if (g.emitSignal(connection, nullptr, ("/com/ragekit/" + app + "/launcher").c_str(), "com.canonical.Unity.LauncherEntry", "Update",
+                         params, &failure) == 0) {
+            return answer("couldn't send the badge: " + take(g, failure, "unknown error"));
+        }
+    }
+    return answer("");
 }
 
-#endif
+} // extern "C"
+
+#endif // _WIN32: notifications_win32.cc

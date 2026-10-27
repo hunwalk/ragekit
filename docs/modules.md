@@ -1,7 +1,7 @@
 # Native modules
 
 A module gives your app access to something native that PHP alone can't do, such as playing
-sound. RageKit ships `audio`, `http`, `crypto`, `keyring`, `notifications` and `tray`. You can write
+sound. RageKit ships `audio`, `http`, `crypto`, `keyring`, `notifications`, `tray` and `dialogs`. You can write
 your own in C++.
 
 A module has three parts:
@@ -102,7 +102,11 @@ $sound->play();
 | `onProgress(Closure $fn)` | Runs `$fn(float $seconds)` about four times a second while playing. |
 | `unload()` | Frees the sound. The object can't be used afterwards. |
 
-Supported files: WAV, FLAC and MP3 (miniaudio's built-in decoders). Ogg Vorbis is not included.
+Supported files: WAV, FLAC and MP3 (miniaudio's built-in decoders), and Opus in MP4 (the voice notes
+browsers record, as dev-null.sh's server stores them): on Linux decoded with the system's libopus
+(`libopus0`, which desktops ship; loaded at runtime), on Windows with Media Foundation, which also
+reads AAC/M4A. Those are decoded whole into memory when loaded, so they suit short sounds. Ogg Vorbis
+and Opus in WebM/Ogg are not included. When a file can't be loaded, `Sound::load()`'s exception says why.
 
 Set `RAGEKIT_AUDIO_NULL=1` to use miniaudio's null device: sounds "play" in real time without
 output. Use it for tests and on machines without speakers; progress and "finished" still work.
@@ -348,6 +352,8 @@ $n->close();                                   // take it away, e.g. once the me
 | `available(): bool`, `why(): string` | Whether notifications can be shown, and if not why. |
 | `show($title, $body = '', ?Closure $onClick = null, ?Closure $onClose = null)` | Shows one; the body is plain text. Throws `RuntimeException` (with the reason) when it can't. |
 | `->id`, `->open()`, `->close()` | Its id, whether it's still shown, and taking it away. |
+| `show(..., onReply: fn(string $text) => …, replyHint: 'Reply to Bob')` | A reply field in the notification, where the desktop has one (Windows, KDE); `onReply` gets what was sent. Elsewhere (GNOME) the notification shows without it. |
+| `Notification::badge(int $count): bool`, `badgeWhy($count)` | The number on the app's taskbar button or dock icon; 0 takes it away. |
 
 `onClick` runs when the user clicks the notification, `onClose` when it goes away (clicked,
 dismissed, expired or closed by the app), on the UI thread like a click in a window.
@@ -357,10 +363,26 @@ What does the work:
 - **Linux:** the desktop's notification service (`org.freedesktop.Notifications` on D-Bus: GNOME,
   KDE, …) through GLib's GDBus, loaded at runtime (GLib is part of every desktop). A small thread
   listens for clicks. The app name shown is the executable's name.
-- **Windows, macOS:** not yet (`why()` says so).
+- **Windows:** toast notifications (Windows.UI.Notifications through C++/WinRT, which comes with the
+  Windows SDK). Windows only shows toasts for apps it knows, so the first `available()` / `show()`
+  registers the app under `HKCU\Software\Classes\AppUserModelId\RageKit.<exe name>` (its name, and
+  `icon.png` next to the executable when there is one); no installer or Start menu shortcut is
+  needed. A notification that times out moves to the notification center and can still be clicked
+  there while the app runs, so `onClose` only runs when it's clicked, dismissed or closed by the app.
+  With Do Not Disturb on, Windows puts them straight into the notification center.
+- **macOS:** not yet (`why()` says so).
 
-Not in this version: replying from the notification (the freedesktop standard has no inline reply;
-GNOME doesn't offer one), buttons, icons and images, sounds, and the taskbar badge.
+**Replies:** Windows shows a text box and a Send button in the toast; KDE Plasma shows its inline
+reply (the `x-kde-reply-placeholder-text` hint, answered with `NotificationReplied`); GNOME has no
+reply field, so there the notification is an ordinary one (a click still runs `onClick`).
+
+**Badge:** Windows draws the count in a red disc over the taskbar button (`ITaskbarList3`
+overlay; it needs the window to be shown). On Linux it's the Unity launcher API
+(`com.canonical.Unity.LauncherEntry`), which KDE's task manager, Ubuntu's dock and Dash to Dock
+show; the dock finds the app by its .desktop file (`ragekit package` installs `<name>.desktop`;
+app links register `ragekit-<name>.desktop`). Plain GNOME shows no badges.
+
+Not in this version: buttons, icons and images, and sounds.
 
 ## The tray module
 
@@ -394,7 +416,7 @@ final class MyApp extends App
 | Method | What it does |
 |---|---|
 | `available(): bool`, `why(): string` | Whether the desktop has a tray, and if not why. |
-| `show($icon, $tooltip = '', ?Closure $onClick = null)` | Shows the icon (a png or svg file; relative paths are the app's folder, so ship it with `ragekit: { assets: [...] }`), or updates it. `onClick` runs when the icon is clicked; the menu opens with the other mouse button. Throws `RuntimeException` when it can't. |
+| `show($icon, $tooltip = '', ?Closure $onClick = null)` | Shows the icon (a png or svg file, on Windows also ico; relative paths are the app's folder, so ship it with `ragekit: { assets: [...] }`), or updates it. `onClick` runs when the icon is clicked; the menu opens with the other mouse button. Throws `RuntimeException` when it can't. |
 | `item($label, Closure $fn)`, `separator()`, `clearMenu()` | The menu, in order. |
 | `tooltip($text)` | Changes the tooltip. |
 | `remove()` | Takes the icon away. |
@@ -411,10 +433,64 @@ What does the work:
   (its folder and name), so the desktop draws it at its own size. On GNOME (checked on GNOME 48
   with the AppIndicator extension) both mouse buttons open the menu and `onClick` never runs, so
   give the menu an item that does what the click does (e.g. "Open").
-- **Windows, macOS:** not yet (`why()` says so).
+- **Windows:** the taskbar's notification area (`Shell_NotifyIcon`). A left click (or Enter on the
+  focused icon) runs `onClick`, the right button opens the menu. The icon may be a png, ico, bmp or
+  svg (drawn with Direct2D), scaled to the taskbar's size. Windows 11 puts a new app's icon in the
+  hidden part of the tray (the ^ button) until the user drags it out. If Explorer restarts, the
+  icon comes back by itself.
+- **macOS:** not yet (`why()` says so).
 
 Not in this version: submenus, checkable items, icons in the menu, an attention or overlay icon, and
 scroll events.
+
+## The dialogs module
+
+The OS's own file dialogs: open one or more files, save, choose a folder. Enable it with
+`ragekit: { modules: [dialogs] }`.
+
+```php
+use RageKit\Dialogs\FileDialog;
+
+FileDialog::open()
+    ->title('Send a picture')
+    ->filter('Images', ['png', 'jpg', 'jpeg', 'gif', 'webp'])
+    ->filter('All files', ['*'])
+    ->multiple()
+    ->show(function (array $paths): void {
+        foreach ($paths as $path) {            // [] when the user cancelled
+            $this->attach($path);
+        }
+    });
+
+FileDialog::save('voice note.wav')->filter('Sound', ['wav'])->show(fn(array $paths) => ...);
+FileDialog::folder()->in($musicFolder)->show(fn(array $paths) => ...);
+```
+
+| Method | What it does |
+|---|---|
+| `open()`, `save($name = '')`, `folder()` | The kind of dialog; `save()` suggests a file name. |
+| `->title($title)` | The dialog's title. |
+| `->filter($name, $extensions)` | A choice in its file type list (extensions without the dot, any case; `'*'` = every file). The first is selected. |
+| `->multiple()` | `open()` only: several files at once. |
+| `->in($folder)` | The folder it starts in (otherwise the OS remembers the last one). |
+| `->show(Closure $then, ?Closure $failed = null)` | Shows it and returns at once. `$then(list<string> $paths)` runs on the UI thread when the user is done. If it can't be shown, `$failed($why)` runs; without `$failed`, `show()` throws `RuntimeException`. |
+| `available(): bool`, `why(): string` | Whether dialogs can be shown, and if not why. |
+
+The app keeps running while a dialog is open (timers, events and other windows go on).
+
+What does the work:
+
+- **Linux:** the desktop's own file chooser through **xdg-desktop-portal** (`org.freedesktop.portal.FileChooser`
+  on D-Bus: GNOME, KDE and the other desktops ship a portal), through GLib's GDBus, loaded at runtime.
+  It also works for sandboxed apps (Flatpak). Without a portal (a bare window manager), `why()` says so.
+  Only local files are returned.
+- **Windows:** the common item dialogs (`IFileOpenDialog`, `IFileSaveDialog`), owned by the app's active
+  window, which Windows disables while the dialog is open. `save()` adds the first filter's extension
+  when the user types a name without one.
+- **macOS:** not yet.
+
+Not in this version: a dialog in front of a particular window on Linux (the portal centres it on its own),
+and message boxes (`alert`/`confirm`; use a `<Dialog>` in the template).
 
 ## Events: from native threads to PHP
 

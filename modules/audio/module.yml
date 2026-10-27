@@ -8,9 +8,12 @@ fetch:
 library:
   sources: [native]
   include-paths: [native, native/third_party/miniaudio]
-  platforms: { linux: { link-libs: [dl, pthread, m] } }
+  platforms: { linux: { link-libs: [dl, pthread, m] }, windows: { link-libs: [mfplat, mfreadwrite, mfuuid, ole32] } }
 functions:
+  # 0 when it can't be played (audio_load_error() says why). WAV, MP3, FLAC; Opus in MP4 (libopus on
+  # Linux); on Windows also what Media Foundation reads (AAC/M4A, …).
   audio_load:     { params: { path: string }, returns: int }
+  audio_load_error: { returns: string }
   audio_play:     { params: { sound: int } }
   audio_pause:    { params: { sound: int } }
   audio_stop:     { params: { sound: int } }

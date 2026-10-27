@@ -157,6 +157,9 @@ elements:
     props:
       text: string
       variant: { type: string, enum: [h1, h2, h3, h4, p, lead, large, small, muted, code, blockquote] }
+      markdown: bool
+    events:
+      onLink: { callback: link-clicked, value: string }
   Dialog:
     component: ShadDialog
     children: true

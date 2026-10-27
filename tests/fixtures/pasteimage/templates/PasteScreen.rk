@@ -1,0 +1,5 @@
+<VStack>
+    <PasteImage onPaste="pasted" />
+    <Textarea value="{{ $draft }}" onSubmit="send" />
+    <Label text="{{ $status }}" />
+</VStack>

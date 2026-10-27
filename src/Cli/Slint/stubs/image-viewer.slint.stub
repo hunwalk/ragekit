@@ -1,0 +1,50 @@
+{{ id }}-box := Rectangle {
+    {{ lines }}
+    clip: true;
+    // The image fitted into the view (never enlarged), times rk-zoom: the wheel zooms around the
+    // pointer, a drag pans, a double-click switches between fitted and 100 %.
+    property <image> rk-source: {{ source }};
+    property <length> rk-w: self.rk-source.width * 1px;
+    property <length> rk-h: self.rk-source.height * 1px;
+    property <float> rk-fit: min(1, min(self.width / max(1px, self.rk-w), self.height / max(1px, self.rk-h)));
+    property <float> rk-zoom: 1;
+    changed rk-source => { self.rk-zoom = 1; }
+    {{ id }} := Flickable {
+        width: parent.width;
+        height: parent.height;
+        viewport-width: max(self.width, {{ id }}-box.rk-w * {{ id }}-box.rk-fit * {{ id }}-box.rk-zoom);
+        viewport-height: max(self.height, {{ id }}-box.rk-h * {{ id }}-box.rk-fit * {{ id }}-box.rk-zoom);
+        Image {
+            source: {{ id }}-box.rk-source;
+            width: {{ id }}-box.rk-w * {{ id }}-box.rk-fit * {{ id }}-box.rk-zoom;
+            height: {{ id }}-box.rk-h * {{ id }}-box.rk-fit * {{ id }}-box.rk-zoom;
+            x: (parent.viewport-width - self.width) / 2;
+            y: (parent.viewport-height - self.height) / 2;
+            image-rendering: smooth;
+        }
+        TouchArea {
+            width: parent.viewport-width;
+            height: parent.viewport-height;
+            scroll-event(event) => {
+                if (event.delta-y == 0) {
+                    return reject;
+                }
+                {{ id }}-box.rk-zoom-by(event.delta-y > 0 ? 1.25 : 0.8, self.mouse-x, self.mouse-y);
+                return accept;
+            }
+            double-clicked => {
+                {{ id }}-box.rk-zoom-by({{ id }}-box.rk-zoom > 1.001 || {{ id }}-box.rk-fit >= 1 ? 1 / {{ id }}-box.rk-zoom : 1 / {{ id }}-box.rk-fit, self.mouse-x, self.mouse-y);
+            }
+        }
+    }
+    // Zooms by `by` (kept between fitted and 8×) so that the content point (x, y) stays under the pointer.
+    function rk-zoom-by(by: float, x: length, y: length) {
+        let old = self.rk-zoom;
+        self.rk-zoom = clamp(old * by, 1, 8 / self.rk-fit);
+        let k = self.rk-zoom / old;
+        let vx = x + {{ id }}.viewport-x;
+        let vy = y + {{ id }}.viewport-y;
+        {{ id }}.viewport-x = clamp(vx - x * k, {{ id }}.width - {{ id }}.viewport-width, 0px);
+        {{ id }}.viewport-y = clamp(vy - y * k, {{ id }}.height - {{ id }}.viewport-height, 0px);
+    }
+}

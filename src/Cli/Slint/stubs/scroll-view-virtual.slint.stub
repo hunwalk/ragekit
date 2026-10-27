@@ -1,0 +1,101 @@
+Rectangle {
+    {{ lines }}
+    clip: true;
+    {{ id }} := ListView {
+        width: parent.width;
+        height: parent.height;
+        {{ jump }}
+        // At the bottom (stickToBottom): the content height is an estimate that changes as rows are
+        // seen, so the view goes back to the bottom whenever it does.
+        property <bool> rk-stuck: {{ stick }};
+        property <bool> rk-near-top: false;
+        // The geometry when content-y last changed: Slint moves content-y itself when its estimate
+        // or the view's height changes, which isn't the user scrolling away from the bottom.
+        property <length> rk-seen-height;
+        property <length> rk-seen-content;
+        changed content-height => {
+            if (self.rk-stuck) {
+                self.content-y = min(0px, self.height - self.content-height);
+                {{ id }}-settle.running = true;
+            }
+            if (self.content-height < self.visible-height + {{ threshold }}) {
+                self.rk-near-top = false; // still short: ask for more again
+            }
+            self.rk-ask();
+        }
+        // (On the list's own height: a handler on the visible-height alias doesn't see the change.)
+        changed height => {
+            if (self.rk-stuck) {
+                self.content-y = min(0px, self.height - self.content-height);
+            }
+        }
+        changed content-y => {
+            if (self.height == self.rk-seen-height && self.content-height == self.rk-seen-content) {
+                self.rk-stuck = {{ stick }} && self.content-y <= self.height - self.content-height + 2px;
+            }
+            self.rk-seen-height = self.height;
+            self.rk-seen-content = self.content-height;
+            self.rk-ask();
+        }
+        // Near the top (or a list too short to scroll): onTop, once until the view leaves the top.
+        function rk-ask() {
+            if (self.visible-height > 0px && self.content-y > -{{ threshold }}) {
+                if (!self.rk-near-top) {
+                    self.rk-near-top = true;
+                    {{ onTop }}
+                }
+            } else {
+                self.rk-near-top = false;
+            }
+        }
+        {{ rows }}
+    }
+    // After a new estimate, Slint has placed the rows in view with the old one (the last row can
+    // hang below the view): a 1 px move and back makes it place them again, at the bottom.
+    {{ id }}-settle := Timer {
+        interval: 30ms;
+        running: false;
+        property <bool> rk-back: false;
+        triggered => {
+            if (!{{ id }}.rk-stuck) {
+                self.running = false;
+            } else if (!self.rk-back) {
+                {{ id }}.content-y = min(0px, {{ id }}.height - {{ id }}.content-height) + 1px;
+                self.rk-back = true;
+            } else {
+                {{ id }}.content-y = min(0px, {{ id }}.height - {{ id }}.content-height);
+                self.rk-back = false;
+                self.running = false;
+            }
+        }
+    }
+    {{ again }}
+    // The scrollbar (as the plain ScrollView's): a thumb to look at, and a fixed strip to drag.
+    if {{ id }}.content-height > {{ id }}.visible-height + 1px : Rectangle {
+        x: parent.width - 8px;
+        width: 6px;
+        height: min(max(24px, parent.height * {{ id }}.visible-height / {{ id }}.content-height), parent.height - 1px);
+        y: (parent.height - self.height) * (-{{ id }}.content-y / ({{ id }}.content-height - {{ id }}.visible-height));
+        border-radius: 3px;
+        background: #80808080;
+        opacity: {{ id }}-bar.has-hover || {{ id }}-bar.pressed ? 1 : 0.6;
+    }
+    {{ id }}-bar := TouchArea {
+        property <length> rk-pressed-y;
+        property <length> rk-thumb: min(max(24px, parent.height * {{ id }}.visible-height / max(1px, {{ id }}.content-height)), parent.height - 1px);
+        x: parent.width - 10px;
+        width: 10px;
+        enabled: {{ id }}.content-height > {{ id }}.visible-height + 1px;
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down) {
+                self.rk-pressed-y = {{ id }}.content-y;
+            }
+        }
+        moved => {
+            if (self.pressed) {
+                {{ id }}.content-y = max({{ id }}.visible-height - {{ id }}.content-height, min(0px,
+                    self.rk-pressed-y - (self.mouse-y - self.pressed-y) * ({{ id }}.content-height - {{ id }}.visible-height) / max(1px, parent.height - self.rk-thumb)));
+            }
+        }
+    }
+}

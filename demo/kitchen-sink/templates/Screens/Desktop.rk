@@ -8,7 +8,7 @@
         </View>
         <View style="card">
             <Text variant="large">Notification</Text>
-            <Text variant="muted">The notifications module (Linux desktops)</Text>
+            <Text variant="muted">The notifications module (Linux, Windows)</Text>
             <Button text="Notify me" onClick="notify" />
             <Text variant="small">{{ $notice }}</Text>
         </View>

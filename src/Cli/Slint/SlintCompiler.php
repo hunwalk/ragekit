@@ -145,6 +145,9 @@ final class SlintCompiler
         if ($this->assets->paths() !== []) {
             array_unshift($definitions, $this->assetsGlobal());
         }
+        if ($this->elements->usesVirtualList()) {
+            array_unshift($definitions, Code::stub('virtual-list', []));
+        }
         // Row structs last: every template has added the fields it reads by now.
         if ($rows->all() !== []) {
             array_unshift($definitions, $rows->slint());
@@ -301,6 +304,7 @@ final class SlintCompiler
         }
         $overlays = $this->elements->takeOverlays() . $this->toasts($model);
         $shortcuts = $this->elements->takeShortcuts();
+        $captures = $this->elements->takeCaptures();
         if ($frame !== null) {
             $overlays .= self::grips();
         }
@@ -322,6 +326,7 @@ final class SlintCompiler
             'body' => $body,
             'overlays' => $overlays,
             'shortcuts' => $shortcuts,
+            'captures' => $captures === '' ? '' : "capture-key-pressed(event) => {\n" . Code::indent($captures, 1) . "\n    return reject;\n}",
         ]);
     }
 

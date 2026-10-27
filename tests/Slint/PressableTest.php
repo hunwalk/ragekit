@@ -16,8 +16,8 @@ use RageKit\Tests\Support\Fetched;
 use RageKit\Tests\Support\InstalledToolchain;
 
 /**
- * <View onPress onHoverIn onHoverOut>, <ContextMenu> in a View, and <Shortcut> (in a running app:
- * tests/e2e/pressable.sh).
+ * <View onPress onHoverIn onHoverOut>, <ContextMenu> in a View, <Shortcut> (in a running app:
+ * tests/e2e/pressable.sh) and <PasteImage> (tests/e2e/paste-image.sh).
  */
 final class PressableTest extends TestCase
 {
@@ -82,6 +82,20 @@ final class PressableTest extends TestCase
         self::assertMatchesRegularExpression('/key-pressed\(event\) => \{\s+if \(event\.modifiers\.control && !event\.modifiers\.shift && !event\.modifiers\.alt && !event\.modifiers\.meta && \(event\.text == "f" \|\| event\.text == "F"\)\) \{\s+root\.action\(\d+, ""\);\s+return accept;\s+\}\s+if \(event\.modifiers\.alt && event\.text == Key\.LeftArrow\)/', $slint);
     }
 
+    public function testPasteImageIsCapturedBeforeTheFocusedInput(): void
+    {
+        $slint = $this->compile('<VStack><PasteImage onPaste="find" /><Textarea value="{{ $q }}" /></VStack>')->slint;
+        self::assertMatchesRegularExpression('/capture-key-pressed\(event\) => \{\s+if \(\(\(\(event\.modifiers\.control \|\| event\.modifiers\.meta\) && !event\.modifiers\.alt && \(event\.text == "v" \|\| event\.text == "V"\)\) \|\| \(event\.modifiers\.shift && !event\.modifiers\.control && event\.text == Key\.Insert\)\)\) \{\s+if \(root\.rk-has-image\(\)\) \{\s+root\.action\(\d+, ""\);\s+return accept;\s+\}\s+\}\s+return reject;\s+\}/', $slint);
+        self::assertStringContainsString('callback rk-has-image() -> bool;', $slint);
+        self::assertStringNotContainsString('capture-key-pressed', $this->compile('<VStack><Label text="a" /></VStack>')->slint);
+    }
+
+    public function testCapturedShortcutWithACondition(): void
+    {
+        $slint = $this->compile('<VStack><Shortcut keys="Tab" capture="true" enabled="{{ count($items) > 0 }}" onPress="find" /><Textarea value="{{ $q }}" /></VStack>')->slint;
+        self::assertMatchesRegularExpression('/capture-key-pressed\(event\) => \{\s+if \(!event\.modifiers\.control && !event\.modifiers\.shift && !event\.modifiers\.alt && !event\.modifiers\.meta && event\.text == Key\.Tab && \(.+?\)\) \{\s+root\.action\(\d+, ""\);\s+return accept;/', $slint);
+    }
+
     public function testShortcutKeys(): void
     {
         $element = new Element('Shortcut', null, [], [], 1, 'S.rk');
@@ -100,6 +114,9 @@ final class PressableTest extends TestCase
         yield 'unknown key' => ['<VStack><Shortcut keys="Ctrl+Banana" onPress="find" /></VStack>', "'Banana' isn't a key"];
         yield 'no handler' => ['<VStack><Shortcut keys="Escape" /></VStack>', '<Shortcut> needs onPress="method"'];
         yield 'under @if' => ["<VStack>\n@if (count(\$items) > 0)\n<Shortcut keys=\"Escape\" onPress=\"find\" />\n@endif\n</VStack>", "<Shortcut> can't be inside @if or @foreach"];
+        yield 'paste without handler' => ['<VStack><PasteImage /></VStack>', '<PasteImage> needs onPaste="method"'];
+        yield 'paste with keys' => ['<VStack><PasteImage keys="Ctrl+V" onPaste="find" /></VStack>', 'keys'];
+        yield 'paste under @foreach' => ["<VStack>\n@foreach (\$items as \$i)\n<PasteImage onPaste=\"find\" />\n@endforeach\n</VStack>", "<PasteImage> can't be inside @if or @foreach"];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('badShortcuts')]
@@ -140,7 +157,7 @@ final class PressableTest extends TestCase
         if (!is_file($compiler) || !Fetched::kit('material')) {
             self::markTestSkipped('needs the Slint toolchain and Slint\'s Material library');
         }
-        $rk = "<VStack>\n<Shortcut keys=\"Escape\" onPress=\"find\" />\n@foreach (\$items as \$i)\n<View onPress=\"open(\$i)\" onHoverIn=\"hover\">"
+        $rk = "<VStack>\n<Shortcut keys=\"Escape\" onPress=\"find\" />\n<PasteImage onPaste=\"find\" />\n@foreach (\$items as \$i)\n<View onPress=\"open(\$i)\" onHoverIn=\"hover\">"
             . "<Label text=\"{{ \$i }}\" /><ContextMenu><MenuItem text=\"Reply\" onClick=\"reply(\$i)\" /></ContextMenu></View>\n@endforeach\n"
             . "<Entry value=\"{{ \$q }}\" ref=\"search\" /><Textarea value=\"{{ \$q }}\" ref=\"notes\" />\n</VStack>";
         foreach (['shadcn', 'material'] as $kit) {

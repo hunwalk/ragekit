@@ -38,7 +38,14 @@ final class ViewCompiler implements ElementCompiler
         $own = str_starts_with($layout['flex-direction'], 'row') ? 'h' : 'v';
         // Decided before the children: an @if of text in a plain column needs no flexbox workaround.
         $column = $this->columnLines($layout);
-        [$flow, $placed, $menu] = $this->context->inView($column !== null, fn() => $this->children($element, $scope, $own));
+        // The menu's id comes first: markdown text inside opens it itself (KitElementCompiler).
+        $menuId = null;
+        foreach ($element->children as $child) {
+            if ($child->namespace === null && $child->tag === 'ContextMenu') {
+                $menuId ??= $this->context->nextId('rk-menu');
+            }
+        }
+        [$flow, $placed, $menu] = $this->context->inView($column !== null, fn() => $this->context->withMenu($menuId, fn() => $this->children($element, $scope, $own)));
         $lines = [...CompileContext::styleLines($style, $style->view), ...CompileContext::styleLines($style, $style->box)];
         if ($this->context->isRoot($element)) {
             $lines[] = 'width: parent.width;';
@@ -54,7 +61,7 @@ final class ViewCompiler implements ElementCompiler
         }
         $box = $this->repeatedColumn($element, $style, $column, $flow)
             ?? Code::block('FlexboxLayout', CompileContext::styleLines($style, $layout), $flow);
-        $box = $this->pressable($element, $scope, $box, $menu);
+        $box = $this->pressable($element, $scope, $box, $menu, $menuId);
         return $this->context->withMargin(Code::block('Rectangle', $lines, $box . $placed), $style, $element, $axis);
     }
 
@@ -92,7 +99,7 @@ final class ViewCompiler implements ElementCompiler
     }
 
     /**
-     * A plain column View that a @foreach repeats, as a VerticalLayout: slint-compiler 1.18 overflows
+     * A plain column View that a @foreach repeats or that sits in another View, as a VerticalLayout: slint-compiler 1.18 overflows
      * its stack on a column FlexboxLayout repeated inside another one with wrapping text in it (a
      * list of cards). A column without wrapping, cross-axis alignment or alignSelf children lays out
      * the same way. Null: keep the FlexboxLayout.
@@ -108,7 +115,9 @@ final class ViewCompiler implements ElementCompiler
      */
     private function columnLines(array $layout): ?array
     {
-        if (!$this->context->inLoop() || $layout['flex-direction'] !== 'column' || $layout['flex-wrap'] !== 'no-wrap') {
+        // In a loop, or inside another View: a column FlexboxLayout with wrapping text, nested in a
+        // flexbox, makes Slint's layout recurse ("Recursion detected" at run time).
+        if ((!$this->context->inLoop() && !$this->context->insideView()) || $layout['flex-direction'] !== 'column' || $layout['flex-wrap'] !== 'no-wrap') {
             return null;
         }
         $lines = [];
@@ -145,7 +154,7 @@ final class ViewCompiler implements ElementCompiler
     }
 
     /** The layout inside a TouchArea when the View has events or a context menu; else as it is. */
-    private function pressable(Element $element, Scope $scope, string $box, ?Element $menu): string
+    private function pressable(Element $element, Scope $scope, string $box, ?Element $menu, ?string $id): string
     {
         $events = array_intersect_key($element->attributes, array_flip(['onPress', 'onHoverIn', 'onHoverOut']));
         if ($events === [] && $menu === null) {
@@ -163,10 +172,10 @@ final class ViewCompiler implements ElementCompiler
             $lines[] = "changed has-hover => {\n    if (self.has-hover) {\n" . Code::indent($in, 2) . "    } else {\n" . Code::indent($out, 2) . "    }\n}";
         }
         $children = $box;
-        if ($menu !== null) {
-            $id = $this->context->nextId('rk-menu');
+        if ($menu !== null && $id !== null) {
             $lines[] = "pointer-event(event) => {\n    if (event.button == PointerEventButton.right && event.kind == PointerEventKind.down) {\n        $id.open(self.mouse-x, self.mouse-y);\n    }\n}";
             $children .= $this->menus->menu($menu, $scope, $id);
+            return Code::block('TouchArea', $lines, $children, "$id-area := ");
         }
         return Code::block('TouchArea', $lines, $children);
     }

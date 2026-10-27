@@ -4,6 +4,7 @@ Rectangle {
     {{ id }} := Flickable {
         width: parent.width;
         height: parent.height;
+        {{ jump }}
         // The content's and the view's heights when last seen: a change handler only sees the new value.
         property <length> rk-content: 0px;
         property <length> rk-view: 0px;

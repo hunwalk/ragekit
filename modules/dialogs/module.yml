@@ -1,0 +1,21 @@
+# RageKit's dialogs module: the OS's own file dialogs (open, save, choose a folder). Linux: the
+# xdg-desktop-portal FileChooser (GNOME, KDE, …) over D-Bus through GLib's GDBus, loaded at runtime
+# (building needs nothing extra; without GLib or a portal it reports itself unavailable). Windows:
+# the common item dialogs (IFileOpenDialog / IFileSaveDialog). macOS: not yet.
+name: dialogs
+php: [src]
+library:
+  sources: [native]
+  include-paths: [native]
+  platforms:
+    linux: { link-libs: [dl, pthread] }
+    windows: { link-libs: [ole32, shell32, user32] }
+functions:
+  # '' when file dialogs can be shown, otherwise why not.
+  dialogs_available: { returns: string }
+  # Shows one without waiting for it. kind: 0 open, 1 save, 2 folder. filters: one per line,
+  # "<name>\t<ext> <ext>…". folder: where it starts ('' = the OS decides). Returns its id (0 if it
+  # couldn't be shown: dialogs_error() says why). Events for the id: "done" (the chosen paths, one
+  # per line; '' = cancelled), "error" (why it failed).
+  dialogs_file: { params: { kind: int, title: string, filters: string, multiple: bool, file: string, folder: string }, returns: int }
+  dialogs_error: { returns: string }

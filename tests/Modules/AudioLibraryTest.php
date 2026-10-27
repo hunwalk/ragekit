@@ -45,10 +45,10 @@ final class AudioLibraryTest extends TestCase
         $wav = "$dir/my tone é.wav";
         self::wav($wav, 0.5);
         $root = (string) realpath(self::ROOT);
-        $this->sh("g++ -std=c++17 -O1 -shared -fPIC -fvisibility=hidden $root/modules/audio/native/audio.cc $dir/gen/rk_module_audio_call.cc"
+        $this->sh("g++ -std=c++17 -O1 -shared -fPIC -fvisibility=hidden $root/modules/audio/native/audio.cc $root/modules/audio/native/decode_opus.cc $dir/gen/rk_module_audio_call.cc"
             . " -I$dir/gen -I$root/native/include -I$root/modules/audio/native -I$root/modules/audio/native/third_party/miniaudio -ldl -lpthread -lm -o $dir/librk_module_audio.so");
         $this->sh("g++ -std=c++17 $root/tests/fixtures/modules/probe_audio.cc -ldl -lpthread -o $dir/probe");
-        exec('RAGEKIT_AUDIO_NULL=1 timeout 30 ' . escapeshellarg("$dir/probe") . ' ' . escapeshellarg("$dir/librk_module_audio.so") . ' ' . escapeshellarg($wav) . ' 2>&1', $lines, $code);
+        exec('RAGEKIT_AUDIO_NULL=1 timeout 30 ' . escapeshellarg("$dir/probe") . ' ' . escapeshellarg("$dir/librk_module_audio.so") . ' ' . escapeshellarg($wav) . ' ' . escapeshellarg("$root/tests/fixtures/modules/opus-voice.mp4") . ' 2>&1', $lines, $code);
         self::assertSame(0, $code, implode("\n", $lines));
         return self::$lines = $lines;
     }
@@ -79,6 +79,16 @@ final class AudioLibraryTest extends TestCase
         self::assertSame('1', $this->value('load'), 'a path with a space and é loads');
         self::assertSame('0', $this->value('load-missing'));
         self::assertEqualsWithDelta(0.5, (float) $this->value('duration'), 0.02);
+    }
+
+    /** A voice note as dev-null's server stores it (Opus in MP4): decoded by the system's libopus. */
+    public function testOpusInMp4(): void
+    {
+        if (!is_file('/usr/lib/x86_64-linux-gnu/libopus.so.0') && trim((string) shell_exec('ldconfig -p | grep libopus.so.0')) === '') {
+            self::markTestSkipped('needs libopus (libopus0)');
+        }
+        self::assertSame('1', $this->value('opus-load'));
+        self::assertEqualsWithDelta(2.0, (float) $this->value('opus-duration'), 0.05);
     }
 
     public function testPlayPauseSeekStop(): void
@@ -115,10 +125,11 @@ final class AudioLibraryTest extends TestCase
     public function testNoEventsAfterUnload(): void
     {
         $lines = $this->lines();
-        $at = array_search('unloaded 2', $lines, true);
+        $id = $this->value('unloaded');
+        $at = array_search("unloaded $id", $lines, true);
         self::assertIsInt($at);
         foreach (array_slice($lines, $at) as $line) {
-            self::assertStringStartsNotWith('event audio 2 ', $line);
+            self::assertStringStartsNotWith("event audio $id ", $line);
         }
     }
 

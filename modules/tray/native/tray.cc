@@ -577,17 +577,4 @@ RKM_API const char *rkm_tray_error(void)
 
 } // extern "C"
 
-#else // Windows (and anything else without D-Bus): not yet
-
-extern "C" {
-RKM_API void rkm_tray_init(rk_post_fn) {}
-RKM_API void rkm_tray_reset(void) {}
-RKM_API const char *rkm_tray_available(void) { return "the tray isn't supported on this OS yet"; }
-RKM_API int64_t rkm_tray_show(const char *, size_t, const char *, size_t) { return 0; }
-RKM_API void rkm_tray_tooltip(const char *, size_t) {}
-RKM_API void rkm_tray_menu(const char *, size_t) {}
-RKM_API void rkm_tray_remove(void) {}
-RKM_API const char *rkm_tray_error(void) { return "the tray isn't supported on this OS yet"; }
-}
-
-#endif
+#endif // _WIN32: tray_win32.cc

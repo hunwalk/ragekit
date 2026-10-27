@@ -1,0 +1,10 @@
+# <Text markdown="true" onLink> and <Emoji>: tests/e2e/rich-text.sh (normal and --nano).
+name: richtext
+sources:
+  - main.php
+  - src
+
+ragekit:
+  backend: slint
+  kit: shadcn
+  renderer: software

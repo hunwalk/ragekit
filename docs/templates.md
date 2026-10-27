@@ -243,6 +243,33 @@ except under `@if`/`@foreach` (check the condition in the handler instead).
   either case.
 - While an input has the focus, keys it uses itself (typing, Ctrl+C, arrows) stay with it; the
   others (Ctrl+F, Escape) still reach the shortcut.
+- `capture="true"`: the window sees the keys before the focused input, so even keys the input uses
+  (Tab, Up, Down, Return) reach the shortcut. Pair it with `enabled="{{ condition }}"`, so the keys
+  only do this while it makes sense and type as usual otherwise, e.g. Tab taking a suggestion:
+
+  ```blade
+  <Shortcut keys="Tab" capture="true" enabled="{{ hasSuggestions() }}" onPress="acceptSuggestion" />
+  ```
+
+### Pasting images
+
+```blade
+<PasteImage onPaste="attachPasted" />
+<Textarea value="{{ $draft }}" onSubmit="send" />
+```
+
+```php
+public function attachPasted(): void
+{
+    $this->attachments[] = Clipboard::image();   // a png/jpg/… file in the app's cache folder
+}
+```
+
+With an image on the clipboard (a screenshot, an image copied in a browser, an image file copied in
+a file manager), Ctrl+V, Shift+Insert or Cmd+V runs the handler instead of pasting, even while an
+input has the focus. With text on the clipboard the keys paste into the input as usual. Like a
+shortcut, it works while its screen shows and can't be under `@if`/`@foreach`. `Clipboard::image()`
+(docs/state.md, "Clipboard") reads the image.
 
 ## Two-way bindings (inputs)
 
@@ -549,8 +576,55 @@ public function received(Message $message): void
 | `grow` | `false` stops it taking the leftover room; give it a `height` style instead. |
 
 It takes box styles (`backgroundColor`, `borderRadius`, `padding`, a fixed `height`, …). Tested
-inside `VStack`/`HStack`; inside a `<View>`, give it a `height` style. Not yet: horizontal
-scrolling, scrolling to a given row from PHP, and keyboard scrolling (Page Up/Down).
+inside `VStack`/`HStack`; inside a `<View>`, give it a `height` style. `keys="true"`: Page Up and
+Page Down scroll it by most of a view, even while an input (a chat's composer) has the focus (give
+it to one list per screen). Not yet: horizontal scrolling.
+
+**Scrolling to a row from PHP:** mark the ScrollView with `ref="…"` (it then holds exactly one
+`@foreach`) and call `$this->scrollTo($ref, $row)` in the screen; row `$row` (0 = the first item) is
+put in the middle of the view, or as close as the ends allow; `$this->scrollToEnd($ref)` goes to the
+end and, with `stickToBottom`, sticks there again (after replacing the rows while scrolled up). It happens after the handler, and
+asking again for the same row scrolls again. A virtual list jumps to an estimate first (only rows in
+view exist) and corrects itself a moment later.
+
+```blade
+<ScrollView ref="thread" virtual="true" stickToBottom="true">
+    @foreach ($messages as $m) … @endforeach
+</ScrollView>
+```
+
+```php
+public function showQuoted(int $id): void
+{
+    $row = $this->messages->indexOf($id);   // however you find it
+    if ($row >= 0) {
+        $this->scrollTo('thread', $row);
+    }
+}
+```
+
+#### Long lists: `virtual="true"`
+
+A plain ScrollView creates every row, so thousands of rows cost memory and make scrolling slow
+(5000 chat bubbles: about 128 MB and 80 ms per wheel click). With `virtual="true"` only the rows in
+view exist (Slint's ListView): measured in demo/kitchen-sink, 5000 more bubbles took 27 → 36 MB.
+
+```blade
+<ScrollView virtual="true" stickToBottom="true" onTop="loadOlder">
+    @foreach ($messages as $message)
+        <View style="bubble"><Text>{{ $message->text }}</Text></View>
+    @endforeach
+</ScrollView>
+```
+
+- It holds exactly one `@foreach` (its rows), nothing else.
+- Rows added above (older messages) keep what's on screen in place by themselves, so `anchor`
+  isn't needed (and isn't used). `stickToBottom`, `onTop`, `padded` and the scrollbar work as above.
+- The content's height is an estimate from the rows seen so far, so with rows of different
+  heights the scrollbar's thumb can change size and jump a little as you scroll.
+- A list shorter than the view starts at the top (it doesn't rest at the bottom).
+- Changing the collection by adding at the front or the end, or removing from the front, moves
+  only those rows; replacing it with a reordered list redraws the rows in view.
 
 ## Styles
 
@@ -668,6 +742,56 @@ snug and long text wraps at that width: a chat bubble. Text styles
 (`color`, `fontSize`, `fontWeight`, `textAlign`) override the variant. `<Text>` holds only text: no
 other elements inside it (yet), and not both `text="…"` and content.
 
+#### Formatted text (markdown)
+
+```blade
+<Text markdown="true" onLink="openLink">{{ $message->body }}</Text>
+```
+
+```php
+public function openLink(string $url): void
+{
+    Links::open($url);
+}
+```
+
+With `markdown="true"` the text is read the way chat apps read it: `**bold**`, `_italic_`, `` `code` ``,
+`[label](https://…)` links, bare `https://…` links, `- ` bullet lists and fenced ```` ``` ```` code blocks
+(drawn in the code font, indentation kept). A single newline is a line break. `:shortcodes:` such as
+`:thumbsup:` or `:tada:` become emoji (about 120 common ones). What a chat writer rarely means as
+markup stays as typed: `# headings`, `> quotes`, `1. numbered lists`, `---` and HTML. A click on a link
+runs `onLink` with its URL (the handler takes one `string`). The text is parsed when it changes, on
+the native side (Slint's own markdown support), so a list of messages costs no PHP work. Inside a
+`<View>` with a `<ContextMenu>`, a right-click on the text opens the menu and links still work (Slint's
+formatted text takes every press on it, so the kit catches presses first and sends clicks on to the
+text). Not drawn: ~~strikethrough~~ (shown as plain text).
+
+### Emoji
+
+```blade
+<Emoji text="{{ $reaction }}" size="24" />
+
+@if (\RageKit\Emoji::only($m->body))
+    <Emoji text="{{ $m->body }}" size="40" />
+@else
+    <Text markdown="true">{{ $m->body }}</Text>
+@endif
+```
+
+Colour emoji as images in a row, one per emoji; other characters in the text are left out. `size`
+is the size of each in pixels (default 20). Sequences are one emoji each: skin tones (👍🏽), joined
+ones (👩‍💻), flags (🇭🇺) and keycaps (1️⃣). `RageKit\Emoji::only($text, $max = 3)` tells whether a text is
+1 to `$max` emoji and nothing else (`Emoji::count()` counts them), e.g. to show such a message big.
+`Emoji::suggest($prefix)` lists the `:shortcodes:` starting with `$prefix` (name => emoji), for
+suggestions while the user types `:tad`; `Emoji::SHORTCODES` is the whole list.
+
+Why an element of its own: the software renderer (`renderer: software`, the lightest) draws text in
+one colour, so emoji inside text are monochrome there. `<Emoji>` draws them from the system's colour
+emoji font instead: Noto Color Emoji on Linux (through HarfBuzz; a font with only vector colour
+glyphs, such as Fedora's COLRv1 one, gives no images), Segoe UI Emoji on Windows (DirectWrite). The
+GPU renderers (`skia`, `femtovg`) can draw colour fonts themselves, but the system's font fallback
+often picks a monochrome emoji font first, so `<Emoji>` is the reliable way with any renderer.
+
 ### Dialog
 
 ```blade
@@ -681,7 +805,8 @@ other elements inside it (yet), and not both `text="…"` and content.
 ```
 
 - `open` is a two-way `bool` property: a handler sets `$this->confirmDelete = true` to show the
-  dialog and `false` to close it. A click outside the panel or Esc sets it back to `false`.
+  dialog and `false` to close it. A click outside the panel or Esc sets it back to `false`, then
+  runs `onDismiss="method"` if the dialog has one (e.g. to save what was changed in it).
 - The dialog covers the whole window wherever it's written (inside Tabs, a Card, a window's
   template), and
   the rest of the window is dimmed and can't be clicked. In a window with its own title bar that
@@ -831,6 +956,21 @@ loop over a constant (`self::PHOTOS`) can't show images; use a property or metho
 
 Not supported yet: bound images in child components (a fixed path or `$assets->…` works there),
 expiring the cache, request headers for image downloads.
+
+
+### ImageViewer
+
+```blade
+<Dialog open="{{ $viewing }}" title="Image">
+    <ImageViewer source="{{ $viewerUrl }}" width="640" height="420" />
+</Dialog>
+```
+
+An image to look at closely: it starts fitted into its room (never enlarged), the mouse wheel zooms
+around the pointer (up to 8×), dragging pans, and a double-click switches between fitted and 100 %.
+`source` and `fallback` work as on `<Image>` (a path, an asset, or a bound URL/file). Without a
+`width`/`height` it asks for the image's own size and takes what its stack gives it. It all happens
+in the UI: no PHP runs while zooming.
 
 ### Tabs
 

@@ -233,6 +233,18 @@ String php_slint_clipboard_get()
     return String(text, len);
 }
 
+String php_slint_clipboard_image(String folder)
+{
+    size_t len = 0;
+    const char *path = rk_clipboard_image(folder.data(), folder.length(), &len);
+    return String(path, len);
+}
+
+Bool php_slint_clipboard_has_image()
+{
+    return rk_clipboard_has_image() != 0;
+}
+
 Int php_slint_utc_offset(Int at)
 {
     return rk_utc_offset(at);

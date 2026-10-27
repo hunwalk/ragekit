@@ -22,6 +22,7 @@ sources:
   - src/Links.php
   - src/LocalTime.php
   - src/Clipboard.php
+  - src/Emoji.php
   - src/Modules.php
   - src/ModuleUnavailable.php
   - src/Slint/SlintBackend.php

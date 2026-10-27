@@ -5,6 +5,9 @@ public:
         handle_->on_action([window](int action, slint::SharedString arg) {
             rk::emit_action(window, action, std::string_view(arg));
         });
+        handle_->on_rk_has_image([] { return rk::clip::has_image(); });
+        {{ rich }}
+        {{ emoji }}
         handle_->window().on_close_requested([window] {
             rk::emit_close(window);
             return slint::CloseRequestResponse::KeepWindowShown;

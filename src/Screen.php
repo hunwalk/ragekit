@@ -11,6 +11,15 @@ abstract class Screen extends Component
     /** @internal */
     public int $focusCount = 0;
 
+    /** @internal the ScrollView scrollTo() asked for (its ref="…"), the row, and how many times it was asked */
+    public string $scrollRef = '';
+
+    /** @internal */
+    public int $scrollRow = -1;
+
+    /** @internal */
+    public int $scrollCount = 0;
+
     private ?Window $host = null;
 
     /**
@@ -22,6 +31,28 @@ abstract class Screen extends Component
     {
         $this->focusRef = $ref;
         $this->focusCount++;
+    }
+
+    /**
+     * Scrolls the ScrollView marked ref="$ref" so that row $row (0 = its @foreach's first item) is
+     * in the middle of the view, e.g. the message a reply quotes. It happens when the window shows
+     * the change, after the handler; asking again for the same row scrolls again.
+     */
+    public function scrollTo(string $ref, int $row): void
+    {
+        $this->scrollRef = $ref;
+        $this->scrollRow = $row;
+        $this->scrollCount++;
+    }
+
+    /**
+     * Scrolls the ScrollView marked ref="$ref" to its end, and (with stickToBottom) sticks there
+     * again, so rows that come in follow: e.g. after another conversation's messages replaced the
+     * list while the user was scrolled up.
+     */
+    public function scrollToEnd(string $ref): void
+    {
+        $this->scrollTo($ref, -2);
     }
 
     /**
