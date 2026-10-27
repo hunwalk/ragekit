@@ -489,8 +489,11 @@ What does the work:
   when the user types a name without one.
 - **macOS:** not yet.
 
-Not in this version: a dialog in front of a particular window on Linux (the portal centres it on its own),
-and message boxes (`alert`/`confirm`; use a `<Dialog>` in the template).
+On X11 (and XWayland) the dialog opens over the app's active window and stays in front of it (the
+portal gets it as the parent). Apps running as native Wayland windows get a dialog the desktop
+places on its own.
+
+Not in this version: message boxes (`alert`/`confirm`; use a `<Dialog>` in the template).
 
 ## Events: from native threads to PHP
 

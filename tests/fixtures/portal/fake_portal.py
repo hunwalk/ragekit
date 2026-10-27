@@ -51,6 +51,8 @@ def call(conn, sender, path, iface, method, params, invocation):
     token = options.get("handle_token", "t")
     handle = "/org/freedesktop/portal/desktop/request/%s/%s" % (sender[1:].replace(".", "_"), token)
     log("%s title=%s %s" % (method, title, describe(options)))
+    if parent:
+        log("parent " + ("x11" if parent.startswith("x11:") else parent))
     invocation.return_value(GLib.Variant("(o)", (handle,)))
     answer = ANSWERS[state["calls"]] if state["calls"] < len(ANSWERS) else "-"
     state["calls"] += 1

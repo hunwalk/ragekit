@@ -70,7 +70,8 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 - **dialogs module: the OS's file dialogs.** `RageKit\Dialogs\FileDialog::open()` / `save()` /
   `folder()` with a title, file type filters, several files and a start folder; the paths come back
   in a callback, the app keeps running meanwhile. Linux: xdg-desktop-portal (GNOME, KDE, Flatpak);
-  Windows: the common item dialogs. See docs/modules.md, "The dialogs module".
+  Windows: the common item dialogs. See docs/modules.md, "The dialogs module". On X11/XWayland the
+  dialog opens over the app's window (the portal gets it as the parent).
 
 ### Fixed
 

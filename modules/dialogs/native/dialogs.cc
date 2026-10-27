@@ -9,6 +9,10 @@
 #ifndef _WIN32
 
 #include <dlfcn.h>
+#include <unistd.h>
+
+#include <cstdio>
+#include <cstdlib>
 
 #include <condition_variable>
 #include <cstdint>
@@ -254,6 +258,63 @@ struct ShutdownGuard {
     ~ShutdownGuard() { shutdown(); } // a worker thread still running at exit would abort the process
 } shutdownGuard;
 
+/**
+ * The app's window as the portal's parent ("x11:<id>"), so the dialog opens over it and stays in
+ * front of it: the active window when it's this process's (_NET_WM_PID), through libX11 loaded at
+ * runtime. '' on a Wayland-only session or when the active window is another app's.
+ */
+std::string parentWindow()
+{
+    using Display = struct _XDisplay;
+    using Window = unsigned long;
+    using Atom = unsigned long;
+    static void *x11 = dlopen("libX11.so.6", RTLD_NOW | RTLD_LOCAL);
+    const char *display = getenv("DISPLAY");
+    if (x11 == nullptr || display == nullptr || *display == '\0') {
+        return "";
+    }
+    auto open = reinterpret_cast<Display *(*)(const char *)>(dlsym(x11, "XOpenDisplay"));
+    auto close = reinterpret_cast<int (*)(Display *)>(dlsym(x11, "XCloseDisplay"));
+    auto root = reinterpret_cast<Window (*)(Display *)>(dlsym(x11, "XDefaultRootWindow"));
+    auto intern = reinterpret_cast<Atom (*)(Display *, const char *, int)>(dlsym(x11, "XInternAtom"));
+    auto property = reinterpret_cast<int (*)(Display *, Window, Atom, long, long, int, Atom, Atom *, int *, unsigned long *,
+                                              unsigned long *, unsigned char **)>(dlsym(x11, "XGetWindowProperty"));
+    auto release = reinterpret_cast<int (*)(void *)>(dlsym(x11, "XFree"));
+    if (open == nullptr || close == nullptr || root == nullptr || intern == nullptr || property == nullptr || release == nullptr) {
+        return "";
+    }
+    Display *d = open(nullptr);
+    if (d == nullptr) {
+        return "";
+    }
+    // A CARDINAL/WINDOW property's first item (format 32 items are longs in memory).
+    auto first = [&](Window w, const char *name, unsigned long &out) {
+        Atom type = 0;
+        int format = 0;
+        unsigned long items = 0, after = 0;
+        unsigned char *data = nullptr;
+        bool ok = property(d, w, intern(d, name, 0), 0, 1, 0, 0 /* AnyPropertyType */, &type, &format, &items, &after, &data) == 0
+            && data != nullptr && items > 0 && format == 32;
+        if (ok) {
+            out = *reinterpret_cast<unsigned long *>(data);
+        }
+        if (data != nullptr) {
+            release(data);
+        }
+        return ok;
+    };
+    std::string parent;
+    unsigned long active = 0, pid = 0;
+    if (first(root(d), "_NET_ACTIVE_WINDOW", active) && active != 0 && first(active, "_NET_WM_PID", pid)
+        && pid == static_cast<unsigned long>(getpid())) {
+        char text[32];
+        snprintf(text, sizeof text, "x11:%lx", active);
+        parent = text;
+    }
+    close(d);
+    return parent;
+}
+
 std::vector<std::string> split(const std::string &text, char by)
 {
     std::vector<std::string> parts;
@@ -373,7 +434,8 @@ RKM_API int64_t rkm_dialogs_file(int64_t kind, const char *title, size_t title_l
     if (caption.empty()) {
         caption = kind == 1 ? "Save" : kind == 2 ? "Choose a folder" : "Open";
     }
-    Ptr params = g.variantNew("(ssa{sv})", "", caption.c_str(), options);
+    std::string parent = parentWindow();
+    Ptr params = g.variantNew("(ssa{sv})", parent.c_str(), caption.c_str(), options);
     g.builderUnref(options);
     GError *failure = nullptr;
     Ptr reply = g.callSync(connection, kPortal, kPath, kChooser, kind == 1 ? "SaveFile" : "OpenFile", params, nullptr, 0,
