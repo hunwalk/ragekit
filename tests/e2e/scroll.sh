@@ -49,13 +49,13 @@ wheel() { python3 -I "$root/tests/e2e/xscroll.py" 200,200 "$1" "$2"; sleep 0.4; 
 # Whether the message count (right of the button, whose hover comes and goes) changed between the last two shots.
 # One row (25 px); a virtual list's positions come from an estimate, so ±1 px there.
 row() { [ "$1" = "25" ] || { [ "${VIRTUAL:-}" = "1" ] && [ "$1" != "none" ] && [ "$1" -ge 24 ] && [ "$1" -le 26 ]; }; }
-header() { [ "$(compare -metric AE "$tmp/$((n - 1)).png[360x52+110+0]" "$tmp/$n.png[360x52+110+0]" null: 2>&1 | cut -d' ' -f1)" != "0" ]; }
+header() { [ "$(compare -metric AE "$tmp/$((n - 1)).png[360x36+90+0]" "$tmp/$n.png[360x36+90+0]" null: 2>&1 | cut -d' ' -f1)" != "0" ]; }
 
 shot
 # The scrollbar: dragging its thumb up and back down by the same distance returns to the same place.
-python3 -I "$root/tests/e2e/xdrag.py" 459,330 459,290; sleep 0.3; shot
+python3 -I "$root/tests/e2e/xdrag.py" 475,330 475,290; sleep 0.3; shot
 [ "$(moved)" != "none" ] && [ "$(moved)" -lt 0 ] || fail "dragging the scrollbar up didn't scroll up ($(moved))"
-python3 -I "$root/tests/e2e/xdrag.py" 459,290 459,330; sleep 0.3; shot
+python3 -I "$root/tests/e2e/xdrag.py" 475,290 475,330; sleep 0.3; shot
 [ "$(compare -metric AE "$tmp/1.png[440x280+0+60]" "$tmp/$n.png[440x280+0+60]" null: 2>&1 | cut -d' ' -f1)" = "0" ] \
     || fail "dragging the scrollbar back down didn't return to the bottom"
 receive; shot
