@@ -8,13 +8,34 @@
 
 #include "window.h"
 
-#include <wayland-client-core.h> // types only
-
+#include <cstdint>
 #include <cstring>
 #include <dlfcn.h>
 #include <mutex>
 #include <string>
 #include <type_traits>
+
+// The few types of libwayland-client's API this file uses, declared here so building needs no
+// libwayland-dev (the layouts are part of its stable ABI; wayland-util.h / wayland-client-core.h).
+struct wl_proxy;
+struct wl_event_queue;
+struct wl_display;
+struct wl_surface;
+struct wl_interface;
+struct wl_message {
+    const char *name;
+    const char *signature;
+    const wl_interface **types;
+};
+struct wl_interface {
+    const char *name;
+    int version;
+    int method_count;
+    const wl_message *methods;
+    int event_count;
+    const wl_message *events;
+};
+constexpr uint32_t WL_MARSHAL_FLAG_DESTROY = 1 << 0;
 
 namespace rk::win {
 

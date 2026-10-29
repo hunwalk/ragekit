@@ -16,14 +16,28 @@ use RageKit\Cli\Templates\ClassInfo;
 final class AppIconTest extends TestCase
 {
     private const ROOT = __DIR__ . '/../..';
-    private const PNG = __DIR__ . '/../e2e/images/assets/red.png';
 
     private string $dir;
+    private string $png;
 
     protected function setUp(): void
     {
         $this->dir = sys_get_temp_dir() . '/rk-icon-' . uniqid();
         mkdir($this->dir);
+        $this->png = "$this->dir/red.png";
+        file_put_contents($this->png, self::redPng(64, 64));
+    }
+
+    /** A plain red RGBA png (no image extension needed). */
+    private static function redPng(int $width, int $height): string
+    {
+        $chunk = static fn (string $type, string $data): string
+            => pack('N', strlen($data)) . $type . $data . pack('N', crc32($type . $data));
+        $rows = str_repeat("\0" . str_repeat("\xff\0\0\xff", $width), $height);
+        return "\x89PNG\r\n\x1a\n"
+            . $chunk('IHDR', pack('NNCCCCC', $width, $height, 8, 6, 0, 0, 0))
+            . $chunk('IDAT', (string) gzcompress($rows))
+            . $chunk('IEND', '');
     }
 
     protected function tearDown(): void
@@ -39,7 +53,7 @@ final class AppIconTest extends TestCase
 
     public function testPath(): void
     {
-        copy(self::PNG, "$this->dir/icon.png");
+        copy($this->png, "$this->dir/icon.png");
         self::assertSame('', AppIcon::path($this->project('')));
         self::assertSame(realpath("$this->dir/icon.png"), AppIcon::path($this->project('icon.png')));
     }
@@ -59,8 +73,8 @@ final class AppIconTest extends TestCase
 
     public function testIcoWrapsThePng(): void
     {
-        $png = (string) file_get_contents(self::PNG);
-        $ico = AppIcon::ico(self::PNG);
+        $png = (string) file_get_contents($this->png);
+        $ico = AppIcon::ico($this->png);
         self::assertSame([0, 1, 1], array_values(unpack('v3', substr($ico, 0, 6))), 'ICONDIR: an icon with one image');
         $entry = unpack('Cwidth/Cheight/Ccolors/Creserved/vplanes/vbits/Vsize/Voffset', substr($ico, 6, 16));
         self::assertSame(['width' => 64, 'height' => 64, 'colors' => 0, 'reserved' => 0, 'planes' => 1, 'bits' => 32, 'size' => strlen($png), 'offset' => 22], $entry);
