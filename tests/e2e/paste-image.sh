@@ -13,12 +13,13 @@ tmp=$(mktemp -d)
 app="$tmp/pasteimage"
 fail() { echo "!! paste-image: $* (files in $tmp)"; echo "--- app output:"; cat "$tmp/app.log" 2>/dev/null; exit 1; }
 
-# Xvfb's clipboard only: never the desktop's.
-unset WAYLAND_DISPLAY
-export GDK_BACKEND=x11 HOME="$tmp" XDG_CACHE_HOME="$tmp/cache"
 cp -r "$root/tests/fixtures/pasteimage" "$app"
 [ -z "${RAGEKIT_TOOLCHAIN:-}" ] && [ -d "$root/.ragekit" ] && export RAGEKIT_TOOLCHAIN="$root/.ragekit"
 (cd "$app" && "$root/bin/ragekit" build "$@") || fail "build failed"
+# Xvfb's clipboard only: never the desktop's. Set after the build, which finds the toolchain
+# through the real HOME when the checkout has no .ragekit of its own.
+unset WAYLAND_DISPLAY
+export GDK_BACKEND=x11 HOME="$tmp" XDG_CACHE_HOME="$tmp/cache"
 convert -size 40x30 xc:red "$tmp/red.png"
 convert -size 20x10 xc:blue "$tmp/copied file.jpg"
 
