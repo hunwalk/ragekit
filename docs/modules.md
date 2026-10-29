@@ -149,7 +149,7 @@ in Nano builds, whose PHP can't use the network itself.
 use RageKit\Http\Http;
 use RageKit\Http\Response;
 
-Http::get('https://api.github.com/repos/hunwalk/ragekit')
+Http::get('https://api.github.com/repos/ragekit-php/ragekit')
     ->header('Accept', 'application/vnd.github+json')
     ->timeout(10)
     ->send(function (Response $r): void {

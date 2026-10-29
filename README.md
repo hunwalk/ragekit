@@ -170,7 +170,7 @@ are in [Getting started](docs/getting-started.md).
 To run the demo apps instead, clone this repository:
 
 ```sh
-git clone https://github.com/hunwalk/ragekit.git && cd ragekit
+git clone https://github.com/ragekit-php/ragekit.git && cd ragekit
 ./setup.sh                          # Composer, then TypePHP + Slint (shared per user), then a check
 cd demo/kitchen-sink && ../../bin/ragekit run
 ```

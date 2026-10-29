@@ -11,7 +11,7 @@ use RageKit\Screen;
 /** Looks up a repository with GitHub's API and downloads its README (the http module). */
 final class FetchScreen extends Screen
 {
-    public string $repo = 'hunwalk/ragekit';
+    public string $repo = 'ragekit-php/ragekit';
     public string $status = 'Type owner/name and press Look up.';
     public string $name = '—';
     public string $description = '';
