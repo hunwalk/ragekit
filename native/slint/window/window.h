@@ -18,9 +18,9 @@ enum class Edge { TopLeft = 0, Top, TopRight, Right, BottomRight, Bottom, Bottom
 void make_floating(slint::Window &window);
 
 /**
- * After the window is shown (Windows; elsewhere a no-op): no frames are drawn while it's minimised.
- * Slint's software renderer copies only the changed parts to the window, and one drawn while
- * minimised (a blinking caret's) left the restored window black except for those parts.
+ * After the window is shown (Windows; elsewhere a no-op): no frames are drawn while it's minimised,
+ * and the first frame after a restore or a show draws the whole window. Slint's software renderer
+ * copies only the changed parts to the window, which left a restored window black elsewhere.
  */
 void skip_frames_while_minimised(slint::Window &window);
 

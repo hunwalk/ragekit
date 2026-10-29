@@ -11,10 +11,23 @@ require the RageKit minor version they were written for, e.g. `"ragekit/ragekit"
 
 ## [Unreleased]
 
-### Added
+## [0.8.1] - 2026-10-29
+
+Layout fixes found while building the dev-null.sh client, and a whole redraw on Windows after a
+restore from minimised. Nothing changes for 0.8.0 apps.
+
+### Fixed
 
 - **A screen's root `<VStack padded="false">` / `<HStack padded="false">` reaches the window's
-  edges** (no 16 px margin), for a sidebar along the edge; a root `<View>` already did.
+  edges** (it still got a 16 px margin), for a sidebar along the edge; a root `<View>` already did.
+  Also inside a `Window` template's `<Content />`.
+- **Windows: a window restored from minimised, or shown again from the tray, is drawn whole.** The
+  0.8.0 fix nudged the window's size, which only redrew what moved: with a title bar and a sidebar
+  that stay put, those stayed black. The renderer now forgets what was on screen and draws it all.
+- **An empty `<View>` (a rule, a spacer) no longer caps its stack's maximum size**, which made a
+  window impossible to widen (or heighten) past its content.
+- **An empty `<Text>` in the shadcn and Material kits no longer caps the window's width** (a status
+  line that is usually empty, in the window's column, fixed its width).
 
 ## [0.8.0] - 2026-10-27
 

@@ -918,7 +918,10 @@ export component ShadText {
                     padding-right: root.variant == "code" && root.text != "" ? 6px : 0px;
                     padding-top: root.variant == "code" && root.text != "" ? 2px : 0px;
                     padding-bottom: root.variant == "code" && root.text != "" ? 2px : 0px;
-                    // Empty text takes no room (an @if in a <View> hides a <Text> by emptying it).
+                    // Empty text takes no room (an @if in a <View> hides a <Text> by emptying it), but
+                    // leaves this: an empty layout reports a maximum width of 0, which capped the
+                    // window's (a status line, usually empty, in its column).
+                    if root.text == "" : Rectangle { height: 0px; }
                     if root.text != "" && !root.markdown : Text {
                         text: root.text;
                         color: root.color;

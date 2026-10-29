@@ -22,6 +22,15 @@ final class StackCompiler implements ElementCompiler
 
     private const LAYOUTS = ['VStack' => 'VerticalLayout', 'HStack' => 'HorizontalLayout'];
 
+    /**
+     * A screen's root stack with padded="false": it reaches the window's edges (or its window
+     * template's <Content />) instead of sitting 16 px in.
+     */
+    public static function flush(Element $root): bool
+    {
+        return $root->namespace === null && isset(self::LAYOUTS[$root->tag]) && ($root->attributes['padded'] ?? '') === 'false';
+    }
+
     public function compile(Element $element, Scope $scope, string $axis): string
     {
         $this->context->checkAttributes($element, ['grow', 'padded', 'when', 'each'], styled: true);

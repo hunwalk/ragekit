@@ -23,6 +23,7 @@ final class ViewTest extends TestCase
         'centered' => ['alignSelf' => 'center'],
         'sized' => ['flexDirection' => 'row', 'flexWrap' => 'wrap', 'width' => 300],
         'capped' => ['flexDirection' => 'row', 'flexWrap' => 'wrap', 'maxWidth' => 500],
+        'hrule' => ['height' => 1, 'backgroundColor' => '#2a2a2d'],
     ];
     private string $dir;
 
@@ -142,6 +143,17 @@ final class ViewTest extends TestCase
         $flush = $this->compile('<HStack padded="false"><Label text="a" /></HStack>')->slint;
         self::assertStringNotContainsString('padding: 16px;', $flush);
         self::assertStringContainsString('padding: 0px;', $flush);
+    }
+
+    public function testEmptyViewDoesNotCapItsStack(): void
+    {
+        // A 1 px rule in a column: no maximum width of 0 (the window couldn't be made wider).
+        $slint = $this->compile('<VStack><View style="hrule" /><Label text="a" /></VStack>')->slint;
+        self::assertMatchesRegularExpression('/height: 1px;\n\s*vertical-stretch: 0;\n\s*max-width: 100000px;/', $slint);
+        self::assertStringNotContainsString('max-height: 100000px;', $slint); // its height is set
+        // A View with content is measured by it.
+        $full = $this->compile('<VStack><View style="card"><Label text="a" /></View></VStack>')->slint;
+        self::assertStringNotContainsString('max-width: 100000px;', $full);
     }
 
     public function testRootViewFillsTheWindow(): void

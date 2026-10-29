@@ -84,6 +84,14 @@ final class WindowCompilerTest extends TestCase
         self::assertSame($this->frameClass()->name, $out->screens[0]->frame?->name);
     }
 
+    public function testScreenStackWithoutPaddingFillsContent(): void
+    {
+        $padded = $this->compile([$this->frame(self::BAR), $this->screen('<HStack><Label text="Hi" /></HStack>')]);
+        self::assertStringContainsString('padding: 16px;', $padded->slint);
+        $flush = $this->compile([$this->frame(self::BAR), $this->screen('<HStack padded="false"><Label text="Hi" /></HStack>')]);
+        self::assertStringNotContainsString('padding: 16px;', $flush->slint);
+    }
+
     private function frameClass(): ClassInfo
     {
         return $this->frame(self::BAR);

@@ -539,13 +539,25 @@ Also found while building a chat screen (Slint 1.18; each has a workaround):
 
 - **A `<ScrollView>` inside a `<View>` doesn't take the rest of its height** (it stays 0 high). Put
   it in a `<VStack>` instead; a View only around parts with a fixed size (a header, a footer).
-- **An empty `<View>` (a 1 px rule between two columns) caps the window's height** at its own: give
-  it `maxHeight` (e.g. 100000) next to its `width`.
+- ~~An empty `<View>` caps the window's size~~: fixed, an empty View no longer limits its stack's
+  maximum size (only what its style sets).
 - **A `<Textarea maxRows>` in a `<View>` makes the layout recurse at run time**: put it in an
   `<HStack>` (which takes padding styles) instead.
 - **A column `<View>` with a child that has `alignSelf`, or a row `<View>` inside it, stays a
   flexbox**: its wrapped text then comes out a line short, or the layout recurses. Inside a
   repeated bubble, use `<HStack>`/`<Label>` for small rows, and no `alignSelf`.
+- **A row `<View>` whose `flexDirection` changes with a condition** (`row` / `row-reverse` for
+  mine and theirs) **with wrapping text in it is a binding loop** (the build fails). Keep the
+  direction fixed and switch `justifyContent` instead.
+- **A `<View>` holding nothing but a `<Text markdown>`, in a row in a list, makes the layout
+  recurse at run time**: give it a second child, e.g. an empty `<View>` with `height: 0`.
+- **Wrapped text measures its height at its row's full width**: a sibling beside a bubble (buttons
+  next to it) makes the bubble narrower than measured, a line short. Place such buttons with
+  `position: absolute` (outside the bubble's edge with a negative `left`/`right`) and keep room for
+  them with the row's padding.
+- **A `<Label>` or a row of buttons as wide as its content sets the window's minimum width**: a
+  long single line widens the window. Wrap rows (`flexWrap`); a kit's Label can cut its text
+  (`overflow: elide` in Slint).
 
 ### ScrollView: lists longer than the window
 

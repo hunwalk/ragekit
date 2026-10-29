@@ -58,6 +58,16 @@ final class ViewCompiler implements ElementCompiler
             if ($layout['flex-wrap'] !== 'no-wrap' && preg_match('/^(max-)?width:/m', implode("\n", $lines)) !== 1) {
                 $lines[] = 'max-width: 100000px;';
             }
+            // An empty View (a rule, a spacer) reports a maximum size of 0, which capped its stack's
+            // (the min of its children's maximums): a window with a 1 px rule in its column could
+            // no longer be made wider or taller than its content. It stays as small as its style says.
+            if ($flow === '') {
+                foreach (['width', 'height'] as $side) {
+                    if (preg_match("/^(max-)?$side:/m", implode("\n", $lines)) !== 1) {
+                        $lines[] = "max-$side: 100000px;";
+                    }
+                }
+            }
         }
         $box = $this->repeatedColumn($element, $style, $column, $flow)
             ?? Code::block('FlexboxLayout', CompileContext::styleLines($style, $layout), $flow);

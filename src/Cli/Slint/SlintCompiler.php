@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RageKit\Cli\Slint;
 
 use RageKit\Cli\Kits\KitRegistry;
+use RageKit\Cli\Slint\Elements\StackCompiler;
 use RageKit\Cli\Templates\AssetRegistry;
 use RageKit\Cli\Templates\ClassInfo;
 use RageKit\Cli\Templates\Element;
@@ -355,8 +356,7 @@ final class SlintCompiler
             return $prefix . $this->elements->element($root, $page->scope, 'v');
         }
         $body = $this->elements->element($root, $page->scope, 'v');
-        $flush = $root->namespace === null && in_array($root->tag, ['VStack', 'HStack'], true) && ($root->attributes['padded'] ?? '') === 'false';
-        return Code::block('VerticalLayout', ['padding: ' . ($flush ? '0px' : '16px') . ';', 'alignment: ' . ($this->elements->flag($root, 'grow') ? 'stretch' : 'start') . ';'], $body, $prefix);
+        return Code::block('VerticalLayout', ['padding: ' . (StackCompiler::flush($root) ? '0px' : '16px') . ';', 'alignment: ' . ($this->elements->flag($root, 'grow') ? 'stretch' : 'start') . ';'], $body, $prefix);
     }
 
     /**

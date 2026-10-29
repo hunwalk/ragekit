@@ -75,27 +75,31 @@ LRESULT CALLBACK watch_proc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         return 0;
     }
     LRESULT result = CallWindowProcW(previous, hwnd, message, wParam, lParam);
+    bool back = false;
     if (message == WM_SIZE && wParam != SIZE_MINIMIZED && wParam != SIZE_MAXHIDE) {
-        // Restored (or resized): every item changes size, by a pixel and back, so the next frame
-        // draws all of them (winit never reports the window as occluded on Windows, which is
-        // what makes Slint redraw everything elsewhere).
+        back = was_minimised.erase(hwnd) != 0; // restored
+    } else if (message == WM_SIZE) {
+        was_minimised.insert(hwnd);
+    } else if (message == WM_SHOWWINDOW && wParam == TRUE) {
+        back = true; // shown again after a hide (the tray)
+    }
+    if (back) {
+        // Restored or shown, the window has lost what was on it, but Slint's software renderer
+        // redraws and copies to the window only the items that changed since its last frame
+        // (winit never reports the window as occluded on Windows, which is what makes Slint
+        // redraw everything elsewhere). A snapshot renders into a fresh buffer, which empties
+        // the renderer's record of what's on screen, so the next frame draws every item.
         auto target = window_of.find(hwnd);
-        if (target != window_of.end() && was_minimised.erase(hwnd) != 0) {
+        if (target != window_of.end()) {
             slint::Window *window = target->second;
             slint::invoke_from_event_loop([window, hwnd] {
                 if (!IsWindow(hwnd)) {
                     return;
                 }
-                float scale = window->scale_factor();
-                slint::PhysicalSize size = window->size();
-                float width = static_cast<float>(size.width) / scale, height = static_cast<float>(size.height) / scale;
-                window->dispatch_resize_event(slint::LogicalSize({width, height + 1}));
-                window->dispatch_resize_event(slint::LogicalSize({width, height}));
+                window->take_snapshot();
                 window->request_redraw();
             });
         }
-    } else if (message == WM_SIZE) {
-        was_minimised.insert(hwnd);
     }
     return result;
 }

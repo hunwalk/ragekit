@@ -41,7 +41,8 @@ final class WindowFrameCompiler implements ElementCompiler
 
     /**
      * A window template's <Content />: each screen of the window, padded as a plain window would
-     * be; with several screens, each one is shown while rk-page is its page.
+     * be (none for a root stack with padded="false"); with several screens, each one is shown while
+     * rk-page is its page.
      */
     private function content(Element $element, Scope $scope, string $axis): string
     {
@@ -59,7 +60,7 @@ final class WindowFrameCompiler implements ElementCompiler
             $body = $this->context->element($page->root, $page->scope, 'v');
             $this->context->setPageGuard('');
             $out .= Code::block('VerticalLayout', [
-                'padding: 16px;',
+                'padding: ' . (StackCompiler::flush($page->root) ? '0px' : '16px') . ';',
                 'alignment: ' . ($this->context->flag($page->root, 'grow') ? 'stretch' : 'start') . ';',
                 ($axis === 'h' ? 'horizontal' : 'vertical') . '-stretch: 1;',
             ], $body, $guard === '' ? '' : "if $guard : ");
