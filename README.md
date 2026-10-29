@@ -1,3 +1,5 @@
+<img src="docs/images/logo.svg" width="96" alt="RageKit logo: a crimson flame with a toggle switch inside">
+
 # RageKit
 
 Desktop apps in PHP, compiled to native code and drawn on the GPU — no browser engine.
