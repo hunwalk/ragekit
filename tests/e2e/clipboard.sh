@@ -18,9 +18,14 @@ cp -r "$root/tests/fixtures/clipboard" "$app"
 [ -z "${RAGEKIT_TOOLCHAIN:-}" ] && [ -d "$root/.ragekit" ] && export RAGEKIT_TOOLCHAIN="$root/.ragekit"
 (cd "$app" && "$root/bin/ragekit" build "$@") || fail "build failed"
 
-python3 -I "$root/tests/e2e/xclipboard.py" set "from outside ✓" 6 &
+python3 -I "$root/tests/e2e/xclipboard.py" set "from outside ✓" 10 &
 owner=$!
-sleep 0.5
+# Until the other program owns the clipboard: GTK can take over a second to start on a busy machine,
+# and the app pastes a second after its own start.
+for _ in $(seq 1 50); do
+    [ "$(python3 -I "$root/tests/e2e/xclipboard.py" get 2>/dev/null)" = "from outside ✓" ] && break
+    sleep 0.1
+done
 (cd "$app/build/slint" && env -u WAYLAND_DISPLAY timeout 20 ./clipboardapp >"$tmp/app.log" 2>&1) &
 pid=$!
 window=

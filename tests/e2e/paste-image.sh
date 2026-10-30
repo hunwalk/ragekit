@@ -27,7 +27,11 @@ own() { # what the clipboard holds: set <text> | image <file> | file <path>
     [ -n "${owner:-}" ] && kill "$owner" 2>/dev/null && wait "$owner" 2>/dev/null
     python3 -I "$root/tests/e2e/xclipboard.py" "$1" "$2" 30 &
     owner=$!
-    sleep 0.5
+    # Until it owns the clipboard (GTK can take over a second to start on a busy machine).
+    for _ in $(seq 1 50); do
+        [ -n "$(python3 -I "$root/tests/e2e/xclipboard.py" targets 2>/dev/null)" ] && break
+        sleep 0.1
+    done
 }
 key() { python3 -I "$root/tests/e2e/xkey.py" "$1"; sleep 0.5; }
 

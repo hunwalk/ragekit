@@ -1,7 +1,8 @@
 """The X11 clipboard through GTK: python3 -I xclipboard.py set <text> <seconds> (owns the clipboard that
 long, answering requests) | image <file> <seconds> (an image, offered as png, jpeg, bmp, …, the way an
 image editor or browser copies one) | file <path> <seconds> (a copied file: text/uri-list, as a file
-manager copies one) | get (prints its text, or nothing)."""
+manager copies one) | get (prints its text, or nothing) | targets (prints the formats it offers, one
+per line, or nothing)."""
 import sys
 import gi
 gi.require_version("Gdk", "3.0")
@@ -12,6 +13,10 @@ clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
 if sys.argv[1] == "get":
     text = clipboard.wait_for_text()
     sys.stdout.write(text or "")
+    sys.exit(0)
+if sys.argv[1] == "targets":
+    available, targets = clipboard.wait_for_targets()
+    sys.stdout.write("".join(target.name() + "\n" for target in targets) if available else "")
     sys.exit(0)
 if sys.argv[1] == "set":
     clipboard.set_text(sys.argv[2], -1)
