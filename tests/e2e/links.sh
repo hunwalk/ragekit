@@ -26,6 +26,8 @@ chmod 700 "$tmp/runtime"
 export XDG_DATA_HOME="$tmp/data" XDG_CONFIG_HOME="$tmp/config" XDG_RUNTIME_DIR="$tmp/runtime" XDG_DATA_DIRS="$tmp/data"
 unset WAYLAND_DISPLAY
 window=
+# Slint's only complaint with no session bus (CI has none): the rest of a log is the app's own.
+output() { grep -v '^Error watching for xdg desktop settings' "$1"; }
 started() {
     for _ in $(seq 1 100); do
         window=$(xwininfo -root -tree | grep -m1 '("links"' | awk '{print $1}')
@@ -63,7 +65,7 @@ timeout 5 "$exe" 'rktest://quit' >"$tmp/run3.log" 2>&1 || fail "the quit launch 
 for _ in $(seq 1 50); do kill -0 "$first" 2>/dev/null || break; sleep 0.1; done
 kill -0 "$first" 2>/dev/null && fail "rktest://quit didn't end the app"
 wait "$first" || fail "the app's exit code was $?"
-[ "$(cat "$tmp/run1.log")" = "$(printf '%s\n' started 'link rktest://hello?code=a%20b&state=x+y' '  code=a b' '  state=x y' 'link rktest://quit')" ] || fail "unexpected output"
+[ "$(output "$tmp/run1.log")" = "$(printf '%s\n' started 'link rktest://hello?code=a%20b&state=x+y' '  code=a b' '  state=x y' 'link rktest://quit')" ] || fail "unexpected output"
 [ -s "$tmp/run2.log" ] && fail "the plain second launch printed something"
 [ -e "$tmp/runtime/ragekit-links.sock" ] && fail "the socket is still there after a clean exit"
 
@@ -80,6 +82,6 @@ started || fail "no window after a crash"
 sleep 0.5
 timeout 5 "$exe" 'rktest://quit' >/dev/null 2>&1
 wait "$again" || fail "the instance after the crash exited with $?"
-[ "$(cat "$tmp/run5.log")" = "$(printf '%s\n' started 'link rktest://again' 'link rktest://quit')" ] || fail "after a crash: unexpected output"
+[ "$(output "$tmp/run5.log")" = "$(printf '%s\n' started 'link rktest://again' 'link rktest://quit')" ] || fail "after a crash: unexpected output"
 rm -rf "$tmp"
 echo "links: ok"
